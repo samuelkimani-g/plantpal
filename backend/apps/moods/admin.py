@@ -3,13 +3,11 @@ from .models import MoodEntry
 
 @admin.register(MoodEntry)
 class MoodEntryAdmin(admin.ModelAdmin):
-    """
-    Custom admin options for the MoodEntry model.
-    """
-    list_display = ('user', 'mood', 'timestamp', 'note_preview')
-    list_filter = ('mood', 'timestamp')
-    search_fields = ('user__username', 'mood', 'note')
-    readonly_fields = ('timestamp',) # Timestamp is auto_now_add
+    list_display = ('id', 'user', 'mood_type', 'mood_score', 'note', 'created_at') # <--- CORRECTED
+    list_filter = ('user', 'mood_type', 'created_at') 
+    search_fields = ('mood_type', 'note', 'user__username')
+    readonly_fields = ('id', 'created_at')
+    date_hierarchy = 'created_at' 
 
     def note_preview(self, obj):
         """Displays a truncated preview of the mood note."""

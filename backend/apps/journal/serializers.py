@@ -1,56 +1,55 @@
 from rest_framework import serializers
 from .models import JournalEntry
-from apps.moods.utils import get_suggestion
+from apps.accounts.serializers import UserSerializer
+from apps.moods.serializers import MoodEntrySerializer
+from apps.moods.utils import get_suggestion # Ensure this utility is correctly imported
 
 class JournalEntrySerializer(serializers.ModelSerializer):
     """
     Serializer for the JournalEntry model.
     Handles converting JournalEntry model instances to/from JSON.
     """
-    # Read-only field to display the username of the entry's owner.
-    # This ensures the user field is not expected in POST/PUT requests from frontend.
     user = serializers.ReadOnlyField(source='user.username')
-    suggestion = serializers.SerializerMethodField()
+    mood_entry = MoodEntrySerializer(read_only=True)
+    suggestion = serializers.SerializerMethodField() # Field to provide AI suggestion
 
     class Meta:
         model = JournalEntry
-        # CRITICAL: Ensure 'suggestion' is included in the 'fields' tuple
-        fields = ['id', 'user', 'text', 'date', 'mood_entry', 'is_favorite', 'suggestion']
-        read_only_fields = ['id', 'user', 'date', 'mood_entry', 'suggestion']
+        fields = ('id', 'user', 'text', 'created_at', 'mood_entry', 'is_favorite', 'suggestion')
+        read_only_fields = ('id', 'user', 'created_at', 'mood_entry', 'suggestion') # suggestion is read-only
 
     def validate_text(self, value):
         """
-        Custom validation for the 'text' field.
         Ensures the journal entry text is not empty and meets a minimum length requirement.
         """
         if not value or len(value.strip()) < 5:
-            raise serializers.ValidationError("Journal entry text must be at least 5 characters long.")
+            raise serializers.ValidationError(
+                "Journal entry text must be at least 5 characters long."
+            )
         return value
 
-    def validate_mood(self, value):
-        """
-        Custom validation for the 'mood' field.
-        Ensures that if a mood value is provided (e.g., by sentiment analysis),
-        it falls within a predefined list of allowed moods.
-        """
-        allowed_moods = ['happy', 'sad', 'stressed', 'relaxed', 'neutral', 'anxious', 'hopeful', 'joyful', 'calm', 'energetic']
-        if value:  # Only validate if a mood value is present
-            value_lower = value.lower()
-            if value_lower not in allowed_moods:
-                raise serializers.ValidationError(
-                    f"'{value}' is not a valid mood. Allowed moods are: {', '.join(allowed_moods)}."
-                )
-        return value
-    
     def get_suggestion(self, obj):
         """
         Returns a smart suggestion based on the mood associated with the journal entry.
-        If no mood is associated, a default suggestion is returned.
+        Falls back to neutral suggestions if no mood is associated.
         """
-        if obj.mood_entry and obj.mood_entry.mood:
-            return get_suggestion(obj.mood_entry.mood)
-        else:
-            # If no mood_entry or mood is present (e.g., before sentiment analysis is run),
-            # return a generic suggestion.
-            return get_suggestion("neutral") # Fallback to a neutral mood for suggestions
+        if obj.mood_entry and obj.mood_entry.mood_type: # <--- CORRECTED: Use mood_type
+            return get_suggestion(obj.mood_entry.mood_type)
+        return get_suggestion("neutral") # Default to neutral if no mood is linked or mood_type is missing
+
+    def create(self, validated_data):
+        """
+        Creates a journal entry and lets the signal handle mood_entry creation.
+        """
+        user = self.context['request'].user
+        return JournalEntry.objects.create(user=user, **validated_data)
+
+    def to_representation(self, instance):
+        """
+        Custom representation to format user data consistently.
+        """
+        representation = super().to_representation(instance)
+        # Ensure user field shows username instead of just ID
+        representation['user'] = UserSerializer(instance.user).data['username']
+        return representation
 

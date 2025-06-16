@@ -1,93 +1,240 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect } from "react"
-import { getCurrentUser, loginUser, registerUser, logoutUser } from "../services/api" // Corrected path
+import { createContext, useContext, useReducer, useEffect, useCallback } from "react"
+import { authAPI } from "../services/api"
 
 const AuthContext = createContext()
 
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
+const initialState = {
+  user: null,
+  isAuthenticated: false,
+  isLoading: true,
+  error: null,
 }
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+function authReducer(state, action) {
+  switch (action.type) {
+    case "AUTH_START":
+      return { ...state, isLoading: true, error: null }
+    case "AUTH_SUCCESS":
+      return {
+        ...state,
+        user: action.payload.user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      }
+    case "AUTH_FAILURE":
+      return {
+        ...state,
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: action.payload,
+      }
+    case "AUTH_LOGOUT":
+      return {
+        ...state,
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      }
+    case "CLEAR_ERROR":
+      return { ...state, error: null }
+    case "UPDATE_USER":
+      return { ...state, user: { ...state.user, ...action.payload } }
+    default:
+      return state
+  }
+}
 
+export function AuthProvider({ children }) {
+  const [state, dispatch] = useReducer(authReducer, initialState)
+
+  // Check if user is authenticated on app load
   useEffect(() => {
-    checkAuthStatus()
+    const checkAuth = async () => {
+      const accessToken = localStorage.getItem("access_token")
+      if (accessToken) {
+        try {
+          const response = await authAPI.getProfile()
+          dispatch({
+            type: "AUTH_SUCCESS",
+            payload: { user: response.data },
+          })
+        } catch (error) {
+          console.error("Auth check failed:", error)
+          localStorage.removeItem("access_token")
+          localStorage.removeItem("refresh_token")
+          dispatch({
+            type: "AUTH_FAILURE",
+            payload: null, // Clear error on failed checkAuth
+          })
+        }
+      } else {
+        dispatch({ type: "AUTH_FAILURE", payload: null }) // Not authenticated, no error
+      }
+    }
+
+    checkAuth()
   }, [])
 
-  const checkAuthStatus = async () => {
-    const token = localStorage.getItem("accessToken")
-    if (token) {
-      try {
-        const userData = await getCurrentUser()
-        setUser(userData)
-        setIsAuthenticated(true)
-      } catch (error) {
-        console.error("Auth check failed:", error)
-        localStorage.removeItem("accessToken")
-        localStorage.removeItem("refreshToken")
-        setIsAuthenticated(false)
-      }
-    }
-    setLoading(false)
-  }
-
-  const login = async (username, password) => {
+  const login = useCallback(async (credentials) => {
+    dispatch({ type: "AUTH_START" })
     try {
-      const response = await loginUser(username, password)
-      const userData = await getCurrentUser()
-      setUser(userData)
-      setIsAuthenticated(true)
+      // Backend expects 'username' and 'password'. Your Login form sends 'email' and 'password'.
+      // Map 'email' from frontend formData to 'username' for backend.
+      const loginData = {
+        username: credentials.email, // Assuming backend accepts email as username for login
+        password: credentials.password,
+      }
+
+      const response = await authAPI.login(loginData)
+      const { access, refresh } = response.data
+
+      localStorage.setItem("access_token", access)
+      localStorage.setItem("refresh_token", refresh)
+
+      // Get user profile after successful login
+      const profileResponse = await authAPI.getProfile()
+
+      dispatch({
+        type: "AUTH_SUCCESS",
+        payload: { user: profileResponse.data },
+      })
+
       return { success: true }
     } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.detail || "Login failed",
-      }
-    }
-  }
+      let errorMessage = "Login failed. Please try again."
 
-  const register = async (username, email, password) => {
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          errorMessage = error.response.data.detail
+        } else if (error.response.data.non_field_errors) {
+          errorMessage = error.response.data.non_field_errors[0]
+        } else if (error.response.data.username) {
+          errorMessage = error.response.data.username[0]
+        } else if (error.response.data.password) {
+          errorMessage = error.response.data.password[0]
+        }
+      } else if (error.message) {
+        errorMessage = error.message // General network or other error
+      }
+
+      dispatch({
+        type: "AUTH_FAILURE",
+        payload: errorMessage,
+      })
+      return { success: false, error: errorMessage }
+    }
+  }, [])
+
+  // Register function accepts all 4 fields as individual parameters
+  const register = useCallback(async (username, email, password, confirmPassword) => {
+    dispatch({ type: "AUTH_START" })
     try {
-      await registerUser(username, email, password)
+      // Map frontend fields to backend expected fields
+      const registrationData = {
+        username: username,
+        email: email,
+        password: password,
+        password2: confirmPassword, // Map confirmPassword to password2
+      }
+
+      await authAPI.register(registrationData) // Just register, don't auto-login
+
+      // No AUTH_SUCCESS dispatch here, as we're not auto-logging in.
+      // The Register component will handle navigation to login.
+      dispatch({ type: "AUTH_FAILURE", payload: null }) // Clear loading state and any previous error
       return { success: true }
     } catch (error) {
-      return {
-        success: false,
-        // The error response for registration might be more detailed (e.g., {'email': ['Enter a valid email address.']})
-        error: typeof error.response?.data === 'string' 
-               ? error.response.data 
-               : (Object.values(error.response?.data || {}).flat().join(' ') || "Registration failed"),
-      }
-    }
-  }
+      let errorMessage = "Registration failed. Please try again."
 
-  const logout = async () => {
+      if (error.response?.data) {
+        const errors = error.response.data
+        if (errors.username) {
+          errorMessage = `Username: ${errors.username[0]}`
+        } else if (errors.email) {
+          errorMessage = `Email: ${errors.email[0]}`
+        } else if (errors.password) {
+          errorMessage = `Password: ${errors.password[0]}`
+        } else if (errors.password2) {
+          errorMessage = `Password confirmation: ${errors.password2[0]}`
+        } else if (errors.non_field_errors) {
+          errorMessage = errors.non_field_errors[0]
+        } else {
+          errorMessage = "Please check all fields." // Generic for unhandled backend errors
+        }
+      } else if (error.message) {
+        errorMessage = error.message // General network or other error
+      }
+
+      dispatch({
+        type: "AUTH_FAILURE",
+        payload: errorMessage,
+      })
+      return { success: false, error: errorMessage }
+    }
+  }, [])
+
+  const logout = useCallback(async () => {
     try {
-      await logoutUser()
+      const refreshToken = localStorage.getItem("refresh_token")
+      if (refreshToken) {
+        await authAPI.logout(refreshToken)
+      }
     } catch (error) {
       console.error("Logout error:", error)
     } finally {
-      setUser(null)
-      setIsAuthenticated(false)
+      localStorage.removeItem("access_token")
+      localStorage.removeItem("refresh_token")
+      dispatch({ type: "AUTH_LOGOUT" })
     }
-  }
+  }, [])
+
+  const updateProfile = useCallback(async (userData) => {
+    dispatch({ type: "AUTH_START" }) // Indicate start of profile update
+    try {
+      const response = await authAPI.updateProfile(userData)
+      dispatch({
+        type: "UPDATE_USER",
+        payload: response.data,
+      })
+      // Optionally re-fetch full profile to ensure consistency
+      const updatedProfile = await authAPI.getProfile()
+      dispatch({
+        type: "AUTH_SUCCESS",
+        payload: { user: updatedProfile.data },
+      })
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || "Profile update failed. Please try again."
+      dispatch({ type: "AUTH_FAILURE", payload: errorMessage }) // Dispatch failure for profile update
+      return { success: false, error: errorMessage }
+    }
+  }, [])
+
+  const clearError = useCallback(() => {
+    dispatch({ type: "CLEAR_ERROR" })
+  }, [])
 
   const value = {
-    user,
-    isAuthenticated,
-    loading,
+    ...state,
     login,
     register,
     logout,
+    updateProfile,
+    clearError,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider")
+  }
+  return context
 }

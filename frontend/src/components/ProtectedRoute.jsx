@@ -1,20 +1,23 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Loader2 } from "lucide-react"
+"use client"
+import { Navigate, useLocation } from "react-router-dom"
+import { useAuth } from "../context/AuthContext"
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth(); 
+export default function ProtectedRoute({ children }) {
+  const { isAuthenticated, isLoading } = useAuth()
+  const location = useLocation()
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
-    );
+    )
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
-};
+  if (!isAuthenticated) {
+    // Redirect to login page with return url
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
 
-export default ProtectedRoute;
+  return children
+}

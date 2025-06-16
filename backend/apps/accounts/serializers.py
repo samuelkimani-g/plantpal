@@ -1,32 +1,52 @@
 from rest_framework import serializers
-from django.contrib.auth import get_user_model, authenticate
-from django.utils.translation import gettext_lazy as _
-from rest_framework.authtoken.models import Token # Import DRF Token model
+from django.contrib.auth import get_user_model 
+
 
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     """
     General purpose Serializer for displaying CustomUser instances.
-    Excludes password by default.
-    Used for retrieving current user details (/me/) or when a user is nested.
+    Includes fields needed by the frontend's Dashboard and Profile pages.
     """
     class Meta:
         model = User
-        fields = ('id', 'username', 'email')
-        read_only_fields = ('id', 'username', 'email') # These fields are read-only when retrieving
+        # IMPORTANT: Include 'date_joined' and 'last_login' as frontend expects them
+        fields = ('id', 'username', 'email', 'date_joined', 'last_login') 
+        read_only_fields = ('id', 'date_joined', 'last_login') # These are managed by Django
 
 class RegisterSerializer(serializers.ModelSerializer):
     """
     Serializer specifically for user registration (creating a new user).
-    Handles creating a new CustomUser and hashing the password.
+    Includes password confirmation and server-side validation for uniqueness.
     """
-    password = serializers.CharField(write_only=True, min_length=8) # Password is write-only and requires min length
+    password = serializers.CharField(write_only=True, required=True, min_length=8, style={'input_type': 'password'})
+    # Added password2 field for confirmation, matching frontend's confirmPassword
+    password2 = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'}) 
+    email = serializers.EmailField(required=True) # Ensure email field is explicit
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password')
-        read_only_fields = ('id',) # ID is generated automatically
+        # Include password2 in fields for validation, but it's write-only
+        fields = ('username', 'email', 'password', 'password2')
+        extra_kwargs = {'password': {'write_only': True}} 
+
+    def validate(self, attrs):
+        # Server-side check for password matching
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({"password2": "Password fields didn't match."})
+        
+        # Server-side check for unique username
+        if User.objects.filter(username=attrs['username']).exists():
+            raise serializers.ValidationError({"username": "A user with that username already exists."})
+        
+        # Server-side check for unique email (case-insensitive)
+        if User.objects.filter(email__iexact=attrs['email']).exists():
+            raise serializers.ValidationError({"email": "A user with that email already exists."})
+
+        # Remove password2 from validated_data as it's not a model field
+        attrs.pop('password2') 
+        return attrs
 
     def create(self, validated_data):
         """
@@ -38,58 +58,3 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data['password']
         )
         return user
-
-    def update(self, instance, validated_data):
-        """
-        Updates an existing user.
-        Note: Password changes should typically go through a separate password change endpoint for security.
-        """
-        instance.username = validated_data.get('username', instance.username)
-        instance.email = validated_data.get('email', instance.email)
-        # You can add logic here if you want to allow password updates via this serializer,
-        # but it's generally discouraged for a general 'update' method.
-        instance.save()
-        return instance
-
-class EmailTokenObtainSerializer(serializers.Serializer):
-    """
-    Serializer to handle email-based DRF Token authentication.
-    Takes email and password, authenticates the user, and returns user data and a DRF token.
-    """
-    email = serializers.EmailField(write_only=True)
-    password = serializers.CharField(write_only=True)
-    token = serializers.CharField(read_only=True)
-    user = UserSerializer(read_only=True) # <--- Using the `UserSerializer` here for returning user details
-
-    class Meta:
-        # fields are defined directly in the serializer, not in Meta for Serializer.Serializer
-        # This Meta class can be omitted for Serializer.Serializer if fields are explicitly defined above.
-        # However, keeping it for clarity as it's common practice for ModelSerializer.
-        fields = ('email', 'password', 'token', 'user') # For documentation purposes
-
-    def validate(self, attrs):
-        email = attrs.get('email')
-        password = attrs.get('password')
-
-        if not email or not password:
-            raise serializers.ValidationError(_('Both "email" and "password" are required.'))
-
-        try:
-            user = User.objects.get(email__iexact=email) # Case-insensitive email lookup
-        except User.DoesNotExist:
-            raise serializers.ValidationError(_('No active account found with the given credentials.'))
-
-        # Authenticate the user against their password
-        if not user.check_password(password):
-            raise serializers.ValidationError(_('No active account found with the given credentials.'))
-
-        if not user.is_active:
-            raise serializers.ValidationError(_('User account is disabled.'))
-
-        # Get or create the DRF Token for the authenticated user
-        token, created = Token.objects.get_or_create(user=user)
-        
-        attrs['user'] = user
-        attrs['token'] = token.key
-        
-        return attrs

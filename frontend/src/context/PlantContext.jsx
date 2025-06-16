@@ -1,185 +1,165 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-    getAllUserPlants, 
-    createPlant as createPlantApi, 
-    getPlantDetail, 
-    updatePlant, 
-    deletePlant,
-    createPlantLog, 
-    getAllPlantLogs, 
-} from '../services/api'; 
-import { useAuth } from './AuthContext'; // Corrected path (it's in the same context folder)
-import { useToast } from "@/components/ui/use-toast";
+"use client"
 
-const PlantContext = createContext();
+import { createContext, useContext, useReducer, useEffect, useCallback } from "react"
+import { plantAPI } from "../services/api"
+import { useAuth } from "./AuthContext"
 
-export const usePlant = () => {
-    const context = useContext(PlantContext);
-    if (!context) {
-        throw new Error("usePlant must be used within a PlantProvider");
+const PlantContext = createContext()
+
+const initialState = {
+  plants: [],
+  currentPlant: null,
+  isLoading: false,
+  error: null,
+  hasPlants: false,
+}
+
+function plantReducer(state, action) {
+  switch (action.type) {
+    case "PLANT_LOADING":
+      return { ...state, isLoading: true, error: null }
+    case "PLANTS_LOADED":
+      return {
+        ...state,
+        plants: action.payload,
+        currentPlant: action.payload[0] || null,
+        hasPlants: action.payload.length > 0,
+        isLoading: false,
+        error: null,
+      }
+    case "PLANT_CREATED":
+      return {
+        ...state,
+        plants: [action.payload, ...state.plants],
+        currentPlant: action.payload,
+        hasPlants: true,
+        isLoading: false,
+        error: null,
+      }
+    case "PLANT_UPDATED":
+      const updatedPlants = state.plants.map((plant) => (plant.id === action.payload.id ? action.payload : plant))
+      return {
+        ...state,
+        plants: updatedPlants,
+        currentPlant: state.currentPlant?.id === action.payload.id ? action.payload : state.currentPlant,
+        isLoading: false,
+        error: null,
+      }
+    case "PLANT_DELETED":
+      const filteredPlants = state.plants.filter((plant) => plant.id !== action.payload)
+      return {
+        ...state,
+        plants: filteredPlants,
+        currentPlant: state.currentPlant?.id === action.payload ? filteredPlants[0] || null : state.currentPlant,
+        hasPlants: filteredPlants.length > 0,
+        isLoading: false,
+        error: null,
+      }
+    case "PLANT_ERROR":
+      return {
+        ...state,
+        isLoading: false,
+        error: action.payload,
+      }
+    case "CLEAR_ERROR":
+      return { ...state, error: null }
+    case "SET_CURRENT_PLANT":
+      return { ...state, currentPlant: action.payload }
+    default:
+      return state
+  }
+}
+
+export function PlantProvider({ children }) {
+  const [state, dispatch] = useReducer(plantReducer, initialState)
+  const { isAuthenticated, user } = useAuth()
+
+  // Fetch plants when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      fetchPlants()
     }
-    return context;
-};
+  }, [isAuthenticated, user])
 
-export const PlantProvider = ({ children }) => {
-    const { isAuthenticated, user, loading: authLoading } = useAuth();
-    const [plants, setPlants] = useState([]);
-    const [currentPlant, setCurrentPlant] = useState(null);
-    const [plantLogs, setPlantLogs] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const { toast } = useToast();
+  const fetchPlants = useCallback(async () => {
+    dispatch({ type: "PLANT_LOADING" })
+    try {
+      const response = await plantAPI.getPlants()
+      const plants = response.data.results || response.data || []
+      dispatch({ type: "PLANTS_LOADED", payload: plants })
+    } catch (error) {
+      console.error("Error fetching plants:", error)
+      dispatch({
+        type: "PLANT_ERROR",
+        payload: error.response?.data?.detail || "Failed to fetch plants",
+      })
+    }
+  }, [])
 
-    useEffect(() => {
-        if (isAuthenticated && !authLoading) {
-            fetchPlantsAndLogs();
-        } else if (!isAuthenticated && !authLoading) {
-            setPlants([]);
-            setCurrentPlant(null);
-            setPlantLogs([]);
-            setLoading(false);
-        }
-    }, [isAuthenticated, authLoading]);
+  const createPlant = useCallback(async (plantData) => {
+    dispatch({ type: "PLANT_LOADING" })
+    try {
+      const response = await plantAPI.createPlant(plantData)
+      dispatch({ type: "PLANT_CREATED", payload: response.data })
+      return { success: true, plant: response.data }
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || "Failed to create plant"
+      dispatch({ type: "PLANT_ERROR", payload: errorMessage })
+      return { success: false, error: errorMessage }
+    }
+  }, [])
 
-    const fetchPlantsAndLogs = async () => {
-        setLoading(true);
-        try {
-            const fetchedPlants = await getAllUserPlants();
-            setPlants(fetchedPlants);
-            if (fetchedPlants.length > 0) {
-                setCurrentPlant(fetchedPlants[0]);
-                const fetchedLogs = await getAllPlantLogs();
-                setPlantLogs(fetchedLogs.filter(log => log.plant === fetchedPlants[0].id));
-            } else {
-                setCurrentPlant(null);
-                setPlantLogs([]);
-            }
-        } catch (error) {
-            console.error("Error fetching plant data:", error.response?.data || error.message);
-            toast({
-                title: "Error fetching plants",
-                description: error.response?.data?.detail || "Could not load your plant data.",
-                variant: "destructive",
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
+  const updatePlant = useCallback(async (plantId, plantData) => {
+    dispatch({ type: "PLANT_LOADING" })
+    try {
+      const response = await plantAPI.updatePlant(plantId, plantData)
+      dispatch({ type: "PLANT_UPDATED", payload: response.data })
+      return { success: true, plant: response.data }
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || "Failed to update plant"
+      dispatch({ type: "PLANT_ERROR", payload: errorMessage })
+      return { success: false, error: errorMessage }
+    }
+  }, [])
 
-    const createNewPlant = async (name, species = "Default Species") => {
-        setLoading(true);
-        try {
-            const newPlant = await createPlantApi(name, species);
-            setPlants(prevPlants => [...prevPlants, newPlant]);
-            setCurrentPlant(newPlant);
-            toast({
-                title: "Plant Created!",
-                description: `${newPlant.name} has joined your garden!`,
-                variant: "success",
-            });
-            return newPlant;
-        } catch (error) {
-            console.error("Error creating plant:", error.response?.data || error.message);
-            toast({
-                title: "Plant Creation Failed",
-                description: error.response?.data?.detail || "Could not create your plant.",
-                variant: "destructive",
-            });
-            throw error;
-        } finally {
-            setLoading(false);
-        }
-    };
+  const deletePlant = useCallback(async (plantId) => {
+    dispatch({ type: "PLANT_LOADING" })
+    try {
+      await plantAPI.deletePlant(plantId)
+      dispatch({ type: "PLANT_DELETED", payload: plantId })
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || "Failed to delete plant"
+      dispatch({ type: "PLANT_ERROR", payload: errorMessage })
+      return { success: false, error: errorMessage }
+    }
+  }, [])
 
-    const updateExistingPlant = async (plantId, plantData) => {
-        setLoading(true);
-        try {
-            const updated = await updatePlant(plantId, plantData);
-            setPlants(prevPlants => prevPlants.map(p => p.id === plantId ? updated : p));
-            if (currentPlant && currentPlant.id === plantId) {
-                setCurrentPlant(updated);
-            }
-            toast({
-                title: "Plant Updated!",
-                description: `${updated.name}'s details have been updated.`,
-            });
-            return updated;
-        } catch (error) {
-            console.error("Error updating plant:", error.response?.data || error.message);
-            toast({
-                title: "Plant Update Failed",
-                description: error.response?.data?.detail || "Could not update plant.",
-                variant: "destructive",
-            });
-            throw error;
-        } finally {
-            setLoading(false);
-        }
-    };
+  const setCurrentPlant = useCallback((plant) => {
+    dispatch({ type: "SET_CURRENT_PLANT", payload: plant })
+  }, [])
 
-    const deleteExistingPlant = async (plantId) => {
-        setLoading(true);
-        try {
-            await deletePlant(plantId);
-            setPlants(prevPlants => prevPlants.filter(p => p.id !== plantId));
-            if (currentPlant && currentPlant.id === plantId) {
-                setCurrentPlant(null);
-            }
-            toast({
-                title: "Plant Deleted",
-                description: "Your plant has been removed from the garden.",
-            });
-        } catch (error) {
-            console.error("Error deleting plant:", error.response?.data || error.message);
-            toast({
-                title: "Plant Deletion Failed",
-                description: error.response?.data?.detail || "Could not delete plant.",
-                variant: "destructive",
-            });
-            throw error;
-        } finally {
-            setLoading(false);
-        }
-    };
+  const clearError = useCallback(() => {
+    dispatch({ type: "CLEAR_ERROR" })
+  }, [])
 
-    const addPlantLog = async (plantId, note, watered, fertilized) => {
-        setLoading(true);
-        try {
-            const newLog = await createPlantLog(plantId, note, watered, fertilized);
-            setPlantLogs(prevLogs => [...prevLogs, newLog]);
-            await fetchPlantsAndLogs(); 
-            toast({
-                title: "Plant Logged!",
-                description: "Care activity recorded.",
-            });
-            return newLog;
-        } catch (error) {
-            console.error("Error adding plant log:", error.response?.data || error.message);
-            toast({
-                title: "Log Failed",
-                description: error.response?.data?.detail || "Could not record plant activity.",
-                variant: "destructive",
-            });
-            throw error;
-        } finally {
-            setLoading(false);
-        }
-    };
+  const value = {
+    ...state,
+    fetchPlants,
+    createPlant,
+    updatePlant,
+    deletePlant,
+    setCurrentPlant,
+    clearError,
+  }
 
-    const value = {
-        plants,
-        currentPlant,
-        plantLogs,
-        loading,
-        fetchPlantsAndLogs,
-        createNewPlant,
-        updateExistingPlant,
-        deleteExistingPlant,
-        addPlantLog,
-    };
+  return <PlantContext.Provider value={value}>{children}</PlantContext.Provider>
+}
 
-    return (
-        <PlantContext.Provider value={value}>
-            {children}
-        </PlantContext.Provider>
-    );
-};
+export function usePlant() {
+  const context = useContext(PlantContext)
+  if (context === undefined) {
+    throw new Error("usePlant must be used within a PlantProvider")
+  }
+  return context
+}

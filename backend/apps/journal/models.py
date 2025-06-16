@@ -1,51 +1,44 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-# Import the new MoodEntry model from the moods app
-from apps.moods.models import MoodEntry # <-- NEW IMPORT
+from apps.moods.models import MoodEntry 
+from django.conf import settings
 
 User = get_user_model()
 
 class JournalEntry(models.Model):
     """
-    Represents a single journal entry created by a user.
-    Each entry includes the text, creation date, and a favorite flag.
-    Now includes a link to an optional MoodEntry.
+    Represents a journal entry written by a user.
     """
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="entries",
+        related_name='journal_entries',
         help_text="The user who created this journal entry."
     )
     text = models.TextField(
-        help_text="The main text content of the journal entry."
+        help_text="The main content of the journal entry."
     )
-    date = models.DateTimeField(
-        auto_now_add=True,
+    created_at = models.DateTimeField(
+        auto_now_add=True, 
         help_text="The date and time the entry was created."
     )
-    # The 'mood' field is now a ForeignKey to the MoodEntry model.
-    # It's nullable (SET_NULL) so existing entries don't break if mood is deleted,
-    # and it's blank so it's not required during initial journal entry creation.
-    # This will be populated by sentiment analysis later.
-    mood_entry = models.ForeignKey( # Changed from CharField to ForeignKey
+    mood_entry = models.ForeignKey(
         MoodEntry,
-        on_delete=models.SET_NULL, # If the MoodEntry is deleted, set this field to NULL
-        null=True,                 # Allows NULL values in the database
-        blank=True,                # Allows the field to be blank in forms/serializers
-        related_name='journal_entries', # Allows accessing mood_entry.journal_entries.all()
-        help_text="The associated mood entry, derived from sentiment analysis."
+        on_delete=models.SET_NULL, # If mood entry is deleted, don't delete journal entry
+        null=True,
+        blank=True,
+        related_name='journal_entries',
+        help_text="The associated mood entry for this journal entry."
     )
     is_favorite = models.BooleanField(
         default=False,
-        help_text="Boolean flag indicating if this entry is marked as a user favorite."
+        help_text="Whether this entry is marked as a favorite."
     )
 
     class Meta:
         verbose_name = "Journal Entry"
         verbose_name_plural = "Journal Entries"
-        ordering = ['-date']
+        ordering = ['-created_at'] # Order by most recent first
 
     def __str__(self):
-        return f"{self.user.username}'s entry on {self.date.strftime('%Y-%m-%d %H:%M')}"
-
+        return f"Journal by {self.user.username} on {self.created_at.strftime('%Y-%m-%d')}"
