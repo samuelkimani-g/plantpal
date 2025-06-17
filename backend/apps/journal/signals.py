@@ -6,7 +6,13 @@ from .models import JournalEntry
 from apps.moods.models import MoodEntry
 
 # Initialize the sentiment analyzer globally to avoid re-initializing on every request
-sid = SentimentIntensityAnalyzer()
+try:
+    import nltk
+    nltk.download('vader_lexicon', quiet=True)
+    sid = SentimentIntensityAnalyzer()
+except ImportError:
+    sid = None
+    print("NLTK not installed. Sentiment analysis will be disabled.")
 
 @receiver(post_save, sender=JournalEntry)
 def analyze_journal_sentiment(sender, instance, created, **kwargs):
@@ -14,6 +20,9 @@ def analyze_journal_sentiment(sender, instance, created, **kwargs):
     Signal receiver to analyze the sentiment of a JournalEntry's text
     and create or update an associated MoodEntry.
     """
+    if not sid:
+        return  # Skip if NLTK is not available
+        
     if created or instance.mood_entry is None:  # Only run on creation or if mood_entry is missing
         # Perform sentiment analysis
         sentiment_scores = sid.polarity_scores(instance.text)

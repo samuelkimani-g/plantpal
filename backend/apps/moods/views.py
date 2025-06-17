@@ -16,7 +16,7 @@ class MoodEntryViewSet(viewsets.ModelViewSet):
         """
         Ensures users can only see and manage their own mood entries.
         """
-        return MoodEntry.objects.filter(user=self.request.user).order_by('-timestamp')
+        return MoodEntry.objects.filter(user=self.request.user).order_by('-created_at')
 
     def perform_create(self, serializer):
         """

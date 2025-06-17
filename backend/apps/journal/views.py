@@ -31,7 +31,7 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
         that belong to the currently authenticated user.
         This is applied for list views and when retrieving single objects.
         """
-        return JournalEntry.objects.filter(user=self.request.user).order_by('-date')
+        return JournalEntry.objects.filter(user=self.request.user).order_by('-created_at')
 
     def perform_create(self, serializer):
         """
@@ -45,7 +45,7 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
     def latest_entry(self, request):
         """
         Retrieves the single most recent journal entry for the authenticated user.
-        Accessible at: /api/journal/entries/latest/
+        Accessible at: /api/journal/entries/latest_entry/
         """
         # Utilize get_queryset() to ensure only the current user's entries are considered
         latest = self.get_queryset().first() 

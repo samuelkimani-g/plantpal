@@ -28,7 +28,6 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
-    // Ensure it's a 401 and not already retried, and not the refresh token endpoint itself
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
@@ -44,19 +43,17 @@ api.interceptors.response.use(
             { refresh: refreshToken },
           )
 
-          const { access, refresh } = response.data // Get new access and refresh tokens
+          const { access, refresh } = response.data
           localStorage.setItem("access_token", access)
-          localStorage.setItem("refresh_token", refresh) // Store new refresh token for rotation
+          localStorage.setItem("refresh_token", refresh)
 
-          // Retry original request with new token
           originalRequest.headers.Authorization = `Bearer ${access}`
           return api(originalRequest)
         }
       } catch (refreshError) {
-        // Refresh failed, redirect to login
         console.error("Token refresh failed:", refreshError.response?.data || refreshError.message)
         localStorage.removeItem("access_token")
-        localStorage.removeToken("refresh_token")
+        localStorage.removeItem("refresh_token")
         window.location.href = "/login"
         return Promise.reject(refreshError)
       }
@@ -69,11 +66,18 @@ api.interceptors.response.use(
 // Auth API calls (accounts app)
 export const authAPI = {
   register: (userData) => api.post("/accounts/register/", userData),
-  login: (credentials) => api.post("/accounts/login/", credentials), // This should match your Django URL
+  login: (credentials) => api.post("/accounts/login/", credentials),
   logout: (refreshToken) => api.post("/accounts/logout/", { refresh: refreshToken }),
-  refreshToken: (refreshToken) => api.post("/accounts/token/refresh/", { refresh: refreshToken }),
+  refreshToken: (refreshToken) => api.post("/token/refresh/", { refresh: refreshToken }),
   getProfile: () => api.get("/accounts/profile/"),
   updateProfile: (userData) => api.patch("/accounts/profile/", userData),
+  changePassword: (passwordData) => api.post("/accounts/change-password/", passwordData),
+  deleteAccount: (refreshToken) => api.delete("/accounts/delete-account/", { data: { refresh: refreshToken } }),
+  connectSpotify: (spotifyData) => api.post("/accounts/spotify/", spotifyData),
+  disconnectSpotify: () => api.delete("/accounts/spotify/"),
+  // Convenience methods for direct API calls
+  post: (url, data) => api.post(`/accounts${url}`, data),
+  delete: (url, config) => api.delete(`/accounts${url}`, config),
 }
 
 // Journal API calls (journal app)
@@ -84,7 +88,7 @@ export const journalAPI = {
   updateEntry: (id, entryData) => api.patch(`/journal/entries/${id}/`, entryData),
   deleteEntry: (id) => api.delete(`/journal/entries/${id}/`),
   getLatestEntry: () => api.get("/journal/entries/latest_entry/"),
-  getPrompt: (moodType) => api.get(`/journal/prompts/`, { params: { mood_type: moodType } }),
+  getPrompt: (moodType) => api.get(`/journal/prompts/`, { params: { mood: moodType } }),
   markFavorite: (id) => api.post(`/journal/entries/${id}/mark_favorite/`),
 }
 
@@ -97,6 +101,18 @@ export const plantAPI = {
   deletePlant: (id) => api.delete(`/plants/plants/${id}/`),
   getLogs: (plantId) => api.get(`/plants/logs/?plant=${plantId}`),
   createLog: (logData) => api.post("/plants/logs/", logData),
+  waterPlant: (plantId) =>
+    api.post("/plants/logs/", {
+      plant: plantId,
+      activity_type: "watered",
+      note: "Plant watered manually",
+    }),
+  fertilizePlant: (plantId) =>
+    api.post("/plants/logs/", {
+      plant: plantId,
+      activity_type: "fertilized",
+      note: "Plant fertilized manually",
+    }),
 }
 
 // Mood API calls (moods app)

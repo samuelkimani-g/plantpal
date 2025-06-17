@@ -15,6 +15,9 @@ export function formatDate(date) {
 
 export function getMoodColor(mood) {
   const moodColors = {
+    Positive: "bg-green-500",
+    Negative: "bg-red-500",
+    Neutral: "bg-gray-400",
     happy: "bg-mood-happy",
     sad: "bg-mood-sad",
     stressed: "bg-mood-stressed",
@@ -27,6 +30,9 @@ export function getMoodColor(mood) {
 
 export function getMoodEmoji(mood) {
   const moodEmojis = {
+    Positive: "😊",
+    Negative: "😢",
+    Neutral: "😐",
     happy: "😊",
     sad: "😢",
     stressed: "😰",

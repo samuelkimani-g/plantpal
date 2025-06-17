@@ -18,12 +18,16 @@ const PLANT_EMOJIS = {
 }
 
 const GROWTH_STAGES = {
-  0: { name: "Seed", emoji: "🌰", color: "bg-amber-500" },
-  1: { name: "Sprout", emoji: "🌱", color: "bg-green-400" },
-  2: { name: "Seedling", emoji: "🌿", color: "bg-green-500" },
-  3: { name: "Young Plant", emoji: "🪴", color: "bg-green-600" },
-  4: { name: "Mature Plant", emoji: "🌳", color: "bg-emerald-600" },
-  5: { name: "Flourishing", emoji: "🌺", color: "bg-pink-500" },
+  1: { name: "Seedling", emoji: "🌱", color: "bg-green-400" },
+  2: { name: "Young Plant", emoji: "🌿", color: "bg-green-500" },
+  3: { name: "Growing", emoji: "🪴", color: "bg-green-600" },
+  4: { name: "Developing", emoji: "🌳", color: "bg-emerald-600" },
+  5: { name: "Mature", emoji: "🌲", color: "bg-emerald-700" },
+  6: { name: "Strong", emoji: "🌴", color: "bg-emerald-800" },
+  7: { name: "Thriving", emoji: "🌺", color: "bg-pink-500" },
+  8: { name: "Blooming", emoji: "🌸", color: "bg-pink-600" },
+  9: { name: "Flourishing", emoji: "🌼", color: "bg-yellow-500" },
+  10: { name: "Magnificent", emoji: "🌻", color: "bg-orange-500" },
 }
 
 const HEALTH_STATUS = {
@@ -57,7 +61,7 @@ export default function PlantVisualizer({ plant }) {
     )
   }
 
-  const growthStage = GROWTH_STAGES[Math.min(Math.floor(plant.growth_level || 0), 5)]
+  const growthStage = GROWTH_STAGES[Math.min(plant.growth_level || 1, 10)]
   const healthStatus = HEALTH_STATUS[plant.health_status] || HEALTH_STATUS.fair
   const plantEmoji = PLANT_EMOJIS[plant.species] || "🌱"
 
@@ -109,7 +113,7 @@ export default function PlantVisualizer({ plant }) {
                 Level {Math.floor(plant.growth_level || 0)}
               </span>
             </div>
-            <Progress value={(plant.growth_level || 0) * 20} className="h-3 bg-emerald-100 dark:bg-emerald-900" />
+            <Progress value={(plant.growth_level || 1) * 10} className="h-3 bg-emerald-100 dark:bg-emerald-900" />
             <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400">
               <span>Seed</span>
               <span>Flourishing</span>
@@ -136,7 +140,7 @@ export default function PlantVisualizer({ plant }) {
               </div>
               <div>
                 <p className="text-sm font-medium text-blue-800 dark:text-blue-200">Last Watered</p>
-                <p className="text-xs text-blue-600 dark:text-blue-400">
+                <p className="text-xs text-emerald-600 dark:text-emerald-400">
                   {plant.last_watered ? formatDate(plant.last_watered) : "Never"}
                 </p>
               </div>

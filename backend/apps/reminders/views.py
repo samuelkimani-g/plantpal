@@ -23,4 +23,3 @@ class ReminderViewSet(viewsets.ModelViewSet):
         Automatically sets the owner of the reminder to the current authenticated user upon creation.
         """
         serializer.save(user=self.request.user)
-

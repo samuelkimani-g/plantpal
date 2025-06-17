@@ -47,6 +47,27 @@ class Reminder(models.Model):
         help_text="Timestamp of the last update to the reminder."
     )
 
+    # Additional fields to match frontend expectations
+    reminder_type = models.CharField(
+        max_length=50,
+        default='custom',
+        help_text="Type of reminder (journal, water, mood, etc.)"
+    )
+    scheduled_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Time component of the scheduled reminder."
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this reminder is active."
+    )
+    days_of_week = models.CharField(
+        max_length=20,
+        default='1234567',
+        help_text="Days of week for recurring reminders (1=Monday, 7=Sunday)."
+    )
+
     class Meta:
         verbose_name = "Reminder"
         verbose_name_plural = "Reminders"

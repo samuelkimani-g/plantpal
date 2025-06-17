@@ -63,4 +63,3 @@ def get_suggestion(mood_type="neutral", journal_text=""):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         return "An unknown error occurred with AI suggestion."
-

@@ -80,12 +80,3 @@ def update_plant_from_plant_log(sender, instance, created, **kwargs):
     plant.save()
 
     print(f"Plant {plant.name} health updated to {plant.health} due to {instance.activity_type}")
-
-# Optional: Add a signal for when a plant hasn't been watered/fertilized for a long time
-# This would require periodic tasks (e.g., Django management command + cron job)
-# @receiver(post_save, sender=Plant)
-# def check_plant_decay(sender, instance, **kwargs):
-#     if not kwargs.get('raw', False): # Only run on saves, not on initial load from db
-#         if instance.last_watered and (timezone.now() - instance.last_watered).days > 3:
-#             instance.health = max(0, instance.health - 5) # Example decay
-#             instance.save()

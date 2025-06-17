@@ -83,6 +83,8 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (credentials) => {
     dispatch({ type: "AUTH_START" })
     try {
+      console.log("Attempting login with:", { username: credentials.email, password: "***" })
+
       // Backend expects 'username' and 'password'. Your Login form sends 'email' and 'password'.
       // Map 'email' from frontend formData to 'username' for backend.
       const loginData = {
@@ -90,7 +92,10 @@ export function AuthProvider({ children }) {
         password: credentials.password,
       }
 
+      console.log("Sending login request to:", "/api/accounts/login/")
       const response = await authAPI.login(loginData)
+      console.log("Login response:", response.data)
+
       const { access, refresh } = response.data
 
       localStorage.setItem("access_token", access)
@@ -98,6 +103,7 @@ export function AuthProvider({ children }) {
 
       // Get user profile after successful login
       const profileResponse = await authAPI.getProfile()
+      console.log("Profile response:", profileResponse.data)
 
       dispatch({
         type: "AUTH_SUCCESS",
@@ -106,6 +112,10 @@ export function AuthProvider({ children }) {
 
       return { success: true }
     } catch (error) {
+      console.error("Login error:", error)
+      console.error("Error response:", error.response?.data)
+      console.error("Error status:", error.response?.status)
+
       let errorMessage = "Login failed. Please try again."
 
       if (error.response?.data) {
@@ -134,6 +144,8 @@ export function AuthProvider({ children }) {
   const register = useCallback(async (username, email, password, confirmPassword) => {
     dispatch({ type: "AUTH_START" })
     try {
+      console.log("Attempting registration with:", { username, email, password: "***", confirmPassword: "***" })
+
       // Map frontend fields to backend expected fields
       const registrationData = {
         username: username,
@@ -142,13 +154,19 @@ export function AuthProvider({ children }) {
         password2: confirmPassword, // Map confirmPassword to password2
       }
 
-      await authAPI.register(registrationData) // Just register, don't auto-login
+      console.log("Sending registration request to:", "/api/accounts/register/")
+      const response = await authAPI.register(registrationData) // Just register, don't auto-login
+      console.log("Registration response:", response.data)
 
       // No AUTH_SUCCESS dispatch here, as we're not auto-logging in.
       // The Register component will handle navigation to login.
       dispatch({ type: "AUTH_FAILURE", payload: null }) // Clear loading state and any previous error
       return { success: true }
     } catch (error) {
+      console.error("Registration error:", error)
+      console.error("Error response:", error.response?.data)
+      console.error("Error status:", error.response?.status)
+
       let errorMessage = "Registration failed. Please try again."
 
       if (error.response?.data) {

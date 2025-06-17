@@ -1,247 +1,330 @@
-# PlantPal Frontend
+# PlantPal Backend
 
-A gamified mindfulness app where your emotional journey nurtures virtual plants. Built with React, Vite, and Tailwind CSS.
+Django REST API backend for the PlantPal mindfulness application with custom user model, AI integration, and plant growth mechanics.
 
-## 🌱 About PlantPal
+## 🚀 Quick Setup
 
-PlantPal helps users nurture their mental health by externalizing emotions as a living, evolving virtual plant world. Journal your thoughts, track your moods, and watch your garden flourish as you grow through what you go through.
-
-## ✨ Features
-
-- **Daily Emotional Journaling**: Express thoughts with AI-powered sentiment analysis
-- **Virtual Plant Growth**: Plants evolve based on your emotional journey
-- **Mood Tracking**: Understand emotional patterns over time
-- **Music Integration**: Connect Spotify/Apple Music for mood influence
-- **Social Garden**: Share and water friends' plants
-- **Emotional DNA**: Unique visualizations of your growth journey
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js (v18 or higher)
-- npm or yarn
-- PlantPal Backend running on `http://localhost:8000`
-
-### Backend Setup (Required First)
-
-Make sure your Django backend is running with the following structure:
-\`\`\`
-backend/
-├── core/                 # Django project settings
-├── apps/
-│   ├── accounts/         # User authentication
-│   ├── journal/          # Journal entries
-│   ├── plants/           # Plant management
-│   ├── moods/            # Mood tracking
-│   └── reminders/        # Reminder system
-├── manage.py
-└── db.sqlite3
-\`\`\`
-
-Start your backend server:
+### 1. Create Virtual Environment
 \`\`\`bash
-cd backend
+python -m venv plantpal_env
+source plantpal_env/bin/activate  # On Windows: plantpal_env\Scripts\activate
+\`\`\`
+
+### 2. Install Dependencies
+\`\`\`bash
+pip install -r requirements.txt
+\`\`\`
+
+### 3. Environment Variables
+\`\`\`bash
+cp .env.example .env
+# Edit .env with your configuration
+\`\`\`
+
+### 4. Run Migrations
+\`\`\`bash
+python manage.py makemigrations
+python manage.py migrate
+\`\`\`
+
+### 5. Create Superuser
+\`\`\`bash
+python manage.py createsuperuser
+\`\`\`
+
+### 6. Start Development Server
+\`\`\`bash
 python manage.py runserver
 \`\`\`
 
-### Frontend Installation
+The API will be available at `http://localhost:8000/api/`
 
-1. **Clone the repository**
-   \`\`\`bash
-   git clone <your-repo-url>
-   cd plantpal-frontend
-   \`\`\`
+## 📚 API Endpoints
 
-2. **Install dependencies**
-   \`\`\`bash
-   npm install
-   \`\`\`
-
-3. **Set up environment variables**
-   \`\`\`bash
-   cp .env.example .env
-   \`\`\`
-   
-   Edit `.env` and configure:
-   \`\`\`env
-   VITE_API_URL=http://localhost:8000/api
-   \`\`\`
-
-4. **Start the development server**
-   \`\`\`bash
-   npm run dev
-   \`\`\`
-
-5. **Open your browser**
-   Navigate to `http://localhost:3000`
-
-## 🛠️ Tech Stack
-
-- **Frontend Framework**: React 18 with Vite
-- **Styling**: Tailwind CSS + Shadcn UI
-- **Routing**: React Router DOM
-- **HTTP Client**: Axios
-- **Icons**: Lucide React
-- **State Management**: React Context API
-- **Authentication**: JWT with automatic token refresh
-
-## 📁 Project Structure
-
-\`\`\`
-src/
-├── components/          # Reusable UI components
-│   ├── ui/             # Shadcn UI components
-│   └── ProtectedRoute.jsx
-├── context/            # React Context providers
-│   └── AuthContext.jsx
-├── features/           # Feature-based components
-│   ├── LandingPage/
-│   ├── userProfile/
-│   ├── journaling/
-│   ├── plantGrowth/
-│   ├── socialGarden/
-│   └── musicIntegration/
-├── lib/               # Utility functions
-│   └── utils.js
-├── services/          # API calls and external services
-│   └── api.js
-├── App.jsx           # Main app component
-├── main.jsx          # App entry point
-└── index.css         # Global styles
-\`\`\`
-
-## 🔧 Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-
-## 🔐 Authentication
-
-The app uses JWT-based authentication with automatic token refresh:
-
-- Access tokens are stored in localStorage
-- Refresh tokens handle automatic re-authentication
-- Protected routes redirect to login when unauthenticated
-- API interceptors handle token attachment and refresh
-
-## 🌐 API Integration
-
-The frontend connects to your Django backend via REST API:
-
-- **Base URL**: Configured via `VITE_API_URL`
-- **Authentication**: Bearer token in Authorization header
-- **Error Handling**: Centralized error handling with user feedback
-- **Request/Response Interceptors**: Automatic token management
-
-### API Endpoints Used
-
-Based on your backend structure:
-
-- `POST /api/accounts/login/` - User login
+### Authentication
 - `POST /api/accounts/register/` - User registration
-- `GET /api/accounts/profile/` - Get user profile
-- `GET /api/journal/entries/` - Get journal entries
-- `POST /api/journal/entries/` - Create journal entry
-- `GET /api/plants/plants/` - Get user plants
-- `GET /api/moods/moods/` - Get mood entries
-- `GET /api/reminders/reminders/` - Get reminders
+- `POST /api/accounts/login/` - User login (get JWT tokens)
+- `POST /api/token/refresh/` - Refresh JWT token
+- `GET/PATCH /api/accounts/profile/` - User profile
+- `POST /api/accounts/logout/` - Logout (blacklist token)
 
-## 🚀 Deployment
+### Journal
+- `GET/POST /api/journal/entries/` - List/Create journal entries
+- `GET/PUT/PATCH/DELETE /api/journal/entries/{id}/` - Manage specific entry
+- `GET /api/journal/entries/latest_entry/` - Get latest entry
+- `POST /api/journal/entries/{id}/mark_favorite/` - Toggle favorite
+- `GET/POST /api/journal/prompts/` - Get journal prompts
 
-### Development
-\`\`\`bash
-npm run dev
-\`\`\`
+### Plants
+- `GET/POST /api/plants/plants/` - List/Create plants
+- `GET/PUT/PATCH/DELETE /api/plants/plants/{id}/` - Manage specific plant
+- `GET/POST /api/plants/logs/` - Plant care logs
 
-### Production Build
-\`\`\`bash
-npm run build
-npm run preview
-\`\`\`
+### Moods
+- `GET/POST /api/moods/moods/` - List/Create mood entries
+- `GET/PUT/PATCH/DELETE /api/moods/moods/{id}/` - Manage specific mood
 
-### Environment Variables for Production
-\`\`\`env
-VITE_API_URL=https://your-backend-domain.com/api
-VITE_NODE_ENV=production
-\`\`\`
+### Reminders
+- `GET/POST /api/reminders/reminders/` - List/Create reminders
+- `GET/PUT/PATCH/DELETE /api/reminders/reminders/{id}/` - Manage specific reminder
+
+## 🤖 AI Features
+
+### Sentiment Analysis
+- Automatic mood detection from journal entries using NLTK VADER
+- Creates linked MoodEntry objects with sentiment scores
+- Affects plant growth based on emotional state
+
+### Gemini AI Integration
+- Journal prompt suggestions based on mood
+- Requires `GEMINI_API_KEY` environment variable
+- Fallback prompts if API unavailable
+
+## 🌱 Plant Growth System
+
+### Growth Mechanics
+- Plants start at level 1 with 100% health
+- Journal sentiment affects plant health (+/- based on mood)
+- Care activities (watering, fertilizing) boost health
+- Plants level up when health reaches 80%
+- Maximum growth level: 10
+
+### Health Status
+- Excellent (80-100%)
+- Good (60-79%)
+- Fair (40-59%)
+- Poor (20-39%)
+- Critical (0-19%)
+
+## 🔧 Configuration
+
+### Custom User Model
+Uses `CustomUser` extending Django's `AbstractUser` for future extensibility.
+
+### JWT Settings
+- Access token: 60 minutes
+- Refresh token: 7 days
+- Token rotation enabled
+- Blacklisting after rotation
+
+### CORS Settings
+Configured for frontend development on ports 3000 and 5173.
+
+## 🗄️ Database Models
+
+### CustomUser
+- Extended Django User model
+- Future-ready for additional fields
+
+### JournalEntry
+- User's journal entries
+- Linked to MoodEntry via foreign key
+- Automatic sentiment analysis
+
+### MoodEntry
+- Mood tracking with type and numerical score
+- Auto-generated from journal sentiment
+- Manual creation also supported
+
+### Plant
+- Virtual plants with growth levels and health
+- Species, care tracking, music boost
+- Automatic health status calculation
+
+### PlantLog
+- Activity logging for plant care
+- Growth impact tracking
+- Supports various activity types
+
+### Reminder
+- User reminders with scheduling
+- Optional plant association
+- Recurring reminder support
+
+## 🔄 Signals & Automation
+
+### Journal → Mood Analysis
+- Automatic sentiment analysis on journal creation
+- Creates linked MoodEntry with sentiment score
+- Uses NLTK VADER sentiment analyzer
+
+### Mood → Plant Growth
+- Journal sentiment affects plant health
+- Positive moods boost health, negative moods reduce it
+- Health threshold triggers growth level increases
+
+### Plant Care Logging
+- Watering and fertilizing activities logged
+- Automatic health boosts from care activities
+- Timestamp tracking for last care actions
 
 ## 🧪 Testing
 
-Run the linter:
+### Test Registration
 \`\`\`bash
-npm run lint
+curl -X POST http://localhost:8000/api/accounts/register/ \
+-H "Content-Type: application/json" \
+-d '{"username": "testuser", "email": "test@example.com", "password": "testpass123", "password2": "testpass123"}'
 \`\`\`
 
-## 🤝 Contributing
+### Test Login
+\`\`\`bash
+curl -X POST http://localhost:8000/api/accounts/login/ \
+-H "Content-Type: application/json" \
+-d '{"username": "testuser", "password": "testpass123"}'
+\`\`\`
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Test Journal Entry
+\`\`\`bash
+curl -X POST http://localhost:8000/api/journal/entries/ \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+-d '{"text": "I feel amazing today! Everything is going well."}'
+\`\`\`
 
 ## 📝 Development Notes
 
-### Day 18 Completed Features
-- ✅ Vite React project setup
-- ✅ Tailwind CSS + PostCSS configuration
-- ✅ Shadcn UI integration
-- ✅ API service with Axios (updated for your backend structure)
-- ✅ Authentication context with JWT
-- ✅ Login/Register pages with beautiful styling
-- ✅ Protected routes
-- ✅ Dashboard with backend integration
-- ✅ Landing page
-- ✅ Responsive design
+- All endpoints require authentication except registration and login
+- Automatic sentiment analysis requires NLTK installation
+- Plant growth mechanics are configurable via signal constants
+- API documentation available at `/swagger/` and `/redoc/`
+- SQLite for development, easily changeable to PostgreSQL
 
-### Backend Integration Status
-- ✅ **accounts** app - Authentication endpoints
-- ✅ **journal** app - Journal entry management
-- ✅ **plants** app - Plant tracking
-- ✅ **moods** app - Mood logging
-- ✅ **reminders** app - Reminder system
+## 🚀 Production Deployment
 
-### Next Steps (Day 19-21)
-- [ ] Journal entry form and list components
-- [ ] Plant creation and visualization
-- [ ] Mood tracking interface
-- [ ] Profile management
-- [ ] Social features
-- [ ] Music integration
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **API Connection Failed**
-   - Ensure backend is running on `http://localhost:8000`
-   - Check `VITE_API_URL` in `.env` file
-   - Verify CORS settings in Django backend
-   - Make sure your Django URLs include the API endpoints
-
-2. **Authentication Issues**
-   - Check if your Django backend has JWT authentication configured
-   - Verify the token endpoints match your backend URLs
-   - Ensure CORS allows the frontend domain
-
-3. **Build Errors**
-   - Clear node_modules: `rm -rf node_modules && npm install`
-   - Check for any missing dependencies
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🌟 Acknowledgments
-
-- [Shadcn UI](https://ui.shadcn.com/) for beautiful components
-- [Tailwind CSS](https://tailwindcss.com/) for styling
-- [Lucide](https://lucide.dev/) for icons
-- [Vite](https://vitejs.dev/) for fast development
+1. Set `DEBUG=False` in environment
+2. Configure PostgreSQL database
+3. Set proper `ALLOWED_HOSTS`
+4. Configure static file serving
+5. Set up SSL/HTTPS
+6. Configure proper CORS settings
+7. Set up Gemini API key for AI features
 
 ---
 
-**PlantPal** - Grow through what you go through 🌱
+**PlantPal Backend** - Where emotional growth nurtures virtual life 🌱✨
+\`\`\`
+
+Now let me update the frontend to work with your backend structure:
+
+```typescriptreact file="src/services/api.js"
+[v0-no-op-code-block-prefix]import axios from "axios"
+
+// Create axios instance with base configuration
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
+})
+
+// Request interceptor to add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access_token")
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  },
+)
+
+// Response interceptor to handle token refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config
+
+    // Ensure it's a 401 and not already retried, and not the refresh token endpoint itself
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url.includes("/accounts/token/refresh/")
+    ) {
+      originalRequest._retry = true
+
+      try {
+        const refreshToken = localStorage.getItem("refresh_token")
+        if (refreshToken) {
+          const response = await axios.post(
+            `${import.meta.env.VITE_API_URL || "http://localhost:8000/api"}/accounts/token/refresh/`,
+            { refresh: refreshToken },
+          )
+
+          const { access, refresh } = response.data // Get new access and refresh tokens
+          localStorage.setItem("access_token", access)
+          localStorage.setItem("refresh_token", refresh) // Store new refresh token for rotation
+
+          // Retry original request with new token
+          originalRequest.headers.Authorization = `Bearer ${access}`
+          return api(originalRequest)
+        }
+      } catch (refreshError) {
+        // Refresh failed, redirect to login
+        console.error("Token refresh failed:", refreshError.response?.data || refreshError.message)
+        localStorage.removeItem("access_token")
+        localStorage.removeToken("refresh_token")
+        window.location.href = "/login"
+        return Promise.reject(refreshError)
+      }
+    }
+
+    return Promise.reject(error)
+  },
+)
+
+// Auth API calls (accounts app)
+export const authAPI = {
+  register: (userData) => api.post("/accounts/register/", userData),
+  login: (credentials) => api.post("/accounts/login/", credentials),
+  logout: (refreshToken) => api.post("/accounts/logout/", { refresh: refreshToken }),
+  refreshToken: (refreshToken) => api.post("/token/refresh/", { refresh: refreshToken }),
+  getProfile: () => api.get("/accounts/profile/"),
+  updateProfile: (userData) => api.patch("/accounts/profile/", userData),
+}
+
+// Journal API calls (journal app)
+export const journalAPI = {
+  getEntries: (params) => api.get("/journal/entries/", { params }),
+  createEntry: (entryData) => api.post("/journal/entries/", entryData),
+  getEntry: (id) => api.get(`/journal/entries/${id}/`),
+  updateEntry: (id, entryData) => api.patch(`/journal/entries/${id}/`, entryData),
+  deleteEntry: (id) => api.delete(`/journal/entries/${id}/`),
+  getLatestEntry: () => api.get("/journal/entries/latest_entry/"),
+  getPrompt: (moodType) => api.get(`/journal/prompts/`, { params: { mood: moodType } }),
+  markFavorite: (id) => api.post(`/journal/entries/${id}/mark_favorite/`),
+}
+
+// Plant API calls (plants app)
+export const plantAPI = {
+  getPlants: () => api.get("/plants/plants/"),
+  createPlant: (plantData) => api.post("/plants/plants/", plantData),
+  getPlant: (id) => api.get(`/plants/plants/${id}/`),
+  updatePlant: (id, plantData) => api.patch(`/plants/plants/${id}/`, plantData),
+  deletePlant: (id) => api.delete(`/plants/plants/${id}/`),
+  getLogs: (plantId) => api.get(`/plants/logs/?plant=${plantId}`),
+  createLog: (logData) => api.post("/plants/logs/", logData),
+}
+
+// Mood API calls (moods app)
+export const moodAPI = {
+  getMoods: (params) => api.get("/moods/moods/", { params }),
+  createMood: (moodData) => api.post("/moods/moods/", moodData),
+  getMood: (id) => api.get(`/moods/moods/${id}/`),
+  updateMood: (id, moodData) => api.patch(`/moods/moods/${id}/`, moodData),
+  deleteMood: (id) => api.delete(`/moods/moods/${id}/`),
+}
+
+// Reminder API calls (reminders app)
+export const reminderAPI = {
+  getReminders: () => api.get("/reminders/reminders/"),
+  createReminder: (reminderData) => api.post("/reminders/reminders/", reminderData),
+  getReminder: (id) => api.get(`/reminders/reminders/${id}/`),
+  updateReminder: (id, reminderData) => api.patch(`/reminders/reminders/${id}/`, reminderData),
+  deleteReminder: (id) => api.delete(`/reminders/reminders/${id}/`),
+}
+
+export default api

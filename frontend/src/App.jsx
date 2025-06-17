@@ -2,73 +2,73 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { AuthProvider } from "./context/AuthContext"
 import { PlantProvider } from "./context/PlantContext"
 import ProtectedRoute from "./components/ProtectedRoute"
+import Layout from "./components/Layout"
 
-// Pages
+// Import pages
 import LandingPage from "./features/LandingPage/LandingPage"
 import Login from "./features/userProfile/Login"
 import Register from "./features/userProfile/Register"
 import Dashboard from "./features/userProfile/Dashboard"
-
-// Placeholder components for future development
-const JournalPage = () => <div className="p-8">Journal Page - Coming Soon</div>
-const PlantPage = () => <div className="p-8">Plant Page - Coming Soon</div>
-const ProfilePage = () => <div className="p-8">Profile Page - Coming Soon</div>
-
-import "./App.css"
+import PlantManagement from "./features/plants/PlantManagement"
+import ProfilePage from "./features/userProfile/ProfilePage"
+import SpotifyIntegration from "./features/music/SpotifyIntegration"
 
 function App() {
   return (
     <AuthProvider>
       <PlantProvider>
         <Router>
-          <div className="app-container">
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-              {/* Protected Routes */}
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
+            {/* Protected routes with Layout */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Layout>
                     <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/journal"
-                element={
-                  <ProtectedRoute>
-                    <JournalPage />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/plants"
-                element={
-                  <ProtectedRoute>
-                    <PlantPage />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/plants"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <PlantManagement />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Layout>
                     <ProfilePage />
-                  </ProtectedRoute>
-                }
-              />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/music"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SpotifyIntegration />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
 
-              {/* Redirect unknown routes to landing page */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
+            {/* Redirect any unknown routes to dashboard if authenticated, otherwise to landing */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
         </Router>
       </PlantProvider>
     </AuthProvider>

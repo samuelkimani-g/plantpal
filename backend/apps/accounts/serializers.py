@@ -1,60 +1,99 @@
 from rest_framework import serializers
-from django.contrib.auth import get_user_model 
-
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from rest_framework.validators import UniqueValidator
 
 User = get_user_model()
 
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Custom token serializer that allows login with email or username
+    """
+    username_field = 'username'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Allow both username and email for login
+        self.fields['username'] = serializers.CharField()
+
+    def validate(self, attrs):
+        # Check if the username is actually an email
+        username = attrs.get('username')
+        if '@' in username:
+            # Try to find user by email
+            try:
+                user = User.objects.get(email=username)
+                attrs['username'] = user.username
+            except User.DoesNotExist:
+                pass
+        
+        return super().validate(attrs)
+
 class UserSerializer(serializers.ModelSerializer):
     """
-    General purpose Serializer for displaying CustomUser instances.
-    Includes fields needed by the frontend's Dashboard and Profile pages.
+    Serializer for User model - used for profile views
     """
     class Meta:
         model = User
-        # IMPORTANT: Include 'date_joined' and 'last_login' as frontend expects them
-        fields = ('id', 'username', 'email', 'date_joined', 'last_login') 
-        read_only_fields = ('id', 'date_joined', 'last_login') # These are managed by Django
+        fields = (
+            'id', 'username', 'email', 'first_name', 'last_name', 'date_joined',
+            'bio', 'avatar', 'spotify_connected', 'music_mood_weight'
+        )
+        read_only_fields = ('id', 'date_joined', 'spotify_connected')
 
 class RegisterSerializer(serializers.ModelSerializer):
     """
-    Serializer specifically for user registration (creating a new user).
-    Includes password confirmation and server-side validation for uniqueness.
+    Serializer for user registration
     """
-    password = serializers.CharField(write_only=True, required=True, min_length=8, style={'input_type': 'password'})
-    # Added password2 field for confirmation, matching frontend's confirmPassword
-    password2 = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'}) 
-    email = serializers.EmailField(required=True) # Ensure email field is explicit
+    email = serializers.EmailField(
+        required=True,
+        validators=[UniqueValidator(queryset=User.objects.all())]
+    )
+    password = serializers.CharField(
+        write_only=True, 
+        required=True, 
+        validators=[validate_password]
+    )
+    password2 = serializers.CharField(write_only=True, required=True)
 
     class Meta:
         model = User
-        # Include password2 in fields for validation, but it's write-only
-        fields = ('username', 'email', 'password', 'password2')
-        extra_kwargs = {'password': {'write_only': True}} 
+        fields = ('username', 'password', 'password2', 'email', 'first_name', 'last_name')
 
     def validate(self, attrs):
-        # Server-side check for password matching
         if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({"password2": "Password fields didn't match."})
-        
-        # Server-side check for unique username
-        if User.objects.filter(username=attrs['username']).exists():
-            raise serializers.ValidationError({"username": "A user with that username already exists."})
-        
-        # Server-side check for unique email (case-insensitive)
-        if User.objects.filter(email__iexact=attrs['email']).exists():
-            raise serializers.ValidationError({"email": "A user with that email already exists."})
-
-        # Remove password2 from validated_data as it's not a model field
-        attrs.pop('password2') 
+            raise serializers.ValidationError({"password": "Password fields didn't match."})
         return attrs
 
     def create(self, validated_data):
-        """
-        Create a new user instance, setting the password correctly.
-        """
+        # Remove password2 from validated_data
+        validated_data.pop('password2', None)
+        
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
-            password=validated_data['password']
+            password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', '')
         )
         return user
+
+class PasswordChangeSerializer(serializers.Serializer):
+    """
+    Serializer for password change
+    """
+    current_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, validators=[validate_password])
+    confirm_password = serializers.CharField(required=True)
+
+    def validate_current_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({"confirm_password": "New passwords don't match."})
+        return attrs

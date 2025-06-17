@@ -48,4 +48,3 @@ class MoodEntry(models.Model):
         String representation of the MoodEntry.
         """
         return f"{self.user.username}'s mood: {self.mood_type} ({self.mood_score}) at {self.created_at.strftime('%Y-%m-%d %H:%M')}"
-
