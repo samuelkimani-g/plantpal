@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CuboidIcon as Cube, Droplets, Music, Users, Loader2, Search } from "lucide-react"
 import { usePlant } from "../../context/PlantContext"
 import { useAuth } from "../../context/AuthContext"
-import { firebaseService } from "../../services/firebase"
+import { plantAPI } from "../../services/api"
 import Plant3DView from "../../components/Plant3DView"
 
 // Simple 3D Plant Component
@@ -134,8 +134,8 @@ export default function Plant3DPage() {
 
     setIsSearching(true)
     try {
-      const data = await firebaseService.getPlantData(searchUserId.trim())
-      setOtherUserPlant(data)
+      const response = await plantAPI.getPublicPlant(searchUserId.trim())
+      setOtherUserPlant(response.data)
     } catch (error) {
       console.error("Error fetching other user's plant:", error)
       setOtherUserPlant(null)

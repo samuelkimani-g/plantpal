@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { usePlant } from "../../context/PlantContext"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,6 +30,7 @@ export default function CreatePlantForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [validationErrors, setValidationErrors] = useState({})
 
+  const navigate = useNavigate()
   const { createPlant, error, clearError } = usePlant()
 
   const handleChange = (name, value) => {
@@ -90,8 +92,8 @@ export default function CreatePlantForm() {
     })
 
     if (result.success) {
-      // Form will disappear as the dashboard will re-render with the new plant
-      setFormData({ name: "", species: "", description: "" })
+      // Navigate to the plants page to see the newly created plant
+      navigate("/plants")
     }
 
     setIsSubmitting(false)
