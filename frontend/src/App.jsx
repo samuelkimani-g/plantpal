@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import { AuthProvider } from "./context/AuthContext"
 import { PlantProvider } from "./context/PlantContext"
+import { WeatherProvider } from "./context/WeatherContext"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Layout from "./components/Layout"
 
@@ -12,9 +13,14 @@ import Dashboard from "./features/userProfile/Dashboard"
 import PlantManagement from "./features/plants/PlantManagement"
 import ProfilePage from "./features/userProfile/ProfilePage"
 import SpotifyIntegration from "./features/music/SpotifyIntegration"
+import Plant3DPage from "./features/plants/Plant3DPage"
+import JournalPage from "./features/journal/JournalPage"
+import { PublicGarden, MemorySeedsPage, FantasyPlantPage, MindfulnessPage } from "./features/plants"
+import { UserPlantProfile } from "./features/userProfile"
 
 function App() {
   return (
+    <WeatherProvider>
     <AuthProvider>
       <PlantProvider>
         <Router>
@@ -23,6 +29,7 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+              <Route path="/callback" element={<SpotifyIntegration />} />
 
             {/* Protected routes with Layout */}
             <Route
@@ -41,6 +48,26 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <PlantManagement />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/plant3d"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Plant3DPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journal"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <JournalPage />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -65,6 +92,56 @@ function App() {
                 </ProtectedRoute>
               }
             />
+              <Route
+                path="/garden"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <PublicGarden />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile/:userId"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <UserPlantProfile />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/memory-seeds"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <MemorySeedsPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/fantasy-plant"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <FantasyPlantPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/mindfulness"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <MindfulnessPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
 
             {/* Redirect any unknown routes to dashboard if authenticated, otherwise to landing */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -72,6 +149,7 @@ function App() {
         </Router>
       </PlantProvider>
     </AuthProvider>
+    </WeatherProvider>
   )
 }
 

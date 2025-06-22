@@ -1,0 +1,415 @@
+import os
+import json
+import requests
+from datetime import datetime, timedelta
+from django.utils import timezone
+from django.conf import settings
+import google.generativeai as genai
+import firebase_admin
+from firebase_admin import credentials, firestore
+import numpy as np
+
+class PlantGrowthService:
+    """Service to handle plant growth logic and state updates"""
+    
+    MOOD_WEIGHTS = {
+        'journal': 0.4,  # Journal entries have strong impact
+        'music': 0.3,    # Music has moderate impact
+        'activity': 0.3  # Daily app usage has moderate impact
+    }
+
+    GROWTH_THRESHOLDS = [
+        (0.8, 'excellent'),   # Very positive mood
+        (0.6, 'good'),       # Positive mood
+        (0.4, 'fair'),       # Neutral mood
+        (0.2, 'poor'),       # Negative mood
+        (0.0, 'critical')    # Very negative mood
+    ]
+
+    @classmethod
+    def update_plant_mood(cls, plant, mood_score, entry_type='journal'):
+        """
+        Update plant growth based on mood score from different sources
+        mood_score should be between -1 and 1
+        """
+        # Normalize mood score to 0-1 range
+        normalized_score = (mood_score + 1) / 2
+
+        # Get weight for this type of entry
+        weight = cls.MOOD_WEIGHTS.get(entry_type, 0.2)
+        
+        # Calculate weighted impact on plant
+        impact = normalized_score * weight
+        
+        # Update plant metrics
+        plant.health_score = min(100, max(0, plant.health_score + (impact * 20)))
+        
+        # Update growth if mood is positive
+        if normalized_score > 0.6:
+            plant.growth_stage = min(10, plant.growth_stage + (impact * 0.5))
+            if plant.growth_stage >= 10:
+                plant.growth_level = min(10, plant.growth_level + 1)
+                plant.growth_stage = 0
+        
+        # Update mood influence
+        for threshold, mood in cls.GROWTH_THRESHOLDS:
+            if normalized_score >= threshold:
+                plant.current_mood_influence = mood
+                break
+        
+        # Update 3D visualization
+        plant.update_3d_params()
+        
+        # Log the activity
+        plant.logs.create(
+            activity_type=entry_type,
+            growth_impact=impact,
+            value=mood_score,
+            note=f"Mood update from {entry_type}"
+        )
+        
+        plant.save()
+        return impact
+
+    @classmethod
+    def process_music_mood(cls, plant, audio_features, duration_minutes):
+        """
+        Process mood from Spotify audio features
+        """
+        if not audio_features:
+            return 0
+        
+        # Calculate mood score from audio features
+        valence = audio_features.get('valence', 0.5)
+        energy = audio_features.get('energy', 0.5)
+        
+        # Combine features into mood score (-1 to 1)
+        mood_score = (valence * 2 - 1) * 0.7 + (energy * 2 - 1) * 0.3
+        
+        # Update plant's music stats
+        plant.music_boost_active = True
+        plant.total_music_minutes += duration_minutes
+        
+        # Update plant based on music mood
+        return cls.update_plant_mood(plant, mood_score, entry_type='music')
+
+    @classmethod
+    def process_daily_activity(cls, plant):
+        """
+        Process daily app usage impact
+        """
+        today = timezone.now().date()
+        recent_logs = plant.logs.filter(
+            created_at__date__gte=today - timedelta(days=7)
+        )
+        
+        # Calculate activity score based on log frequency
+        daily_logs = recent_logs.count() / 7  # Average logs per day
+        activity_score = min(1.0, daily_logs / 3)  # Cap at 3 logs per day
+        
+        return cls.update_plant_mood(plant, activity_score * 2 - 1, entry_type='activity')
+
+    @staticmethod
+    def process_journal_sentiment(plant, journal_text):
+        """Analyze journal sentiment and update plant accordingly"""
+        try:
+            # Configure Gemini API
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            model = genai.GenerativeModel('gemini-2.0-flash-exp')
+            
+            # Create sentiment analysis prompt
+            prompt = f"""
+            Analyze the sentiment of this journal entry and respond with ONLY a number between 0.0 and 1.0:
+            - 0.0 = very negative/sad
+            - 0.5 = neutral
+            - 1.0 = very positive/happy
+            
+            Journal entry: "{journal_text}"
+            
+            Respond with only the number (e.g., 0.7):
+            """
+            
+            response = model.generate_content(prompt)
+            sentiment_score = float(response.text.strip())
+            
+            # Clamp between 0.0 and 1.0
+            sentiment_score = max(0.0, min(1.0, sentiment_score))
+            
+            # Update plant's journal mood score (weighted average with previous)
+            if plant.journal_mood_score == 0.5:  # First journal entry
+                plant.journal_mood_score = sentiment_score
+            else:
+                # Weighted average: 70% new, 30% previous
+                plant.journal_mood_score = (sentiment_score * 0.7) + (plant.journal_mood_score * 0.3)
+            
+            plant.update_mood_influence()
+            
+            # Log the sentiment analysis
+            from .models import PlantLog
+            PlantLog.objects.create(
+                plant=plant,
+                activity_type="journal_sentiment",
+                note=f"Journal sentiment analyzed: {sentiment_score:.2f}",
+                value=sentiment_score,
+                growth_impact=sentiment_score * 5  # Positive sentiment helps growth
+            )
+            
+            return sentiment_score
+            
+        except Exception as e:
+            print(f"Error analyzing journal sentiment: {e}")
+            return 0.5  # Default to neutral
+
+    @staticmethod
+    def process_spotify_mood(plant, valence_scores):
+        """Process Spotify valence scores and update plant mood"""
+        if not valence_scores:
+            return
+        
+        try:
+            # Calculate average valence
+            avg_valence = sum(valence_scores) / len(valence_scores)
+            
+            # Update plant's Spotify mood score (weighted average)
+            if plant.spotify_mood_score == 0.5:  # First Spotify data
+                plant.spotify_mood_score = avg_valence
+            else:
+                # Weighted average: 60% new, 40% previous
+                plant.spotify_mood_score = (avg_valence * 0.6) + (plant.spotify_mood_score * 0.4)
+            
+            plant.update_mood_influence()
+            
+            # Log the Spotify mood update
+            from .models import PlantLog
+            PlantLog.objects.create(
+                plant=plant,
+                activity_type="spotify_mood",
+                note=f"Spotify mood updated: {avg_valence:.2f} (from {len(valence_scores)} tracks)",
+                value=avg_valence,
+                growth_impact=avg_valence * 3  # Music mood helps growth
+            )
+            
+        except Exception as e:
+            print(f"Error processing Spotify mood: {e}")
+
+    @staticmethod
+    def update_plant_health(plant):
+        """Update plant health based on various factors"""
+        health_change = 0
+        
+        # Water level impact
+        if plant.water_level < 20:
+            health_change -= 5  # Dehydration
+        elif plant.water_level > 80:
+            health_change += 2  # Well hydrated
+        
+        # Time since last watering
+        if plant.last_watered_at:
+            days_since_water = (timezone.now() - plant.last_watered_at).days
+            if days_since_water > 3:
+                health_change -= days_since_water * 2  # Neglect penalty
+        
+        # Mood influence
+        mood_bonus = (plant.combined_mood_score - 0.5) * 10  # -5 to +5
+        health_change += mood_bonus
+        
+        # Apply health change
+        plant.health_score = max(0, min(100, plant.health_score + health_change))
+        
+        # Decrease water level over time
+        if plant.last_watered_at:
+            hours_since_water = (timezone.now() - plant.last_watered_at).total_seconds() / 3600
+            water_decrease = int(hours_since_water / 6)  # Lose 1 water every 6 hours
+            plant.water_level = max(0, plant.water_level - water_decrease)
+        
+        plant.save()
+
+    @classmethod
+    def update_combined_mood(cls, plant, journal_mood=None, music_mood=None):
+        """Update the plant's combined mood score from journal and music mood (0.0-1.0)"""
+        # Use most recent if not provided
+        if journal_mood is None:
+            journal_mood = getattr(plant, 'journal_mood_score', 0.5)
+        if music_mood is None:
+            music_mood = getattr(plant, 'spotify_mood_score', 0.5)
+        # Weighted average: 60% journal, 40% music
+        combined = (journal_mood * 0.6) + (music_mood * 0.4)
+        plant.combined_mood_score = combined
+        plant.save()
+        return combined
+
+    @classmethod
+    def update_plant_reactivity(cls, plant):
+        """Update plant health/growth based on combined mood score"""
+        score = getattr(plant, 'combined_mood_score', 0.5)
+        # Example: boost health if combined mood is high, penalize if low
+        if score > 0.7:
+            plant.health_score = min(100, plant.health_score + 5)
+            plant.growth_stage = min(10, plant.growth_stage + 1)
+        elif score < 0.3:
+            plant.health_score = max(0, plant.health_score - 5)
+        plant.update_3d_params()
+        plant.save()
+
+    @classmethod
+    def update_fantasy_params(cls, plant, mood_history=None, theme=None):
+        """Generate fantasy_params for the plant based on mood history or a chosen theme"""
+        # Example: use mood history to set color, shape, etc.
+        params = {}
+        if mood_history:
+            avg_mood = sum(mood_history) / len(mood_history)
+            params['fantasy_color'] = 'rainbow' if avg_mood > 0.8 else 'blue' if avg_mood < 0.3 else 'emerald'
+            params['fantasy_shape'] = 'spiral' if avg_mood > 0.7 else 'classic'
+        if theme:
+            params['theme'] = theme
+        plant.fantasy_params = params
+        plant.save()
+        return params
+
+    @classmethod
+    def reward_mindfulness(cls, plant, reward_type='breathing'):
+        """Reward the plant for completing a mindfulness exercise"""
+        if reward_type == 'breathing':
+            plant.health_score = min(100, plant.health_score + 10)
+            plant.growth_stage = min(10, plant.growth_stage + 1)
+        elif reward_type == 'gratitude':
+            plant.health_score = min(100, plant.health_score + 5)
+        plant.update_3d_params()
+        plant.save()
+        return True
+
+class SpotifyService:
+    """Service to handle Spotify API interactions"""
+    
+    @staticmethod
+    def exchange_code_for_tokens(code, redirect_uri):
+        """Exchange authorization code for access and refresh tokens"""
+        token_url = "https://accounts.spotify.com/api/token"
+        
+        data = {
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': redirect_uri,
+            'client_id': settings.SPOTIFY_CLIENT_ID,
+            'client_secret': settings.SPOTIFY_CLIENT_SECRET,
+        }
+        
+        response = requests.post(token_url, data=data)
+        
+        if response.status_code == 200:
+            token_data = response.json()
+            return {
+                'access_token': token_data['access_token'],
+                'refresh_token': token_data['refresh_token'],
+                'expires_in': token_data['expires_in'],
+            }
+        else:
+            raise Exception(f"Failed to exchange code: {response.text}")
+
+    @staticmethod
+    def refresh_access_token(refresh_token):
+        """Refresh an expired access token"""
+        token_url = "https://accounts.spotify.com/api/token"
+        
+        data = {
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh_token,
+            'client_id': settings.SPOTIFY_CLIENT_ID,
+            'client_secret': settings.SPOTIFY_CLIENT_SECRET,
+        }
+        
+        response = requests.post(token_url, data=data)
+        
+        if response.status_code == 200:
+            token_data = response.json()
+            return {
+                'access_token': token_data['access_token'],
+                'expires_in': token_data['expires_in'],
+            }
+        else:
+            raise Exception(f"Failed to refresh token: {response.text}")
+
+    @staticmethod
+    def get_recent_tracks_valence(access_token, limit=20):
+        """Get recent tracks and their valence scores"""
+        headers = {'Authorization': f'Bearer {access_token}'}
+        
+        # Get recently played tracks
+        recent_url = f"https://api.spotify.com/v1/me/player/recently-played?limit={limit}"
+        response = requests.get(recent_url, headers=headers)
+        
+        if response.status_code != 200:
+            raise Exception(f"Failed to get recent tracks: {response.text}")
+        
+        tracks_data = response.json()
+        track_ids = [item['track']['id'] for item in tracks_data['items'] if item['track']['id']]
+        
+        if not track_ids:
+            return []
+        
+        # Get audio features for tracks
+        features_url = f"https://api.spotify.com/v1/audio-features?ids={','.join(track_ids)}"
+        features_response = requests.get(features_url, headers=headers)
+        
+        if features_response.status_code != 200:
+            raise Exception(f"Failed to get audio features: {features_response.text}")
+        
+        features_data = features_response.json()
+        valence_scores = [
+            feature['valence'] for feature in features_data['audio_features'] 
+            if feature and 'valence' in feature
+        ]
+        
+        return valence_scores
+
+class FirestoreService:
+    """Service to handle Firestore operations"""
+    
+    def __init__(self):
+        if not firebase_admin._apps:
+            # Initialize Firebase Admin SDK
+            cred = credentials.Certificate({
+                "type": "service_account",
+                "project_id": settings.FIREBASE_PROJECT_ID,
+                "private_key_id": settings.FIREBASE_PRIVATE_KEY_ID,
+                "private_key": settings.FIREBASE_PRIVATE_KEY.replace('\\n', '\n'),
+                "client_email": settings.FIREBASE_CLIENT_EMAIL,
+                "client_id": settings.FIREBASE_CLIENT_ID,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            })
+            firebase_admin.initialize_app(cred)
+        
+        self.db = firestore.client()
+
+    def write_plant_data(self, user_id, plant_data):
+        """Write plant data to Firestore"""
+        try:
+            app_id = settings.FIREBASE_APP_ID
+            doc_ref = self.db.collection('artifacts').document(app_id).collection('public').document('data').collection('plants').document(user_id)
+            doc_ref.set(plant_data)
+            print(f"Plant data written to Firestore for user {user_id}")
+        except Exception as e:
+            print(f"Error writing to Firestore: {e}")
+
+    def get_plant_data(self, user_id):
+        """Get plant data from Firestore"""
+        try:
+            app_id = settings.FIREBASE_APP_ID
+            doc_ref = self.db.collection('artifacts').document(app_id).collection('public').document('data').collection('plants').document(user_id)
+            doc = doc_ref.get()
+            return doc.to_dict() if doc.exists else None
+        except Exception as e:
+            print(f"Error reading from Firestore: {e}")
+            return None
+
+    def list_all_public_plants(self):
+        """List all public plants from Firestore"""
+        try:
+            app_id = settings.FIREBASE_APP_ID
+            plants_collection = self.db.collection('artifacts').document(app_id).collection('public').document('data').collection('plants')
+            docs = plants_collection.stream()
+            return [doc.to_dict() for doc in docs if doc.exists]
+        except Exception as e:
+            print(f"Error listing public plants from Firestore: {e}")
+            return []

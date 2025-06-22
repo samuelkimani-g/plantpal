@@ -6,7 +6,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from datetime import timedelta
 from .serializers import UserSerializer, RegisterSerializer, CustomTokenObtainPairSerializer, PasswordChangeSerializer
+from .models import SpotifyProfile
+from apps.plants.services import SpotifyService, PlantGrowthService
 
 User = get_user_model()
 
@@ -96,30 +100,22 @@ class SpotifyConnectionView(APIView):
     """
     API endpoint to store Spotify connection data
     """
-    permission_classes = (permissions.IsAuthenticated,)
-
     def post(self, request):
-        """Store Spotify refresh token and connection status"""
-        user = request.user
-        spotify_refresh_token = request.data.get('spotify_refresh_token')
-        
-        if not spotify_refresh_token:
-            return Response({"error": "Spotify refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Store in user profile (we'll add this field to the model)
-        user.spotify_refresh_token = spotify_refresh_token
-        user.spotify_connected = True
-        user.save()
-        
-        return Response({"detail": "Spotify connected successfully"}, status=status.HTTP_200_OK)
+        refresh_token = request.data.get('spotify_refresh_token')
+        if not refresh_token:
+            return Response({'error': 'Missing spotify_refresh_token'}, status=status.HTTP_400_BAD_REQUEST)
+        # Here you would save the refresh token to the user's profile or a related model
+        # For now, just return a success response
+        return Response({'detail': 'Spotify connected!'}, status=status.HTTP_200_OK)
 
     def delete(self, request):
         """Disconnect Spotify"""
         user = request.user
-        user.spotify_refresh_token = None
-        user.spotify_connected = False
-        user.save()
-        
+        try:
+            spotify_profile = SpotifyProfile.objects.get(user=user)
+            spotify_profile.delete()
+        except SpotifyProfile.DoesNotExist:
+            pass
         return Response({"detail": "Spotify disconnected successfully"}, status=status.HTTP_200_OK)
 
 # --- Logout/Blacklist View ---
@@ -151,3 +147,115 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+class SpotifyCallbackView(APIView):
+    """Handle Spotify OAuth callback"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        code = request.data.get('code')
+        redirect_uri = request.data.get('redirect_uri')
+        
+        if not code or not redirect_uri:
+            return Response(
+                {'error': 'Code and redirect_uri are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Exchange code for tokens
+            token_data = SpotifyService.exchange_code_for_tokens(code, redirect_uri)
+            
+            # Calculate expiry time
+            expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
+            
+            # Store or update Spotify profile
+            spotify_profile, created = SpotifyProfile.objects.get_or_create(
+                user=request.user,
+                defaults={
+                    'access_token': token_data['access_token'],
+                    'refresh_token': token_data['refresh_token'],
+                    'expires_at': expires_at,
+                }
+            )
+            
+            if not created:
+                spotify_profile.access_token = token_data['access_token']
+                spotify_profile.refresh_token = token_data['refresh_token']
+                spotify_profile.expires_at = expires_at
+                spotify_profile.save()
+            
+            return Response({
+                'message': 'Spotify connected successfully',
+                'expires_at': expires_at.isoformat()
+            })
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+class SpotifyFetchValenceView(APIView):
+    """Fetch Spotify valence data and update plant mood"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            spotify_profile = SpotifyProfile.objects.get(user=request.user)
+            
+            # Refresh token if needed
+            if spotify_profile.is_token_expired():
+                token_data = SpotifyService.refresh_access_token(spotify_profile.refresh_token)
+                spotify_profile.access_token = token_data['access_token']
+                spotify_profile.expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
+                spotify_profile.save()
+            
+            # Get valence scores from recent tracks
+            valence_scores = SpotifyService.get_recent_tracks_valence(
+                spotify_profile.access_token, 
+                limit=request.data.get('limit', 20)
+            )
+            
+            # Update plant mood if user has a plant
+            if hasattr(request.user, 'plant'):
+                PlantGrowthService.process_spotify_mood(request.user.plant, valence_scores)
+                
+                return Response({
+                    'message': 'Plant mood updated from Spotify data',
+                    'valence_scores': valence_scores,
+                    'average_valence': sum(valence_scores) / len(valence_scores) if valence_scores else 0,
+                    'plant_mood_score': request.user.plant.spotify_mood_score
+                })
+            else:
+                return Response({
+                    'message': 'Valence data fetched but no plant to update',
+                    'valence_scores': valence_scores,
+                    'average_valence': sum(valence_scores) / len(valence_scores) if valence_scores else 0
+                })
+                
+        except SpotifyProfile.DoesNotExist:
+            return Response(
+                {'error': 'Spotify not connected'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class SpotifyDisconnectView(APIView):
+    """Disconnect Spotify account"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        try:
+            spotify_profile = SpotifyProfile.objects.get(user=request.user)
+            spotify_profile.delete()
+            return Response({'message': 'Spotify disconnected successfully'})
+        except SpotifyProfile.DoesNotExist:
+            return Response(
+                {'error': 'Spotify not connected'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )

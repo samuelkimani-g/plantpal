@@ -1,14 +1,11 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.conf import settings
 
 class CustomUser(AbstractUser):
     """
     Custom User model extending Django's AbstractUser.
     """
-    # Spotify integration fields
-    spotify_connected = models.BooleanField(default=False, help_text="Whether user has connected Spotify")
-    spotify_refresh_token = models.TextField(blank=True, null=True, help_text="Spotify refresh token (encrypted)")
-    
     # Additional profile fields
     bio = models.TextField(blank=True, null=True, help_text="User bio")
     avatar = models.URLField(blank=True, null=True, help_text="User avatar URL")
@@ -40,3 +37,20 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
+
+class SpotifyProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='spotify_profile'
+    )
+    spotify_id = models.CharField(max_length=255, unique=True, blank=True, null=True)
+    access_token = models.CharField(max_length=500, blank=True, null=True)
+    refresh_token = models.CharField(max_length=500, blank=True, null=True)
+    token_expires_at = models.DateTimeField(blank=True, null=True)
+    token_type = models.CharField(max_length=50, blank=True, null=True)
+    scope = models.TextField(blank=True, null=True)
+    last_updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"SpotifyProfile for {self.user.username}"

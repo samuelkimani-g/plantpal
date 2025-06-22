@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Leaf, Heart, Droplets, Sun, Music, TrendingUp, Calendar, Sparkles, MoreVertical } from "lucide-react"
 import { formatDate } from "../lib/utils"
+import { plantAPI } from "../services/api"
 
 const PLANT_EMOJIS = {
   succulent: "🌵",
@@ -40,6 +41,41 @@ const HEALTH_STATUS = {
 
 export default function PlantVisualizer({ plant }) {
   const [isAnimating, setIsAnimating] = useState(false)
+  const [sunshineCooldown, setSunshineCooldown] = useState(0)
+  const [showSunbeam, setShowSunbeam] = useState(false)
+  const [localPlant, setLocalPlant] = useState(plant)
+
+  useEffect(() => {
+    setLocalPlant(plant)
+    if (plant?.last_sunshine) {
+      const last = new Date(plant.last_sunshine).getTime()
+      const now = Date.now()
+      const diff = Math.max(0, 3600 - Math.floor((now - last) / 1000))
+      setSunshineCooldown(diff)
+      if (diff > 0) {
+        const interval = setInterval(() => {
+          setSunshineCooldown((s) => (s > 0 ? s - 1 : 0))
+        }, 1000)
+        return () => clearInterval(interval)
+      }
+    } else {
+      setSunshineCooldown(0)
+    }
+  }, [plant])
+
+  const handleSunshine = async () => {
+    if (sunshineCooldown > 0) return
+    setShowSunbeam(true)
+    try {
+      const res = await plantAPI.sunshine(plant.id)
+      setLocalPlant(res.data.plant)
+      setSunshineCooldown(3600)
+      setTimeout(() => setShowSunbeam(false), 1200)
+    } catch (e) {
+      setShowSunbeam(false)
+      // Optionally show error
+    }
+  }
 
   useEffect(() => {
     // Trigger animation when component mounts or plant changes
@@ -196,10 +232,15 @@ export default function PlantVisualizer({ plant }) {
         </Button>
         <Button
           variant="outline"
-          className="border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950"
+          className="border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950 relative"
+          onClick={handleSunshine}
+          disabled={sunshineCooldown > 0}
         >
           <Sun className="h-4 w-4 mr-2" />
-          Give Sunlight
+          {sunshineCooldown > 0 ? `Sunshine (${Math.ceil(sunshineCooldown/60)}m)` : "Give Sunlight"}
+          {showSunbeam && (
+            <span className="absolute left-1/2 top-0 -translate-x-1/2 animate-ping text-yellow-400 text-4xl pointer-events-none select-none">☀️</span>
+          )}
         </Button>
         <Button
           variant="outline"

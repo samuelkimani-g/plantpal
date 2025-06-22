@@ -8,8 +8,11 @@ from .views import (
     LogoutAndBlacklistTokenView,
     ChangePasswordView,
     DeleteAccountView,
-    SpotifyConnectionView,
-    UserViewSet
+    SpotifyCallbackView,
+    SpotifyFetchValenceView,
+    SpotifyDisconnectView,
+    UserViewSet,
+    SpotifyConnectionView
 )
 
 router = DefaultRouter()
@@ -28,8 +31,10 @@ urlpatterns = [
     path('delete-account/', DeleteAccountView.as_view(), name='delete_account'),
     
     # Spotify integration
-    path('spotify/connect/', SpotifyConnectionView.as_view(), name='spotify_connect'),
-    path('spotify/disconnect/', SpotifyConnectionView.as_view(), name='spotify_disconnect'),
+    path('spotify/callback/', SpotifyCallbackView.as_view(), name='spotify_callback'),
+    path('spotify/fetch-valence/', SpotifyFetchValenceView.as_view(), name='spotify_fetch_valence'),
+    path('spotify/disconnect/', SpotifyDisconnectView.as_view(), name='spotify_disconnect'),
+    path('spotify/', SpotifyConnectionView.as_view(), name='spotify_connection'),
     
     # Router URLs
     path('', include(router.urls)),

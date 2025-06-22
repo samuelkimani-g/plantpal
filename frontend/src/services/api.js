@@ -5,6 +5,7 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api",
   headers: {
     "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "true", // Skip ngrok browser warning
   },
 })
 
@@ -88,6 +89,7 @@ export const journalAPI = {
   updateEntry: (id, entryData) => api.patch(`/journal/entries/${id}/`, entryData),
   deleteEntry: (id) => api.delete(`/journal/entries/${id}/`),
   getLatestEntry: () => api.get("/journal/entries/latest_entry/"),
+  getStats: () => api.get("/journal/entries/stats/"),
   getPrompt: (moodType) => api.get(`/journal/prompts/`, { params: { mood: moodType } }),
   markFavorite: (id) => api.post(`/journal/entries/${id}/mark_favorite/`),
 }
@@ -101,18 +103,20 @@ export const plantAPI = {
   deletePlant: (id) => api.delete(`/plants/plants/${id}/`),
   getLogs: (plantId) => api.get(`/plants/logs/?plant=${plantId}`),
   createLog: (logData) => api.post("/plants/logs/", logData),
-  waterPlant: (plantId) =>
-    api.post("/plants/logs/", {
-      plant: plantId,
-      activity_type: "watered",
-      note: "Plant watered manually",
-    }),
+  waterPlant: (plantId, amount = 20) =>
+    api.post(`/plants/plants/${plantId}/water/`, { amount }),
   fertilizePlant: (plantId) =>
-    api.post("/plants/logs/", {
-      plant: plantId,
-      activity_type: "fertilized",
-      note: "Plant fertilized manually",
-    }),
+    api.post(`/plants/plants/${plantId}/fertilize/`),
+  // Public Garden & Social Watering
+  getPublicGarden: () => api.get("/plants/public-garden/"),
+  getPublicPlant: (userId) => api.get(`/plants/public/${userId}/`),
+  waterOtherPlant: (userId, amount = 10) => api.post(`/plants/public/${userId}/water/`, { amount }),
+  // Memory Seeds, Fantasy Plants, Mindfulness
+  getMemorySeeds: () => api.get("/plants/memory-seeds/"),
+  createMemorySeed: (data) => api.post("/plants/memory-seeds/", data),
+  updateFantasyParams: (data) => api.post("/plants/fantasy-params/", data),
+  rewardMindfulness: (reward_type = 'breathing') => api.post("/plants/mindfulness-reward/", { reward_type }),
+  sunshine: (plantId) => api.post(`/plants/plants/${plantId}/sunshine/`),
 }
 
 // Mood API calls (moods app)

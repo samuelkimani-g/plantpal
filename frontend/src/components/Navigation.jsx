@@ -3,7 +3,22 @@
 import { useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { ArrowLeft, Home, Leaf, BookOpen, User, Menu, X, LogOut, Settings, ChevronRight } from "lucide-react"
+import {
+  ArrowLeft,
+  Home,
+  Leaf,
+  BookOpen,
+  User,
+  Menu,
+  X,
+  LogOut,
+  Settings,
+  ChevronRight,
+  CuboidIcon as Cube,
+  Sparkles,
+  Palette,
+  Smile,
+} from "lucide-react"
 import { Button } from "./ui/button"
 
 const Navigation = () => {
@@ -31,6 +46,9 @@ const Navigation = () => {
     if (segments.includes("plants")) {
       breadcrumbs.push({ name: "Plants", path: "/plants" })
     }
+    if (segments.includes("plant3d")) {
+      breadcrumbs.push({ name: "3D Plant", path: "/plant3d" })
+    }
     if (segments.includes("journal")) {
       breadcrumbs.push({ name: "Journal", path: "/journal" })
     }
@@ -46,8 +64,12 @@ const Navigation = () => {
 
   const navigationItems = [
     { name: "Dashboard", path: "/dashboard", icon: Home },
-    { name: "My Plants", path: "/plants", icon: Leaf },
+          { name: "My Plant", path: "/plants", icon: Leaf },
+    { name: "3D Plant", path: "/plant3d", icon: Cube },
     { name: "Journal", path: "/journal", icon: BookOpen },
+    { name: "Memory Seeds", path: "/memory-seeds", icon: Sparkles },
+    { name: "Fantasy Plant", path: "/fantasy-plant", icon: Palette },
+    { name: "Mindfulness", path: "/mindfulness", icon: Smile },
     { name: "Music", path: "/music", icon: Settings },
   ]
 

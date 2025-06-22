@@ -1,6 +1,9 @@
-// Spotify Web API configuration
-const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-const SPOTIFY_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || `${window.location.origin}/callback`
+console.log("SPOTIFY_CLIENT_ID:", import.meta.env.VITE_SPOTIFY_CLIENT_ID);
+console.log("ALL ENV VARS:", import.meta.env);
+
+const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
+// Use the current window location for the redirect URI if not specified
+const SPOTIFY_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || `${window.location.origin}/callback`;
 const SPOTIFY_SCOPES = [
   "user-read-currently-playing",
   "user-read-recently-played",
@@ -17,7 +20,7 @@ export class SpotifyService {
   }
 
   // Generate Spotify authorization URL
-  getAuthUrl() {
+  getAuthUrl(state = null) {
     const params = new URLSearchParams({
       client_id: this.clientId,
       response_type: "code",
@@ -25,6 +28,11 @@ export class SpotifyService {
       scope: this.scopes,
       show_dialog: "true",
     })
+    
+    // Add state parameter if provided
+    if (state) {
+      params.append("state", state)
+    }
 
     return `https://accounts.spotify.com/authorize?${params.toString()}`
   }
@@ -41,7 +49,7 @@ export class SpotifyService {
         code: code,
         redirect_uri: this.redirectUri,
         client_id: this.clientId,
-        client_secret: import.meta.env.VITE_SPOTIFY_CLIENT_SECRET, // Note: In production, this should be handled by backend
+        client_secret: import.meta.env.VITE_SPOTIFY_CLIENT_SECRET,
       }),
     })
 
@@ -261,6 +269,137 @@ export class SpotifyService {
     }
   }
 
+  // Get detailed listening session with mood analysis
+  async getDetailedListeningSession() {
+    try {
+      const [currentTrack, recentTracks] = await Promise.all([this.getCurrentTrack(), this.getRecentTracks(10)])
+
+      if (!recentTracks || recentTracks.length === 0) {
+        return null
+      }
+
+      // Get audio features for all tracks
+      const trackIds = recentTracks.map((track) => track.id).filter(Boolean)
+      const audioFeatures = await this.getAudioFeatures(trackIds)
+
+      // Calculate comprehensive mood metrics
+      const moodMetrics = this.calculateMoodMetrics(audioFeatures)
+
+      // Calculate listening time in the last hour
+      const oneHourAgo = Date.now() - 60 * 60 * 1000
+      const recentListening = recentTracks.filter((track) => new Date(track.played_at).getTime() > oneHourAgo)
+
+      return {
+        isCurrentlyPlaying: !!currentTrack,
+        currentTrack,
+        recentTracks: recentTracks.slice(0, 5),
+        minutesListened: recentListening.length * 3, // Approximate
+        moodScore: moodMetrics.overallMood,
+        energyLevel: moodMetrics.energy,
+        valence: moodMetrics.valence,
+        danceability: moodMetrics.danceability,
+        moodDescription: this.getMoodDescription(moodMetrics.overallMood),
+        lastUpdated: new Date().toISOString(),
+      }
+    } catch (error) {
+      console.error("Error getting detailed listening session:", error)
+      throw error
+    }
+  }
+
+  // Get current track
+  async getCurrentTrack() {
+    try {
+      const response = await this.apiRequest("/me/player/currently-playing")
+
+      if (!response || !response.item) {
+        return null
+      }
+
+      return {
+        id: response.item.id,
+        name: response.item.name,
+        artists: response.item.artists.map((artist) => artist.name).join(", "),
+        album: response.item.album.name,
+        albumArt: response.item.album.images[0]?.url,
+        duration_ms: response.item.duration_ms,
+        progress_ms: response.progress_ms,
+      }
+    } catch (error) {
+      console.error("Error getting current track:", error)
+      return null
+    }
+  }
+
+  // Get recent tracks
+  async getRecentTracks(limit = 5) {
+    try {
+      const response = await this.apiRequest(`/me/player/recently-played?limit=${limit}`)
+
+      if (!response || !response.items) {
+        return []
+      }
+
+      return response.items.map((item) => ({
+        id: item.track.id,
+        name: item.track.name,
+        artists: item.track.artists.map((artist) => artist.name).join(", "),
+        album: item.track.album.name,
+        albumArt: item.track.album.images[0]?.url,
+        played_at: item.played_at,
+      }))
+    } catch (error) {
+      console.error("Error getting recent tracks:", error)
+      return []
+    }
+  }
+
+  // Calculate mood metrics from audio features
+  calculateMoodMetrics(audioFeatures) {
+    if (!audioFeatures || audioFeatures.length === 0) {
+      return {
+        overallMood: 0.5,
+        energy: 0.5,
+        valence: 0.5,
+        danceability: 0.5,
+      }
+    }
+
+    const validFeatures = audioFeatures.filter((f) => f !== null)
+
+    if (validFeatures.length === 0) {
+      return {
+        overallMood: 0.5,
+        energy: 0.5,
+        valence: 0.5,
+        danceability: 0.5,
+      }
+    }
+
+    const avgValence = validFeatures.reduce((sum, f) => sum + f.valence, 0) / validFeatures.length
+    const avgEnergy = validFeatures.reduce((sum, f) => sum + f.energy, 0) / validFeatures.length
+    const avgDanceability = validFeatures.reduce((sum, f) => sum + f.danceability, 0) / validFeatures.length
+
+    // Combine metrics for overall mood (weighted toward valence)
+    const overallMood = avgValence * 0.6 + avgEnergy * 0.3 + avgDanceability * 0.1
+
+    return {
+      overallMood: Math.max(0, Math.min(1, overallMood)),
+      energy: avgEnergy,
+      valence: avgValence,
+      danceability: avgDanceability,
+    }
+  }
+
+  // Get mood description
+  getMoodDescription(moodScore) {
+    if (moodScore >= 0.8) return "euphoric"
+    if (moodScore >= 0.6) return "happy"
+    if (moodScore >= 0.4) return "neutral"
+    if (moodScore >= 0.2) return "melancholy"
+    return "sad"
+  }
+
   // Check if user is connected to Spotify
   isConnected() {
     return !!(localStorage.getItem("spotify_access_token") && localStorage.getItem("spotify_refresh_token"))
@@ -276,3 +415,4 @@ export class SpotifyService {
 
 // Export singleton instance
 export const spotifyService = new SpotifyService()
+export default SpotifyService

@@ -4,96 +4,122 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView 
 from django.shortcuts import get_object_or_404
 from django.http import Http404
+from django.utils import timezone
+from datetime import timedelta
+from django.db import models
 
 from .models import JournalEntry
 from .serializers import JournalEntrySerializer
 from .permissions import IsOwner
-from .prompt_utils import get_journal_prompt 
+from .prompt_utils import get_journal_prompt, get_dominant_mood
+from apps.plants.services import PlantGrowthService
 
 class JournalEntryViewSet(viewsets.ModelViewSet):
     """
-    A ViewSet that provides standard CRUD operations (Create, Retrieve, Update, Delete)
-    for JournalEntry objects.
-    
-    It enforces that users can only interact with their own journal entries
-    and includes custom actions for specific functionalities like fetching the latest
-    entry or marking an entry as a favorite.
+    A ViewSet that provides standard CRUD operations for JournalEntry objects.
+    Now includes automatic sentiment analysis and plant mood updates.
     """
     serializer_class = JournalEntrySerializer
-    # Apply permissions:
-    # - permissions.IsAuthenticated: Ensures only logged-in users can access.
-    # - IsOwner: Ensures users can only modify/delete their own entries (object-level).
     permission_classes = [permissions.IsAuthenticated, IsOwner]
 
     def get_queryset(self):
-        """
-        Dynamically filters the queryset to return only journal entries
-        that belong to the currently authenticated user.
-        This is applied for list views and when retrieving single objects.
-        """
         return JournalEntry.objects.filter(user=self.request.user).order_by('-created_at')
 
     def perform_create(self, serializer):
         """
-        Override the default create behavior to automatically assign the
-        authenticated user as the owner of the new journal entry.
+        Override create to add sentiment analysis and plant mood update
         """
+        # First save the journal entry
         journal_entry = serializer.save(user=self.request.user)
+        
+        # Analyze the mood from the text
+        mood, confidence = get_dominant_mood(journal_entry.text)
+        journal_entry.mood_type = mood
+        journal_entry.mood_confidence = confidence
+        
+        # Calculate streak
+        yesterday = timezone.now() - timedelta(days=1)
+        has_recent_entry = JournalEntry.objects.filter(
+            user=self.request.user,
+            created_at__date=yesterday.date()
+        ).exists()
+        
+        if has_recent_entry:
+            self.request.user.journal_streak = (self.request.user.journal_streak or 0) + 1
+        else:
+            self.request.user.journal_streak = 1
+        self.request.user.save()
+        
+        # Update plant mood if user has a plant
+        if hasattr(self.request.user, 'plant'):
+            try:
+                # Process journal sentiment and update plant mood
+                PlantGrowthService.process_journal_sentiment(
+                    self.request.user.plant,
+                    journal_entry.text
+                )
+                
+            except Exception as e:
+                print(f"Error processing journal sentiment: {e}")
+        
+        journal_entry.save()
 
-    # --- Custom List Action: Get Latest Journal Entry ---
-    @action(detail=False, methods=['get']) # detail=False indicates it operates on the list of entries
+    @action(detail=False, methods=['get'])
     def latest_entry(self, request):
-        """
-        Retrieves the single most recent journal entry for the authenticated user.
-        Accessible at: /api/journal/entries/latest_entry/
-        """
-        # Utilize get_queryset() to ensure only the current user's entries are considered
-        latest = self.get_queryset().first() 
+        """Get the latest journal entry"""
+        latest = self.get_queryset().first()
         if latest:
             serializer = self.get_serializer(latest)
             return Response(serializer.data)
-        # Return a 404 if no entries are found for the user
-        return Response({"detail": "No journal entries found for this user."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"detail": "No journal entries found. Start your journey by writing your first entry!"},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
-    # --- Custom Detail Action: Mark/Unmark as Favorite ---
-    @action(detail=True, methods=['post']) # detail=True indicates it operates on a single entry (needs ID)
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Get journal statistics"""
+        entries = self.get_queryset()
+        total_entries = entries.count()
+        streak = request.user.journal_streak or 0
+        
+        # Get mood distribution
+        mood_counts = entries.values('mood_type').annotate(
+            count=models.Count('id')
+        )
+        
+        return Response({
+            'total_entries': total_entries,
+            'streak': streak,
+            'mood_distribution': mood_counts
+        })
+
+    @action(detail=True, methods=['post'])
     def mark_favorite(self, request, pk=None):
-        """
-        Toggles or sets the 'is_favorite' status of a specific journal entry.
-        Accessible at: /api/journal/entries/{id}/mark_favorite/
-        Accepts POST with optional JSON body: {"is_favorite": true/false}
-        If no body provided, it will toggle the current status.
-        """
-        # Retrieve the specific journal entry. get_queryset() ensures it belongs to the current user.
+        """Toggle favorite status of a journal entry"""
         entry = get_object_or_404(self.get_queryset(), pk=pk)
         
-        # Determine the new favorite status from request data or by toggling
         new_favorite_status = request.data.get('is_favorite')
         if new_favorite_status is not None:
-            # Convert string representations of boolean if necessary (e.g., "true" to True)
             entry.is_favorite = str(new_favorite_status).lower() in ['true', '1']
         else:
-            # Toggle the current favorite status if no specific value is provided
             entry.is_favorite = not entry.is_favorite
         
-        entry.save() # Save the updated favorite status to the database
+        entry.save()
         
         serializer = self.get_serializer(entry)
         return Response(serializer.data)
 
 class JournalPromptView(APIView): 
-    """
-    API endpoint to generate and return a journal prompt based on an optional mood.
-    Can be accessed via GET or POST, with mood provided as a query parameter or in the request body.
-    """
-    permission_classes = [permissions.IsAuthenticated] # Only logged-in users can get prompts
+    """Generate journal prompts"""
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        mood = request.query_params.get('mood', None) # Get mood from query parameter
+        mood = request.query_params.get('mood', None)
         prompt = get_journal_prompt(mood)
         return Response({"prompt": prompt})
 
     def post(self, request, *args, **kwargs):
-        mood = request.data.get('mood', None) # Get mood from request body
+        mood = request.data.get('mood', None)
         prompt = get_journal_prompt(mood)
         return Response({"prompt": prompt})

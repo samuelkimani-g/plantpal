@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Music, Play, Pause, Heart, Leaf, Sparkles, LinkIcon, Unlink, RefreshCw, AlertCircle } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 export default function SpotifyIntegration() {
   const { user, updateProfile } = useAuth()
@@ -20,6 +21,7 @@ export default function SpotifyIntegration() {
   const [listeningData, setListeningData] = useState(null)
   const [error, setError] = useState(null)
   const [lastUpdate, setLastUpdate] = useState(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     // Check if already connected
@@ -29,9 +31,10 @@ export default function SpotifyIntegration() {
     const urlParams = new URLSearchParams(window.location.search)
     const code = urlParams.get("code")
     const error = urlParams.get("error")
+    const state = urlParams.get("state") // Contains return path
 
     if (code) {
-      handleSpotifyCallback(code)
+      handleSpotifyCallback(code, state)
     } else if (error) {
       setError(`Spotify authorization failed: ${error}`)
     }
@@ -54,7 +57,7 @@ export default function SpotifyIntegration() {
     }
   }, [isConnected, currentPlant])
 
-  const handleSpotifyCallback = async (code) => {
+  const handleSpotifyCallback = async (code, state) => {
     setIsLoading(true)
     try {
       // Exchange code for tokens
@@ -70,6 +73,11 @@ export default function SpotifyIntegration() {
 
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname)
+
+      // Redirect to the previous page or saved tab
+      const returnPath = state || localStorage.getItem("spotify_return_path") || "/dashboard"
+      localStorage.removeItem("spotify_return_path") // Clean up
+      navigate(returnPath)
     } catch (err) {
       console.error("Spotify callback error:", err)
       setError(err.message)
@@ -79,7 +87,12 @@ export default function SpotifyIntegration() {
   }
 
   const connectSpotify = () => {
-    const authUrl = spotifyService.getAuthUrl()
+    // Save current location to return after auth
+    const currentPath = window.location.pathname
+    localStorage.setItem("spotify_return_path", currentPath)
+    
+    // Get auth URL with state parameter
+    const authUrl = spotifyService.getAuthUrl(currentPath)
     window.location.href = authUrl
   }
 
@@ -103,7 +116,7 @@ export default function SpotifyIntegration() {
 
   const updateListeningData = async () => {
     try {
-      const sessionData = await spotifyService.getListeningSession()
+      const sessionData = await spotifyService.getDetailedListeningSession()
 
       if (sessionData && currentPlant) {
         setListeningData(sessionData)

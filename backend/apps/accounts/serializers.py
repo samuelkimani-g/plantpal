@@ -3,6 +3,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework.validators import UniqueValidator
+from .models import SpotifyProfile
 
 User = get_user_model()
 
@@ -34,13 +35,18 @@ class UserSerializer(serializers.ModelSerializer):
     """
     Serializer for User model - used for profile views
     """
+    is_spotify_connected = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name', 'date_joined',
-            'bio', 'avatar', 'spotify_connected', 'music_mood_weight'
+            'bio', 'avatar', 'music_mood_weight', 'is_spotify_connected'
         )
-        read_only_fields = ('id', 'date_joined', 'spotify_connected')
+        read_only_fields = ('id', 'date_joined', 'is_spotify_connected')
+
+    def get_is_spotify_connected(self, obj):
+        return SpotifyProfile.objects.filter(user=obj).exists()
 
 class RegisterSerializer(serializers.ModelSerializer):
     """
