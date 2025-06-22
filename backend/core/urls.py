@@ -25,6 +25,11 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from django.http import JsonResponse
+
+def health_check(request):
+    """Simple health check endpoint"""
+    return JsonResponse({'status': 'healthy', 'message': 'PlantPal API is running'})
 
 # Define the schema view for drf-yasg
 # This creates an OpenAPI schema for your API, which Swagger/Redoc can then display.
@@ -42,6 +47,7 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    path('', health_check, name='health_check'),  # Root endpoint
     path('admin/', admin.site.urls),
     path('api/accounts/', include('apps.accounts.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
