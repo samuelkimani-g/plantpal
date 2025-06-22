@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: plantpal-backend
+    runtime: python3
+    buildCommand: "./backend/build.sh"
+    startCommand: "cd backend && gunicorn core.wsgi:application"
+    plan: free
+    autoDeploy: false
+    envVars:
+      - key: DEBUG
+        value: False
+      - key: DJANGO_SETTINGS_MODULE
+        value: core.production_settings
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: 4
+  
+  - type: pserv
+    name: plantpal-db
+    databaseName: plantpal
+    databaseUser: plantpal
+    plan: free 
