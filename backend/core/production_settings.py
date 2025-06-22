@@ -3,15 +3,14 @@ import dj_database_url
 from .settings import *
 
 # Production settings for Render
-DEBUG = False
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # Security settings
 ALLOWED_HOSTS = [
-    '.render.com',
-    '.vercel.app', 
+    'plantpal-4hx7.onrender.com',  # Render domain
     'localhost',
     '127.0.0.1',
-    'plantpal-three.vercel.app'
 ]
 
 # Database configuration for Render
