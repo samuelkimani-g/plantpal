@@ -3,7 +3,7 @@ console.log("ALL ENV VARS:", import.meta.env);
 
 const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
 // Use the current window location for the redirect URI if not specified
-const SPOTIFY_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || `${window.location.origin}/callback`;
+const SPOTIFY_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || `${window.location.origin}/music`;
 const SPOTIFY_SCOPES = [
   "user-read-currently-playing",
   "user-read-recently-played",
