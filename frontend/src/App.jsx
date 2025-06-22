@@ -15,6 +15,7 @@ import ProfilePage from "./features/userProfile/ProfilePage"
 import SpotifyIntegration from "./features/music/SpotifyIntegration"
 import Plant3DPage from "./features/plants/Plant3DPage"
 import JournalPage from "./features/journal/JournalPage"
+import CreatePlantForm from "./features/plantGrowth/CreatePlantForm"
 import { PublicGarden, MemorySeedsPage, FantasyPlantPage, MindfulnessPage } from "./features/plants"
 import { UserPlantProfile } from "./features/userProfile"
 
@@ -49,6 +50,14 @@ function App() {
                   <Layout>
                     <PlantManagement />
                   </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/plants/create"
+              element={
+                <ProtectedRoute>
+                  <CreatePlantForm />
                 </ProtectedRoute>
               }
             />
