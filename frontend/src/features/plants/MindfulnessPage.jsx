@@ -3,7 +3,7 @@ import { plantAPI } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Heart, Smile, Sun, Sparkles, Calendar, Award } from "lucide-react";
-import { format } from "date-fns";
+// Removed date-fns import - using native Date methods instead
 
 function BreathingExercise({ onComplete }) {
   const [step, setStep] = useState(0);
@@ -137,7 +137,7 @@ export default function MindfulnessPage() {
   const [rewarding, setRewarding] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [stats, setStats] = useState(getMindfulStats());
-  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const todayStr = new Date().toISOString().split('T')[0]; // yyyy-MM-dd format
 
   const handleComplete = async () => {
     setRewarding(true);
@@ -146,9 +146,10 @@ export default function MindfulnessPage() {
       // Update streaks and badges
       const last = stats.lastCompleted;
       let streak = stats.streak || 0;
-      if (last && format(new Date(last), "yyyy-MM-dd") === format(new Date(Date.now() - 86400000), "yyyy-MM-dd")) {
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      if (last && last === yesterday) {
         streak += 1;
-      } else if (last && format(new Date(last), "yyyy-MM-dd") === todayStr) {
+      } else if (last && last === todayStr) {
         // already completed today
       } else {
         streak = 1;
