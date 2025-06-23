@@ -145,34 +145,120 @@ class OfflineMusicService {
     const trackName = (trackInfo.name || '').toLowerCase()
     const artist = (trackInfo.artists || trackInfo.artist || '').toLowerCase()
     
-    // Happy/energetic keywords
-    const happyWords = ['happy', 'joy', 'love', 'dance', 'party', 'celebration', 'good', 'sunshine', 'bright']
-    const energeticWords = ['energy', 'power', 'rock', 'beat', 'pump', 'fire', 'electric', 'wild']
+    // Happy/energetic keywords (weighted by strength)
+    const happyWords = [
+      { words: ['happy', 'joy', 'celebration', 'party', 'good vibes', 'sunshine', 'bright'], weight: 0.4 },
+      { words: ['love', 'dance', 'good', 'fun', 'smile', 'laugh', 'blessed'], weight: 0.3 },
+      { words: ['upbeat', 'positive', 'cheerful', 'amazing', 'wonderful'], weight: 0.2 }
+    ]
     
-    // Sad/mellow keywords
-    const sadWords = ['sad', 'cry', 'tears', 'lonely', 'broken', 'hurt', 'goodbye', 'miss']
-    const mellowWords = ['slow', 'soft', 'gentle', 'calm', 'peaceful', 'quiet', 'acoustic']
+    const energeticWords = [
+      { words: ['energy', 'power', 'fire', 'electric', 'wild', 'pump', 'hype'], weight: 0.3 },
+      { words: ['rock', 'beat', 'bass', 'drop', 'loud', 'intense', 'hardcore'], weight: 0.2 },
+      { words: ['fast', 'speed', 'rush', 'adrenaline', 'extreme'], weight: 0.2 }
+    ]
+    
+    // Sad/dark keywords (weighted by strength)
+    const sadWords = [
+      { words: ['sad!', 'depression', 'suicide', 'death', 'kill', 'die', 'pain'], weight: 0.5 },
+      { words: ['sad', 'cry', 'tears', 'broken', 'hurt', 'lonely', 'empty'], weight: 0.4 },
+      { words: ['goodbye', 'miss', 'lost', 'alone', 'dark', 'cold', 'numb'], weight: 0.3 },
+      { words: ['sorry', 'regret', 'mistake', 'wrong', 'hate', 'angry'], weight: 0.2 }
+    ]
+    
+    const mellowWords = [
+      { words: ['slow', 'soft', 'gentle', 'calm', 'peaceful', 'quiet'], weight: 0.1 },
+      { words: ['acoustic', 'piano', 'ballad', 'chill', 'relax'], weight: 0.1 }
+    ]
+    
+    // Known sad/dark artists (XXXTentacion, Juice WRLD, etc.)
+    const sadArtists = [
+      { artists: ['xxxtentacion', 'juice wrld', 'lil peep', 'nothing,nowhere'], weight: 0.3 },
+      { artists: ['billie eilish', 'the weeknd', 'radiohead', 'nine inch nails'], weight: 0.2 },
+      { artists: ['nirvana', 'linkin park', 'my chemical romance'], weight: 0.2 }
+    ]
+    
+    // Known happy/energetic artists
+    const happyArtists = [
+      { artists: ['pharrell williams', 'bruno mars', 'dua lipa', 'lizzo'], weight: 0.3 },
+      { artists: ['justin timberlake', 'maroon 5', 'ed sheeran'], weight: 0.2 }
+    ]
     
     let moodScore = 0.5 // Default neutral
     
     // Check for mood indicators in track name and artist
     const text = `${trackName} ${artist}`
     
-    if (happyWords.some(word => text.includes(word))) {
-      moodScore += 0.3
-    }
-    if (energeticWords.some(word => text.includes(word))) {
-      moodScore += 0.2
-    }
-    if (sadWords.some(word => text.includes(word))) {
-      moodScore -= 0.3
-    }
-    if (mellowWords.some(word => text.includes(word))) {
-      moodScore -= 0.1
+    // Check sad words (strongest negative impact)
+    sadWords.forEach(category => {
+      category.words.forEach(word => {
+        if (text.includes(word)) {
+          moodScore -= category.weight
+          console.log(`🎵 Detected sad word "${word}" in "${trackName}" - reducing mood by ${category.weight}`)
+        }
+      })
+    })
+    
+    // Check happy words
+    happyWords.forEach(category => {
+      category.words.forEach(word => {
+        if (text.includes(word)) {
+          moodScore += category.weight
+          console.log(`🎵 Detected happy word "${word}" in "${trackName}" - increasing mood by ${category.weight}`)
+        }
+      })
+    })
+    
+    // Check energetic words
+    energeticWords.forEach(category => {
+      category.words.forEach(word => {
+        if (text.includes(word)) {
+          moodScore += category.weight
+          console.log(`🎵 Detected energetic word "${word}" in "${trackName}" - increasing mood by ${category.weight}`)
+        }
+      })
+    })
+    
+    // Check mellow words
+    mellowWords.forEach(category => {
+      category.words.forEach(word => {
+        if (text.includes(word)) {
+          moodScore -= category.weight
+          console.log(`🎵 Detected mellow word "${word}" in "${trackName}" - reducing mood by ${category.weight}`)
+        }
+      })
+    })
+    
+    // Check artist mood associations
+    sadArtists.forEach(category => {
+      category.artists.forEach(artistName => {
+        if (artist.includes(artistName)) {
+          moodScore -= category.weight
+          console.log(`🎵 Detected sad artist "${artistName}" - reducing mood by ${category.weight}`)
+        }
+      })
+    })
+    
+    happyArtists.forEach(category => {
+      category.artists.forEach(artistName => {
+        if (artist.includes(artistName)) {
+          moodScore += category.weight
+          console.log(`🎵 Detected happy artist "${artistName}" - increasing mood by ${category.weight}`)
+        }
+      })
+    })
+    
+    // Special case for punctuation that indicates intensity
+    if (trackName.includes('!') && (trackName.includes('sad') || trackName.includes('mad') || trackName.includes('angry'))) {
+      moodScore -= 0.2
+      console.log(`🎵 Detected intense punctuation in sad context - reducing mood by 0.2`)
     }
     
     // Clamp between 0 and 1
-    return Math.max(0, Math.min(1, moodScore))
+    const finalScore = Math.max(0, Math.min(1, moodScore))
+    console.log(`🎵 Final mood score for "${trackName}" by ${artist}: ${finalScore.toFixed(2)}`)
+    
+    return finalScore
   }
 
   // Calculate average mood for session

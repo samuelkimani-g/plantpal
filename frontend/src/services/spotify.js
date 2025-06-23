@@ -204,40 +204,55 @@ export class SpotifyService {
   }
 
   // Calculate mood score from audio features
-  calculateMoodScore(audioFeatures) {
-    if (!audioFeatures || audioFeatures.length === 0) {
-      return 0.5 // Neutral mood
+  calculateMoodScore(audioFeatures, trackInfo = null) {
+    let spotifyMood = 0.5 // Default neutral
+    
+    // Try to get Spotify audio features first
+    if (audioFeatures && audioFeatures.length > 0) {
+      const avgFeatures = audioFeatures.reduce(
+        (acc, features) => {
+          if (!features) return acc // Skip null features
+
+          return {
+            valence: acc.valence + (features.valence || 0.5),
+            energy: acc.energy + (features.energy || 0.5),
+            danceability: acc.danceability + (features.danceability || 0.5),
+            count: acc.count + 1,
+          }
+        },
+        { valence: 0, energy: 0, danceability: 0, count: 0 },
+      )
+
+      if (avgFeatures.count > 0) {
+        // Calculate averages
+        const valence = avgFeatures.valence / avgFeatures.count
+        const energy = avgFeatures.energy / avgFeatures.count
+        const danceability = avgFeatures.danceability / avgFeatures.count
+
+        // Weighted mood score (valence is most important for mood)
+        spotifyMood = valence * 0.6 + energy * 0.25 + danceability * 0.15
+      }
     }
-
-    // Average the features across all tracks
-    const avgFeatures = audioFeatures.reduce(
-      (acc, features) => {
-        if (!features) return acc // Skip null features
-
-        return {
-          valence: acc.valence + (features.valence || 0.5),
-          energy: acc.energy + (features.energy || 0.5),
-          danceability: acc.danceability + (features.danceability || 0.5),
-          count: acc.count + 1,
-        }
-      },
-      { valence: 0, energy: 0, danceability: 0, count: 0 },
-    )
-
-    if (avgFeatures.count === 0) {
-      return 0.5 // Neutral mood
+    
+    // If we have track info, use enhanced text-based mood detection as fallback/enhancement
+    if (trackInfo) {
+      const { offlineMusicService } = require('./offlineMusic')
+      const textMood = offlineMusicService.estimateMoodFromTrack(trackInfo)
+      
+      // If we have Spotify data, blend it with text analysis (70% Spotify, 30% text)
+      // If no Spotify data, use 100% text analysis
+      if (audioFeatures && audioFeatures.length > 0) {
+        const blendedMood = spotifyMood * 0.7 + textMood * 0.3
+        console.log(`🎵 Blended mood: Spotify (${spotifyMood.toFixed(2)}) + Text (${textMood.toFixed(2)}) = ${blendedMood.toFixed(2)}`)
+        return Math.max(0, Math.min(1, blendedMood))
+      } else {
+        console.log(`🎵 Using text-based mood analysis: ${textMood.toFixed(2)}`)
+        return textMood
+      }
     }
-
-    // Calculate averages
-    const valence = avgFeatures.valence / avgFeatures.count
-    const energy = avgFeatures.energy / avgFeatures.count
-    const danceability = avgFeatures.danceability / avgFeatures.count
-
-    // Weighted mood score (valence is most important for mood)
-    const moodScore = valence * 0.6 + energy * 0.25 + danceability * 0.15
 
     // Ensure score is between 0 and 1
-    return Math.max(0, Math.min(1, moodScore))
+    return Math.max(0, Math.min(1, spotifyMood))
   }
 
   // Get listening session data for plant growth
@@ -285,9 +300,11 @@ export class SpotifyService {
       try {
         const trackIds = tracks.slice(0, 5).map((track) => track.id).filter(Boolean) // Limit to 5 tracks
         const audioFeatures = await this.getAudioFeatures(trackIds)
-        moodScore = this.calculateMoodScore(audioFeatures.audio_features)
+        moodScore = this.calculateMoodScore(audioFeatures.audio_features, tracks.slice(0, 5))
       } catch (error) {
-        console.warn("Could not fetch audio features for listening session, using default mood:", error.message)
+        console.warn("Could not fetch audio features for listening session, using text-based mood analysis:", error.message)
+        // Use text-based mood analysis as fallback
+        moodScore = this.calculateMoodScore(null, tracks.slice(0, 5))
       }
 
       const minutesListened = Math.min(tracks.length * 3, 60) // Estimate minutes, cap at 60
@@ -327,10 +344,11 @@ export class SpotifyService {
       
       try {
         const audioFeatures = await this.getAudioFeatures(trackIds)
-        moodMetrics = this.calculateMoodMetrics(audioFeatures.audio_features)
+        moodMetrics = this.calculateMoodMetrics(audioFeatures.audio_features, recentTracks)
       } catch (error) {
-        console.warn("Could not fetch audio features, using default mood:", error.message)
-        // Continue with default mood instead of failing
+        console.warn("Could not fetch audio features, using text-based mood analysis:", error.message)
+        // Use text-based mood analysis as fallback
+        moodMetrics = this.calculateMoodMetrics(null, recentTracks)
       }
 
       // Calculate listening time in the last hour
@@ -416,40 +434,67 @@ export class SpotifyService {
   }
 
   // Calculate mood metrics from audio features
-  calculateMoodMetrics(audioFeatures) {
-    if (!audioFeatures || audioFeatures.length === 0) {
-      return {
-        overallMood: 0.5,
-        energy: 0.5,
-        valence: 0.5,
-        danceability: 0.5,
+  calculateMoodMetrics(audioFeatures, trackInfo = null) {
+    let spotifyMetrics = {
+      overallMood: 0.5,
+      energy: 0.5,
+      valence: 0.5,
+      danceability: 0.5,
+    }
+
+    // Try to get Spotify audio features
+    if (audioFeatures && audioFeatures.length > 0) {
+      const validFeatures = audioFeatures.filter((f) => f !== null)
+
+      if (validFeatures.length > 0) {
+        const avgValence = validFeatures.reduce((sum, f) => sum + f.valence, 0) / validFeatures.length
+        const avgEnergy = validFeatures.reduce((sum, f) => sum + f.energy, 0) / validFeatures.length
+        const avgDanceability = validFeatures.reduce((sum, f) => sum + f.danceability, 0) / validFeatures.length
+
+        // Combine metrics for overall mood (weighted toward valence)
+        const overallMood = avgValence * 0.6 + avgEnergy * 0.3 + avgDanceability * 0.1
+
+        spotifyMetrics = {
+          overallMood: Math.max(0, Math.min(1, overallMood)),
+          energy: avgEnergy,
+          valence: avgValence,
+          danceability: avgDanceability,
+        }
       }
     }
 
-    const validFeatures = audioFeatures.filter((f) => f !== null)
-
-    if (validFeatures.length === 0) {
-      return {
-        overallMood: 0.5,
-        energy: 0.5,
-        valence: 0.5,
-        danceability: 0.5,
+    // If we have track info, enhance with text-based analysis
+    if (trackInfo && trackInfo.length > 0) {
+      const { offlineMusicService } = require('./offlineMusic')
+      
+      // Calculate text-based mood for all tracks
+      const textMoods = trackInfo.map(track => offlineMusicService.estimateMoodFromTrack(track))
+      const avgTextMood = textMoods.reduce((sum, mood) => sum + mood, 0) / textMoods.length
+      
+      // Blend Spotify data with text analysis if available
+      if (audioFeatures && audioFeatures.length > 0) {
+        // 70% Spotify, 30% text analysis
+        const blendedMood = spotifyMetrics.overallMood * 0.7 + avgTextMood * 0.3
+        console.log(`🎵 Enhanced mood analysis: Spotify (${spotifyMetrics.overallMood.toFixed(2)}) + Text (${avgTextMood.toFixed(2)}) = ${blendedMood.toFixed(2)}`)
+        
+        return {
+          ...spotifyMetrics,
+          overallMood: Math.max(0, Math.min(1, blendedMood)),
+        }
+      } else {
+        // Use text analysis only
+        console.log(`🎵 Using text-based mood analysis for tracks: ${avgTextMood.toFixed(2)}`)
+        
+        return {
+          overallMood: avgTextMood,
+          energy: avgTextMood > 0.6 ? 0.7 : 0.4, // Estimate energy from mood
+          valence: avgTextMood,
+          danceability: avgTextMood > 0.5 ? 0.6 : 0.3, // Estimate danceability
+        }
       }
     }
 
-    const avgValence = validFeatures.reduce((sum, f) => sum + f.valence, 0) / validFeatures.length
-    const avgEnergy = validFeatures.reduce((sum, f) => sum + f.energy, 0) / validFeatures.length
-    const avgDanceability = validFeatures.reduce((sum, f) => sum + f.danceability, 0) / validFeatures.length
-
-    // Combine metrics for overall mood (weighted toward valence)
-    const overallMood = avgValence * 0.6 + avgEnergy * 0.3 + avgDanceability * 0.1
-
-    return {
-      overallMood: Math.max(0, Math.min(1, overallMood)),
-      energy: avgEnergy,
-      valence: avgValence,
-      danceability: avgDanceability,
-    }
+    return spotifyMetrics
   }
 
   // Get mood description
