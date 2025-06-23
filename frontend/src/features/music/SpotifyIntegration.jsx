@@ -4,7 +4,9 @@ import { useState, useEffect } from "react"
 import { useAuth } from "../../context/AuthContext"
 import { usePlant } from "../../context/PlantContext"
 import { spotifyService } from "../../services/spotify"
+import { offlineMusicService } from "../../services/offlineMusic"
 import { authAPI, plantAPI } from "../../services/api"
+import OfflineMusicWidget from "../../components/OfflineMusicWidget"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -126,6 +128,17 @@ export default function SpotifyIntegration() {
       const track = await spotifyService.getCurrentTrack()
       setCurrentTrack(track)
       setLastUpdate(new Date())
+      
+      // Add to offline tracking if we got track info
+      if (track) {
+        offlineMusicService.addTrackToSession({
+          name: track.name,
+          artists: track.artists,
+          album: track.album,
+          albumArt: track.albumArt,
+          spotifyTrack: true
+        })
+      }
     } catch (err) {
       console.error("Error getting current track:", err)
       // Don't show error for API restrictions
@@ -399,22 +412,38 @@ export default function SpotifyIntegration() {
         </Card>
       )}
 
-      {/* No Current Activity */}
-      {!listeningData && (
+              {/* Offline Music Tracker */}
         <Card>
-          <CardContent className="text-center py-8">
-            <Music className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="font-medium mb-2">No recent activity</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Start playing music on Spotify to see how it affects your plants!
-            </p>
-            <Button onClick={() => { updateCurrentTrack(); updateListeningData(); }} disabled={isLoading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-              Check Now
-            </Button>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Music className="h-5 w-5 text-purple-600" />
+              Offline Music Tracking
+            </CardTitle>
+            <CardDescription>
+              Track your music listening even when Spotify API is restricted or you're offline
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <OfflineMusicWidget />
           </CardContent>
         </Card>
-      )}
+
+        {/* No Current Activity */}
+        {!listeningData && (
+          <Card>
+            <CardContent className="text-center py-8">
+              <Music className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="font-medium mb-2">No recent Spotify activity</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Use the offline tracker above to manually add songs that affect your plants!
+              </p>
+              <Button onClick={() => { updateCurrentTrack(); updateListeningData(); }} disabled={isLoading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+                Check Spotify
+              </Button>
+            </CardContent>
+          </Card>
+        )}
     </div>
   )
 }

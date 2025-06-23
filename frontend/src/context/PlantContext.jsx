@@ -3,6 +3,7 @@
 import { createContext, useContext, useReducer, useEffect, useCallback } from "react"
 import { plantAPI } from "../services/api"
 import { useAuth } from "./AuthContext"
+import { offlineMusicService } from "../services/offlineMusic"
 // Import debug utility for development
 // import "../utils/debugPlantAPI" // Disabled to prevent infinite loops
 
@@ -330,8 +331,27 @@ export function PlantProvider({ children }) {
     if (isAuthenticated && user) {
       fetchPlants()
       checkSpotifyStatus()
+      syncOfflineMusic()
     }
   }, [isAuthenticated, user])
+
+  // Sync offline music sessions when coming online
+  const syncOfflineMusic = useCallback(async () => {
+    if (!state.currentPlant) return
+
+    try {
+      console.log("🎵 Checking for offline music sessions to sync...")
+      const result = await offlineMusicService.syncWithPlant(plantAPI, state.currentPlant.id)
+      
+      if (result.synced > 0) {
+        console.log(`🎵 Synced ${result.synced} offline music sessions`)
+        // Refresh plants to show updated data
+        fetchPlants()
+      }
+    } catch (error) {
+      console.error("Error syncing offline music:", error)
+    }
+  }, [state.currentPlant, fetchPlants])
 
   // Music updates effect - defined after all functions
   useEffect(() => {
@@ -358,6 +378,7 @@ export function PlantProvider({ children }) {
     waterPlant,
     fertilizePlant,
     checkSpotifyStatus,
+    syncOfflineMusic,
   }
 
   return <PlantContext.Provider value={value}>{children}</PlantContext.Provider>
