@@ -47,7 +47,7 @@ class Plant(models.Model):
     # Music and mood influence
     music_boost_active = models.BooleanField(default=False)
     current_mood_influence = models.CharField(max_length=50, default='neutral')
-    total_music_minutes = models.IntegerField(default=0)
+    total_music_minutes = models.IntegerField(default=0, help_text="Total minutes of music listened")
     journal_mood_score = models.FloatField(default=0.5, help_text="Mood score from journal entries (0.0 to 1.0)")
     spotify_mood_score = models.FloatField(default=0.5, help_text="Mood score from Spotify music (0.0 to 1.0)")
     
