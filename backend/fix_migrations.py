@@ -39,12 +39,26 @@ def fix_migrations():
             plant_columns = [row[0] for row in cursor.fetchall()]
             print(f"🌱 Plants table columns: {plant_columns}")
             
-            # If columns already exist, mark migrations as fake applied
-            if 'combined_mood_score' in plant_columns:
-                print("✅ Plant schema appears complete, marking migrations as applied...")
-                os.system('python manage.py migrate plants 0004 --fake')
-                os.system('python manage.py migrate plants 0005 --fake') 
-                os.system('python manage.py migrate plants 0006 --fake')
+            # Add missing columns directly
+            missing_columns = {
+                'care_streak': 'INTEGER DEFAULT 0 NOT NULL',
+                'last_care_date': 'DATE NULL',
+                'journal_mood_score': 'DOUBLE PRECISION DEFAULT 0.5 NOT NULL',
+                'spotify_mood_score': 'DOUBLE PRECISION DEFAULT 0.5 NOT NULL'
+            }
+            
+            for column_name, column_definition in missing_columns.items():
+                if column_name not in plant_columns:
+                    print(f"➕ Adding missing column: {column_name}")
+                    cursor.execute(f'ALTER TABLE plants_plant ADD COLUMN {column_name} {column_definition};')
+                else:
+                    print(f"✅ Column exists: {column_name}")
+            
+            # Mark migrations as fake applied to prevent conflicts
+            print("✅ Marking migrations as applied...")
+            os.system('python manage.py migrate plants 0004 --fake')
+            os.system('python manage.py migrate plants 0005 --fake') 
+            os.system('python manage.py migrate plants 0006 --fake')
         
         # Ensure all core Django tables exist
         print("🚀 Ensuring all Django tables exist...")
