@@ -98,6 +98,14 @@ export default function OfflineMusicWidget() {
     return "text-purple-600"
   }
 
+  const getMoodDescription = (score) => {
+    if (score >= 0.8) return { text: "Euphoric", emoji: "🎉" }
+    if (score >= 0.6) return { text: "Happy", emoji: "😊" }
+    if (score >= 0.4) return { text: "Chill", emoji: "😌" }
+    if (score >= 0.2) return { text: "Mellow", emoji: "🤔" }
+    return { text: "Melancholy", emoji: "😔" }
+  }
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -123,7 +131,10 @@ export default function OfflineMusicWidget() {
                 </span>
               </div>
               <Badge className={getMoodColor(sessionSummary.mood)}>
-                {sessionSummary.moodDescription.emoji} {sessionSummary.moodDescription.text}
+                {(() => {
+                  const mood = getMoodDescription(sessionSummary.mood)
+                  return `${mood.emoji} ${mood.text}`
+                })()}
               </Badge>
             </div>
 
@@ -210,7 +221,7 @@ export default function OfflineMusicWidget() {
               <div className="flex justify-between text-sm">
                 <span>Mood</span>
                 <span className={getMoodColor(mood)}>
-                  {offlineMusicService.getMoodDescription(mood).emoji} {Math.round(mood * 100)}%
+                  {getMoodDescription(mood).emoji} {Math.round(mood * 100)}%
                 </span>
               </div>
               <input
