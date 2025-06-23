@@ -17,6 +17,10 @@ export class SpotifyService {
     this.clientId = SPOTIFY_CLIENT_ID
     this.redirectUri = SPOTIFY_REDIRECT_URI
     this.scopes = SPOTIFY_SCOPES
+    this.lastSessionUpdate = 0
+    this.cachedSession = null
+    this.rateLimitDelay = 1000 // 1 second between requests
+    this.lastRequestTime = 0
   }
 
   // Generate Spotify authorization URL
@@ -120,6 +124,14 @@ export class SpotifyService {
 
   // Make authenticated Spotify API request
   async apiRequest(endpoint, options = {}) {
+    // Rate limiting: ensure minimum delay between requests
+    const now = Date.now()
+    const timeSinceLastRequest = now - this.lastRequestTime
+    if (timeSinceLastRequest < this.rateLimitDelay) {
+      await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay - timeSinceLastRequest))
+    }
+    this.lastRequestTime = Date.now()
+
     const accessToken = await this.getValidAccessToken()
 
     const response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
@@ -155,6 +167,14 @@ export class SpotifyService {
 
           return retryResponse.json()
         }
+      } else if (response.status === 403) {
+        // Handle development mode restrictions
+        console.warn('Spotify API 403: Development mode restrictions. Add user to your Spotify app or request quota extension.')
+        throw new Error('Spotify API access restricted. Please check app permissions.')
+      } else if (response.status === 429) {
+        // Rate limit exceeded
+        console.warn('Spotify API rate limit exceeded. Please try again later.')
+        throw new Error('Too many requests. Please wait before trying again.')
       }
       throw new Error(`Spotify API error: ${response.status}`)
     }
@@ -223,8 +243,18 @@ export class SpotifyService {
   // Get listening session data for plant growth
   async getListeningSession() {
     try {
+      // Use cached data if available to reduce API calls
+      if (this.cachedSession && (Date.now() - this.lastSessionUpdate) < 120000) {
+        return {
+          moodScore: this.cachedSession.moodScore,
+          minutesListened: this.cachedSession.minutesListened,
+          tracks: this.cachedSession.recentTracks || [],
+          isCurrentlyPlaying: this.cachedSession.isCurrentlyPlaying,
+        }
+      }
+
       const [recentTracks, currentTrack] = await Promise.all([
-        this.getRecentlyPlayed(10),
+        this.getRecentlyPlayed(5), // Reduced from 10 to 5
         this.getCurrentlyPlaying().catch(() => null),
       ])
 
@@ -250,11 +280,16 @@ export class SpotifyService {
         return null
       }
 
-      // Get audio features for mood calculation
-      const trackIds = tracks.map((track) => track.id).filter(Boolean)
-      const audioFeatures = await this.getAudioFeatures(trackIds)
+      // Get audio features for mood calculation (with error handling)
+      let moodScore = 0.5 // Default neutral mood
+      try {
+        const trackIds = tracks.slice(0, 5).map((track) => track.id).filter(Boolean) // Limit to 5 tracks
+        const audioFeatures = await this.getAudioFeatures(trackIds)
+        moodScore = this.calculateMoodScore(audioFeatures.audio_features)
+      } catch (error) {
+        console.warn("Could not fetch audio features for listening session, using default mood:", error.message)
+      }
 
-      const moodScore = this.calculateMoodScore(audioFeatures.audio_features)
       const minutesListened = Math.min(tracks.length * 3, 60) // Estimate minutes, cap at 60
 
       return {
@@ -272,24 +307,37 @@ export class SpotifyService {
   // Get detailed listening session with mood analysis
   async getDetailedListeningSession() {
     try {
-      const [currentTrack, recentTracks] = await Promise.all([this.getCurrentTrack(), this.getRecentTracks(10)])
+      // Return cached data if recent (within 2 minutes)
+      const now = Date.now()
+      if (this.cachedSession && (now - this.lastSessionUpdate) < 120000) {
+        console.log("Returning cached Spotify session data")
+        return this.cachedSession
+      }
+
+      const [currentTrack, recentTracks] = await Promise.all([this.getCurrentTrack(), this.getRecentTracks(5)]) // Reduced from 10 to 5
 
       if (!recentTracks || recentTracks.length === 0) {
         return null
       }
 
-      // Get audio features for all tracks
-      const trackIds = recentTracks.map((track) => track.id).filter(Boolean)
-      const audioFeatures = await this.getAudioFeatures(trackIds)
-
-      // Calculate comprehensive mood metrics
-      const moodMetrics = this.calculateMoodMetrics(audioFeatures)
+      // Limit audio features request to max 5 tracks to reduce API calls
+      const trackIds = recentTracks.slice(0, 5).map((track) => track.id).filter(Boolean)
+      
+      let moodMetrics = { overallMood: 0.5, energy: 0.5, valence: 0.5, danceability: 0.5 }
+      
+      try {
+        const audioFeatures = await this.getAudioFeatures(trackIds)
+        moodMetrics = this.calculateMoodMetrics(audioFeatures.audio_features)
+      } catch (error) {
+        console.warn("Could not fetch audio features, using default mood:", error.message)
+        // Continue with default mood instead of failing
+      }
 
       // Calculate listening time in the last hour
       const oneHourAgo = Date.now() - 60 * 60 * 1000
       const recentListening = recentTracks.filter((track) => new Date(track.played_at).getTime() > oneHourAgo)
 
-      return {
+      const sessionData = {
         isCurrentlyPlaying: !!currentTrack,
         currentTrack,
         recentTracks: recentTracks.slice(0, 5),
@@ -301,8 +349,21 @@ export class SpotifyService {
         moodDescription: this.getMoodDescription(moodMetrics.overallMood),
         lastUpdated: new Date().toISOString(),
       }
+
+      // Cache the session data
+      this.cachedSession = sessionData
+      this.lastSessionUpdate = now
+
+      return sessionData
     } catch (error) {
       console.error("Error getting detailed listening session:", error)
+      
+      // Return cached data if available, even if stale
+      if (this.cachedSession) {
+        console.log("Returning stale cached data due to API error")
+        return this.cachedSession
+      }
+      
       throw error
     }
   }
