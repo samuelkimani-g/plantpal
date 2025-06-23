@@ -14,9 +14,6 @@ import {
   LogOut,
   Settings,
   ChevronRight,
-  CuboidIcon as Cube,
-  Sparkles,
-  Palette,
   Smile,
 } from "lucide-react"
 import { Button } from "./ui/button"
@@ -44,10 +41,7 @@ const Navigation = () => {
     const breadcrumbs = [{ name: "Dashboard", path: "/dashboard" }]
 
     if (segments.includes("plants")) {
-      breadcrumbs.push({ name: "Plants", path: "/plants" })
-    }
-    if (segments.includes("plant3d")) {
-      breadcrumbs.push({ name: "3D Plant", path: "/plant3d" })
+      breadcrumbs.push({ name: "My Plant", path: "/plants" })
     }
     if (segments.includes("journal")) {
       breadcrumbs.push({ name: "Journal", path: "/journal" })
@@ -58,17 +52,17 @@ const Navigation = () => {
     if (segments.includes("music")) {
       breadcrumbs.push({ name: "Music", path: "/music" })
     }
+    if (segments.includes("mindfulness")) {
+      breadcrumbs.push({ name: "Mindfulness", path: "/mindfulness" })
+    }
 
     return breadcrumbs
   }
 
   const navigationItems = [
     { name: "Dashboard", path: "/dashboard", icon: Home },
-          { name: "My Plant", path: "/plants", icon: Leaf },
-    { name: "3D Plant", path: "/plant3d", icon: Cube },
+    { name: "My Plant", path: "/plants", icon: Leaf },
     { name: "Journal", path: "/journal", icon: BookOpen },
-    { name: "Memory Seeds", path: "/memory-seeds", icon: Sparkles },
-    { name: "Fantasy Plant", path: "/fantasy-plant", icon: Palette },
     { name: "Mindfulness", path: "/mindfulness", icon: Smile },
     { name: "Music", path: "/music", icon: Settings },
   ]

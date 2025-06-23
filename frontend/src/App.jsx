@@ -13,10 +13,9 @@ import Dashboard from "./features/userProfile/Dashboard"
 import PlantManagement from "./features/plants/PlantManagement"
 import ProfilePage from "./features/userProfile/ProfilePage"
 import SpotifyIntegration from "./features/music/SpotifyIntegration"
-import Plant3DPage from "./features/plants/Plant3DPage"
 import JournalPage from "./features/journal/JournalPage"
 import CreatePlantForm from "./features/plantGrowth/CreatePlantForm"
-import { PublicGarden, MemorySeedsPage, FantasyPlantPage, MindfulnessPage } from "./features/plants"
+import { PublicGarden, MindfulnessPage } from "./features/plants"
 import { UserPlantProfile } from "./features/userProfile"
 
 function App() {
@@ -58,16 +57,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CreatePlantForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/plant3d"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Plant3DPage />
-                  </Layout>
                 </ProtectedRoute>
               }
             />
@@ -117,26 +106,6 @@ function App() {
                   <ProtectedRoute>
                     <Layout>
                       <UserPlantProfile />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/memory-seeds"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <MemorySeedsPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/fantasy-plant"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <FantasyPlantPage />
                     </Layout>
                   </ProtectedRoute>
                 }
