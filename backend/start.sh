@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-# Apply migrations
-python manage.py migrate
+# Fix migration state first
+echo "🔧 Fixing migration state..."
+python fix_migrations.py
 
 # Start the server
+echo "🚀 Starting server..."
 gunicorn core.wsgi:application 
