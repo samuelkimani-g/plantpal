@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { usePlant } from "../../context/PlantContext"
 import { useAuth } from "../../context/AuthContext"
 import { plantAPI } from "../../services/api"
+import { spotifyService } from "../../services/spotify"
 import Plant3DView from "../../components/Plant3DView"
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
@@ -88,6 +89,7 @@ const PlantManagement = () => {
     title: "none",
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [isSyncingMusic, setIsSyncingMusic] = useState(false)
 
   // Load current plant data
   useEffect(() => {
@@ -187,6 +189,41 @@ const PlantManagement = () => {
       await fetchPlants() // Refresh plant data
     } catch (error) {
       console.error("Error giving sunshine:", error)
+    }
+  }
+
+  const handleSyncMusicMood = async () => {
+    if (!currentPlant?.id) {
+      console.error("No plant ID available")
+      return
+    }
+    setIsSyncingMusic(true)
+    try {
+      // Check if Spotify is connected
+      const status = await spotifyService.getConnectionStatus()
+      if (!status.connected) {
+        alert("Please connect Spotify first in the Music page!")
+        return
+      }
+
+      // Fetch valence data and update plant mood
+      const response = await spotifyService.fetchValenceAndUpdatePlant()
+      console.log('🎵 Music mood synced:', response)
+      
+      // Refresh plant data to show updated mood
+      await fetchPlants()
+      
+      // Show success message
+      if (response.valence_scores && response.valence_scores.length > 0) {
+        alert(`✅ Music mood synced! Average mood: ${(response.average_valence * 100).toFixed(0)}%`)
+      } else {
+        alert("No recent music found. Try playing some music on Spotify first!")
+      }
+    } catch (error) {
+      console.error("Error syncing music mood:", error)
+      alert("Failed to sync music mood. Please try again.")
+    } finally {
+      setIsSyncingMusic(false)
     }
   }
 
@@ -409,6 +446,19 @@ const PlantManagement = () => {
                       <Button onClick={handleSunshine} variant="outline" className="border-yellow-500 text-yellow-600">
                         <Sun className="h-4 w-4 mr-2" />
                         Give Sunshine
+                      </Button>
+                      <Button 
+                        onClick={handleSyncMusicMood} 
+                        disabled={isSyncingMusic}
+                        variant="outline" 
+                        className="border-purple-500 text-purple-600"
+                      >
+                        {isSyncingMusic ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Music className="h-4 w-4 mr-2" />
+                        )}
+                        {isSyncingMusic ? "Syncing..." : "Sync Music Mood"}
                       </Button>
                     </div>
                   </CardContent>

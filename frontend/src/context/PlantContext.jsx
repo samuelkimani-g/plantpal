@@ -4,6 +4,7 @@ import { createContext, useContext, useReducer, useEffect, useCallback } from "r
 import { plantAPI } from "../services/api"
 import { useAuth } from "./AuthContext"
 import { offlineMusicService } from "../services/offlineMusic"
+import { spotifyService } from "../services/spotify"
 // Import debug utility for development
 // import "../utils/debugPlantAPI" // Disabled to prevent infinite loops
 
@@ -234,7 +235,6 @@ export function PlantProvider({ children }) {
   // Update plant based on Spotify listening
   const updatePlantFromMusic = useCallback(async () => {
     try {
-      const { spotifyService } = await import("../services/spotify")
       if (!spotifyService.isConnected()) return
       
       const session = await spotifyService.getListeningSession()
@@ -366,6 +366,47 @@ export function PlantProvider({ children }) {
       clearInterval(musicInterval)
     }
   }, [state.spotifyConnected, state.currentPlant, updatePlantFromMusic])
+
+  // Add automatic Spotify mood updates
+  const updateSpotifyMood = async () => {
+    try {
+      // Check if user has Spotify connected
+      const spotifyStatus = await spotifyService.getConnectionStatus();
+      if (!spotifyStatus.connected || spotifyStatus.is_expired) {
+        return;
+      }
+
+      // Fetch valence data and update plant mood
+      const response = await spotifyService.fetchValenceAndUpdatePlant();
+      console.log('🎵 Spotify mood updated:', response);
+      
+      // Refresh plant data to get updated mood
+      await fetchPlants();
+      
+    } catch (error) {
+      console.warn('Could not update Spotify mood:', error.message);
+      // Don't show error to user for automatic updates
+    }
+  };
+
+  // Automatic Spotify mood updates every 2 minutes when music is active
+  useEffect(() => {
+    let spotifyInterval;
+    
+    if (state.currentPlant && state.spotifyConnected) {
+      // Update Spotify mood every 2 minutes
+      spotifyInterval = setInterval(updateSpotifyMood, 2 * 60 * 1000);
+      
+      // Initial update
+      updateSpotifyMood();
+    }
+    
+    return () => {
+      if (spotifyInterval) {
+        clearInterval(spotifyInterval);
+      }
+    };
+  }, [state.currentPlant, state.spotifyConnected]);
 
   const value = {
     ...state,
