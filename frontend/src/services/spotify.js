@@ -236,8 +236,8 @@ export class SpotifyService {
     
     // If we have track info, use enhanced text-based mood detection as fallback/enhancement
     if (trackInfo) {
-      const { offlineMusicService } = require('./offlineMusic')
-      const textMood = offlineMusicService.estimateMoodFromTrack(trackInfo)
+      // Import dynamically to avoid circular dependencies
+      const textMood = this.estimateMoodFromTrack(trackInfo)
       
       // If we have Spotify data, blend it with text analysis (70% Spotify, 30% text)
       // If no Spotify data, use 100% text analysis
@@ -465,10 +465,8 @@ export class SpotifyService {
 
     // If we have track info, enhance with text-based analysis
     if (trackInfo && trackInfo.length > 0) {
-      const { offlineMusicService } = require('./offlineMusic')
-      
       // Calculate text-based mood for all tracks
-      const textMoods = trackInfo.map(track => offlineMusicService.estimateMoodFromTrack(track))
+      const textMoods = trackInfo.map(track => this.estimateMoodFromTrack(track))
       const avgTextMood = textMoods.reduce((sum, mood) => sum + mood, 0) / textMoods.length
       
       // Blend Spotify data with text analysis if available
@@ -504,6 +502,127 @@ export class SpotifyService {
     if (moodScore >= 0.4) return "neutral"
     if (moodScore >= 0.2) return "melancholy"
     return "sad"
+  }
+
+  // Estimate mood from track information (same as offlineMusic service)
+  estimateMoodFromTrack(trackInfo) {
+    const trackName = (trackInfo.name || '').toLowerCase()
+    const artist = (trackInfo.artists || trackInfo.artist || '').toLowerCase()
+    
+    // Happy/energetic keywords (weighted by strength)
+    const happyWords = [
+      { words: ['happy', 'joy', 'celebration', 'party', 'good vibes', 'sunshine', 'bright'], weight: 0.4 },
+      { words: ['love', 'dance', 'good', 'fun', 'smile', 'laugh', 'blessed'], weight: 0.3 },
+      { words: ['upbeat', 'positive', 'cheerful', 'amazing', 'wonderful'], weight: 0.2 }
+    ]
+    
+    const energeticWords = [
+      { words: ['energy', 'power', 'fire', 'electric', 'wild', 'pump', 'hype'], weight: 0.3 },
+      { words: ['rock', 'beat', 'bass', 'drop', 'loud', 'intense', 'hardcore'], weight: 0.2 },
+      { words: ['fast', 'speed', 'rush', 'adrenaline', 'extreme'], weight: 0.2 }
+    ]
+    
+    // Sad/dark keywords (weighted by strength)
+    const sadWords = [
+      { words: ['sad!', 'depression', 'suicide', 'death', 'kill', 'die', 'pain'], weight: 0.5 },
+      { words: ['sad', 'cry', 'tears', 'broken', 'hurt', 'lonely', 'empty'], weight: 0.4 },
+      { words: ['goodbye', 'miss', 'lost', 'alone', 'dark', 'cold', 'numb'], weight: 0.3 },
+      { words: ['sorry', 'regret', 'mistake', 'wrong', 'hate', 'angry'], weight: 0.2 }
+    ]
+    
+    const mellowWords = [
+      { words: ['slow', 'soft', 'gentle', 'calm', 'peaceful', 'quiet'], weight: 0.1 },
+      { words: ['acoustic', 'piano', 'ballad', 'chill', 'relax'], weight: 0.1 }
+    ]
+    
+    // Known sad/dark artists (XXXTentacion, Juice WRLD, etc.)
+    const sadArtists = [
+      { artists: ['xxxtentacion', 'juice wrld', 'lil peep', 'nothing,nowhere'], weight: 0.3 },
+      { artists: ['billie eilish', 'the weeknd', 'radiohead', 'nine inch nails'], weight: 0.2 },
+      { artists: ['nirvana', 'linkin park', 'my chemical romance'], weight: 0.2 }
+    ]
+    
+    // Known happy/energetic artists
+    const happyArtists = [
+      { artists: ['pharrell williams', 'bruno mars', 'dua lipa', 'lizzo'], weight: 0.3 },
+      { artists: ['justin timberlake', 'maroon 5', 'ed sheeran'], weight: 0.2 }
+    ]
+    
+    let moodScore = 0.5 // Default neutral
+    
+    // Check for mood indicators in track name and artist
+    const text = `${trackName} ${artist}`
+    
+    // Check sad words (strongest negative impact)
+    sadWords.forEach(category => {
+      category.words.forEach(word => {
+        if (text.includes(word)) {
+          moodScore -= category.weight
+          console.log(`🎵 Detected sad word "${word}" in "${trackName}" - reducing mood by ${category.weight}`)
+        }
+      })
+    })
+    
+    // Check happy words
+    happyWords.forEach(category => {
+      category.words.forEach(word => {
+        if (text.includes(word)) {
+          moodScore += category.weight
+          console.log(`🎵 Detected happy word "${word}" in "${trackName}" - increasing mood by ${category.weight}`)
+        }
+      })
+    })
+    
+    // Check energetic words
+    energeticWords.forEach(category => {
+      category.words.forEach(word => {
+        if (text.includes(word)) {
+          moodScore += category.weight
+          console.log(`🎵 Detected energetic word "${word}" in "${trackName}" - increasing mood by ${category.weight}`)
+        }
+      })
+    })
+    
+    // Check mellow words
+    mellowWords.forEach(category => {
+      category.words.forEach(word => {
+        if (text.includes(word)) {
+          moodScore -= category.weight
+          console.log(`🎵 Detected mellow word "${word}" in "${trackName}" - reducing mood by ${category.weight}`)
+        }
+      })
+    })
+    
+    // Check artist mood associations
+    sadArtists.forEach(category => {
+      category.artists.forEach(artistName => {
+        if (artist.includes(artistName)) {
+          moodScore -= category.weight
+          console.log(`🎵 Detected sad artist "${artistName}" - reducing mood by ${category.weight}`)
+        }
+      })
+    })
+    
+    happyArtists.forEach(category => {
+      category.artists.forEach(artistName => {
+        if (artist.includes(artistName)) {
+          moodScore += category.weight
+          console.log(`🎵 Detected happy artist "${artistName}" - increasing mood by ${category.weight}`)
+        }
+      })
+    })
+    
+    // Special case for punctuation that indicates intensity
+    if (trackName.includes('!') && (trackName.includes('sad') || trackName.includes('mad') || trackName.includes('angry'))) {
+      moodScore -= 0.2
+      console.log(`🎵 Detected intense punctuation in sad context - reducing mood by 0.2`)
+    }
+    
+    // Clamp between 0 and 1
+    const finalScore = Math.max(0, Math.min(1, moodScore))
+    console.log(`🎵 Final mood score for "${trackName}" by ${artist}: ${finalScore.toFixed(2)}`)
+    
+    return finalScore
   }
 
   // Check if user is connected to Spotify
