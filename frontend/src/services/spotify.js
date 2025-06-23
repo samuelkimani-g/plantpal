@@ -2,7 +2,7 @@ console.log("SPOTIFY_CLIENT_ID:", import.meta.env.VITE_SPOTIFY_CLIENT_ID);
 console.log("ALL ENV VARS:", import.meta.env);
 
 // Import API service for backend calls
-import { apiService } from './api.js';
+import { authAPI } from './api.js';
 
 const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
 // Use the current window location for the redirect URI if not specified
@@ -30,8 +30,8 @@ export class SpotifyService {
   // Get Spotify authorization URL from backend
   async getAuthUrl(state = null) {
     try {
-      const response = await apiService.get('/accounts/spotify/auth-url/');
-      return response.auth_url;
+      const response = await authAPI.post('/spotify/auth-url/', {});
+      return response.data.auth_url;
     } catch (error) {
       console.error('Failed to get Spotify auth URL:', error);
       // Fallback to direct URL generation
@@ -55,13 +55,13 @@ export class SpotifyService {
   // Exchange authorization code via backend
   async connectWithCode(code) {
     try {
-      const response = await apiService.post('/accounts/spotify/callback/', {
+      const response = await authAPI.post('/spotify/callback/', {
         code: code,
         redirect_uri: this.redirectUri
       });
       
       console.log('✅ Spotify connected via backend:', response);
-      return response;
+      return response.data;
     } catch (error) {
       console.error('❌ Failed to connect Spotify via backend:', error);
       throw error;
@@ -71,8 +71,8 @@ export class SpotifyService {
   // Check Spotify connection status via backend
   async getConnectionStatus() {
     try {
-      const response = await apiService.get('/accounts/spotify/status/');
-      return response;
+      const response = await authAPI.post('/spotify/status/', {});
+      return response.data;
     } catch (error) {
       console.error('Failed to get Spotify status:', error);
       return { connected: false, is_expired: true };
@@ -82,12 +82,12 @@ export class SpotifyService {
   // Fetch valence data and update plant via backend
   async fetchValenceAndUpdatePlant() {
     try {
-      const response = await apiService.post('/accounts/spotify/fetch-valence/', {
+      const response = await authAPI.post('/spotify/fetch-valence/', {
         limit: 10
       });
       
       console.log('🎵 Valence data fetched and plant updated:', response);
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Failed to fetch valence data:', error);
       throw error;
@@ -97,9 +97,9 @@ export class SpotifyService {
   // Disconnect Spotify via backend
   async disconnect() {
     try {
-      const response = await apiService.delete('/accounts/spotify/disconnect/');
+      const response = await authAPI.delete('/spotify/disconnect/', {});
       console.log('Spotify disconnected via backend:', response);
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Failed to disconnect Spotify:', error);
       throw error;
