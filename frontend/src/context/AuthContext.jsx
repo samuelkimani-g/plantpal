@@ -55,16 +55,35 @@ export function AuthProvider({ children }) {
   // Check if user is authenticated on app load
   useEffect(() => {
     const checkAuth = async () => {
+      console.log("🔍 AuthContext: Starting authentication check...")
       const accessToken = localStorage.getItem("access_token")
+      
       if (accessToken) {
+        console.log("🔑 AuthContext: Access token found, verifying with backend...")
         try {
-          const response = await authAPI.getProfile()
+          // Add timeout to prevent infinite loading
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timeout')), 10000) // 10 second timeout
+          )
+          
+          const response = await Promise.race([
+            authAPI.getProfile(),
+            timeoutPromise
+          ])
+          
+          console.log("✅ AuthContext: Authentication successful:", response.data)
           dispatch({
             type: "AUTH_SUCCESS",
             payload: { user: response.data },
           })
         } catch (error) {
-          console.error("Auth check failed:", error)
+          console.error("❌ AuthContext: Auth check failed:", error)
+          console.error("Error details:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data
+          })
+          
           localStorage.removeItem("access_token")
           localStorage.removeItem("refresh_token")
           dispatch({
@@ -73,6 +92,7 @@ export function AuthProvider({ children }) {
           })
         }
       } else {
+        console.log("🚫 AuthContext: No access token found, user not authenticated")
         dispatch({ type: "AUTH_FAILURE", payload: null }) // Not authenticated, no error
       }
     }

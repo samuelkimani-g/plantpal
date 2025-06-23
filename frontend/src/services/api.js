@@ -1,8 +1,12 @@
 import axios from "axios"
 
 // Create axios instance with base configuration
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000/api"
+console.log("🌐 API Service: Base URL configured as:", baseURL)
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api",
+  baseURL: baseURL,
+  timeout: 15000, // 15 second timeout
   headers: {
     "Content-Type": "application/json",
     "ngrok-skip-browser-warning": "true", // Skip ngrok browser warning
@@ -12,21 +16,34 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
+    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`)
     const token = localStorage.getItem("access_token")
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+      console.log("🔑 API Request: Auth token added")
     }
     return config
   },
   (error) => {
+    console.error("❌ API Request Error:", error)
     return Promise.reject(error)
   },
 )
 
 // Response interceptor to handle token refresh
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`)
+    return response
+  },
   async (error) => {
+    console.error(`❌ API Response Error: ${error.config?.method?.toUpperCase()} ${error.config?.url}`)
+    console.error("Error details:", {
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data
+    })
+
     const originalRequest = error.config
 
     if (
@@ -37,10 +54,11 @@ api.interceptors.response.use(
       originalRequest._retry = true
 
       try {
+        console.log("🔄 Attempting token refresh...")
         const refreshToken = localStorage.getItem("refresh_token")
         if (refreshToken) {
           const response = await axios.post(
-            `${import.meta.env.VITE_API_URL || "http://localhost:8000/api"}/accounts/token/refresh/`,
+            `${baseURL}/accounts/token/refresh/`,
             { refresh: refreshToken },
           )
 
@@ -49,10 +67,11 @@ api.interceptors.response.use(
           localStorage.setItem("refresh_token", refresh)
 
           originalRequest.headers.Authorization = `Bearer ${access}`
+          console.log("✅ Token refreshed successfully")
           return api(originalRequest)
         }
       } catch (refreshError) {
-        console.error("Token refresh failed:", refreshError.response?.data || refreshError.message)
+        console.error("❌ Token refresh failed:", refreshError.response?.data || refreshError.message)
         localStorage.removeItem("access_token")
         localStorage.removeItem("refresh_token")
         window.location.href = "/login"
