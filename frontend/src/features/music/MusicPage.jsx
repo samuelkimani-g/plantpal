@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
 import { usePlant } from "../../context/PlantContext"
-import { authAPI, plantAPI } from "../../services/api"
+import { apiService } from "../../services/api"
+import { spotifyService } from "../../services/spotify"
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
@@ -67,12 +68,9 @@ const MusicPage = () => {
   const handleSpotifyCallback = async (code, returnTo) => {
     setIsConnecting(true)
     try {
-      const response = await authAPI.connectSpotify({
-        code,
-        redirect_uri: `${window.location.origin}/music`
-      })
+      const response = await spotifyService.connectWithCode(code)
       
-      if (response.data.success) {
+      if (response.connected) {
         await checkSpotifyStatus()
         await fetchPlants() // Refresh plant data
         
@@ -86,41 +84,34 @@ const MusicPage = () => {
       }
     } catch (error) {
       console.error("Spotify connection error:", error)
-      setConnectionError(error.response?.data?.error || "Failed to connect to Spotify")
+      setConnectionError(error.message || "Failed to connect to Spotify")
     } finally {
       setIsConnecting(false)
     }
   }
 
-  const connectSpotify = () => {
+  const connectSpotify = async () => {
     setIsConnecting(true)
     setConnectionError(null)
     
-    // Store current page for redirect after connection
-    const currentPage = location.pathname
-    
-    const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-    const redirectUri = `${window.location.origin}/music`
-    const scopes = [
-      'user-read-recently-played',
-      'user-read-currently-playing',
-      'user-read-playback-state',
-      'user-modify-playback-state'
-    ].join(' ')
-
-    const authUrl = `https://accounts.spotify.com/authorize?` +
-      `client_id=${clientId}&` +
-      `response_type=code&` +
-      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-      `scope=${encodeURIComponent(scopes)}&` +
-      `state=${encodeURIComponent(currentPage)}`
-
-    window.location.href = authUrl
+    try {
+      // Store current page for redirect after connection
+      const currentPage = location.pathname
+      
+      // Get auth URL from backend
+      const authUrl = await spotifyService.getAuthUrl(currentPage)
+      
+      window.location.href = authUrl
+    } catch (error) {
+      console.error("Error getting Spotify auth URL:", error)
+      setConnectionError("Failed to get Spotify authorization URL")
+      setIsConnecting(false)
+    }
   }
 
   const disconnectSpotify = async () => {
     try {
-      await authAPI.disconnectSpotify()
+      await spotifyService.disconnect()
       await checkSpotifyStatus()
       setCurrentTrack(null)
       setRecentTracks([])
@@ -133,39 +124,48 @@ const MusicPage = () => {
   const loadMusicData = async () => {
     setIsLoadingMusic(true)
     try {
-      // This would call your backend to get current playing track and recent tracks
-      // For now, we'll simulate with mock data
-      const mockTrack = {
-        name: "Good 4 U",
-        artist: "Olivia Rodrigo",
-        album: "SOUR",
-        image: "/api/placeholder/300/300",
-        valence: 0.8,
-        energy: 0.9,
-        danceability: 0.7
+      // Fetch valence data and update plant via backend
+      const response = await spotifyService.fetchValenceAndUpdatePlant()
+      
+      if (response.valence_scores && response.valence_scores.length > 0) {
+        // Update mood analysis with real data
+        const avgValence = response.average_valence
+        setMoodAnalysis({
+          averageValence: avgValence,
+          mood: avgValence > 0.7 ? 'happy' : avgValence > 0.5 ? 'neutral' : 'sad',
+          totalTracks: response.valence_scores.length
+        })
+        
+        // Refresh plant data to get updated mood scores
+        await fetchPlants()
       }
       
-      const mockRecentTracks = [
-        { name: "Levitating", artist: "Dua Lipa", valence: 0.9 },
-        { name: "Blinding Lights", artist: "The Weeknd", valence: 0.7 },
-        { name: "Watermelon Sugar", artist: "Harry Styles", valence: 0.8 },
-        { name: "Don't Start Now", artist: "Dua Lipa", valence: 0.8 },
-        { name: "Physical", artist: "Dua Lipa", valence: 0.9 }
-      ]
-
-      setCurrentTrack(mockTrack)
-      setRecentTracks(mockRecentTracks)
+      // Try to get current track info (using legacy method for now)
+      try {
+        const currentTrackData = await spotifyService.getCurrentTrack()
+        if (currentTrackData) {
+          setCurrentTrack(currentTrackData)
+        }
+      } catch (error) {
+        console.warn("Could not fetch current track:", error.message)
+      }
       
-      // Calculate mood analysis
-      const avgValence = mockRecentTracks.reduce((sum, track) => sum + track.valence, 0) / mockRecentTracks.length
-      setMoodAnalysis({
-        averageValence: avgValence,
-        mood: avgValence > 0.7 ? 'happy' : avgValence > 0.5 ? 'neutral' : 'sad',
-        totalTracks: mockRecentTracks.length
-      })
+      // Try to get recent tracks (using legacy method for now)
+      try {
+        const recentTracksData = await spotifyService.getRecentTracks(5)
+        if (recentTracksData && recentTracksData.length > 0) {
+          setRecentTracks(recentTracksData.map(track => ({
+            ...track,
+            valence: 0.6 // Default valence since we can't get audio features in dev mode
+          })))
+        }
+      } catch (error) {
+        console.warn("Could not fetch recent tracks:", error.message)
+      }
       
     } catch (error) {
       console.error("Error loading music data:", error)
+      setConnectionError(error.message || "Failed to load music data")
     } finally {
       setIsLoadingMusic(false)
     }

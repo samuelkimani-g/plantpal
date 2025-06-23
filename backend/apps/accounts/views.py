@@ -11,6 +11,7 @@ from datetime import timedelta
 from .serializers import UserSerializer, RegisterSerializer, CustomTokenObtainPairSerializer, PasswordChangeSerializer
 from .models import SpotifyProfile
 from apps.plants.services import SpotifyService, PlantGrowthService
+from django.conf import settings
 
 User = get_user_model()
 
@@ -96,6 +97,24 @@ class DeleteAccountView(APIView):
 
 # --- Spotify Integration ---
 
+class SpotifyAuthURLView(APIView):
+    """Get Spotify authorization URL"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """Return Spotify authorization URL"""
+        try:
+            auth_url = SpotifyService.get_auth_url()
+            return Response({
+                'auth_url': auth_url,
+                'message': 'Spotify authorization URL generated'
+            })
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to generate auth URL: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 class SpotifyConnectionView(APIView):
     """
     API endpoint to store Spotify connection data
@@ -150,15 +169,39 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 class SpotifyCallbackView(APIView):
     """Handle Spotify OAuth callback"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]  # Allow unauthenticated access for direct Spotify redirect
+
+    def get(self, request):
+        """Handle direct redirect from Spotify (GET request)"""
+        from django.shortcuts import redirect
+        
+        code = request.GET.get('code')
+        error = request.GET.get('error')
+        
+        if error:
+            # Redirect to frontend with error
+            return redirect(f"{settings.FRONTEND_URL}/music?spotify_error={error}")
+        
+        if not code:
+            return redirect(f"{settings.FRONTEND_URL}/music?spotify_error=no_code")
+        
+        # Redirect to frontend with code so frontend can handle token exchange
+        return redirect(f"{settings.FRONTEND_URL}/music?code={code}")
 
     def post(self, request):
-        code = request.data.get('code')
-        redirect_uri = request.data.get('redirect_uri')
-        
-        if not code or not redirect_uri:
+        """Handle token exchange from frontend (POST request)"""
+        if not request.user.is_authenticated:
             return Response(
-                {'error': 'Code and redirect_uri are required'}, 
+                {'error': 'Authentication required'}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        code = request.data.get('code')
+        redirect_uri = request.data.get('redirect_uri', settings.SPOTIPY_REDIRECT_URI)
+        
+        if not code:
+            return Response(
+                {'error': 'Authorization code is required'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -175,24 +218,29 @@ class SpotifyCallbackView(APIView):
                 defaults={
                     'access_token': token_data['access_token'],
                     'refresh_token': token_data['refresh_token'],
-                    'expires_at': expires_at,
+                    'token_expires_at': expires_at,
+                    'token_type': token_data.get('token_type', 'Bearer'),
+                    'scope': token_data.get('scope', '')
                 }
             )
             
             if not created:
                 spotify_profile.access_token = token_data['access_token']
                 spotify_profile.refresh_token = token_data['refresh_token']
-                spotify_profile.expires_at = expires_at
+                spotify_profile.token_expires_at = expires_at
+                spotify_profile.token_type = token_data.get('token_type', 'Bearer')
+                spotify_profile.scope = token_data.get('scope', '')
                 spotify_profile.save()
             
             return Response({
                 'message': 'Spotify connected successfully',
-                'expires_at': expires_at.isoformat()
+                'expires_at': expires_at.isoformat(),
+                'connected': True
             })
             
         except Exception as e:
             return Response(
-                {'error': str(e)}, 
+                {'error': f'Failed to connect Spotify: {str(e)}'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -208,7 +256,7 @@ class SpotifyFetchValenceView(APIView):
             if spotify_profile.is_token_expired():
                 token_data = SpotifyService.refresh_access_token(spotify_profile.refresh_token)
                 spotify_profile.access_token = token_data['access_token']
-                spotify_profile.expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
+                spotify_profile.token_expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
                 spotify_profile.save()
             
             # Get valence scores from recent tracks
@@ -259,3 +307,24 @@ class SpotifyDisconnectView(APIView):
                 {'error': 'Spotify not connected'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+class SpotifyStatusView(APIView):
+    """Check Spotify connection status"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            spotify_profile = SpotifyProfile.objects.get(user=request.user)
+            return Response({
+                'connected': True,
+                'expires_at': spotify_profile.token_expires_at.isoformat() if spotify_profile.token_expires_at else None,
+                'is_expired': spotify_profile.is_token_expired(),
+                'scope': spotify_profile.scope
+            })
+        except SpotifyProfile.DoesNotExist:
+            return Response({
+                'connected': False,
+                'expires_at': None,
+                'is_expired': True,
+                'scope': None
+            })

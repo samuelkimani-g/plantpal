@@ -11,6 +11,8 @@ from .views import (
     SpotifyCallbackView,
     SpotifyFetchValenceView,
     SpotifyDisconnectView,
+    SpotifyAuthURLView,
+    SpotifyStatusView,
     UserViewSet,
     SpotifyConnectionView
 )
@@ -31,8 +33,10 @@ urlpatterns = [
     path('delete-account/', DeleteAccountView.as_view(), name='delete_account'),
     
     # Spotify integration
+    path('spotify/auth-url/', SpotifyAuthURLView.as_view(), name='spotify_auth_url'),
     path('spotify/callback/', SpotifyCallbackView.as_view(), name='spotify_callback'),
     path('spotify/fetch-valence/', SpotifyFetchValenceView.as_view(), name='spotify_fetch_valence'),
+    path('spotify/status/', SpotifyStatusView.as_view(), name='spotify_status'),
     path('spotify/disconnect/', SpotifyDisconnectView.as_view(), name='spotify_disconnect'),
     path('spotify/', SpotifyConnectionView.as_view(), name='spotify_connection'),
     

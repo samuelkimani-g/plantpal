@@ -47,6 +47,10 @@ if DEBUG:
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
+SPOTIPY_REDIRECT_URI = os.getenv('SPOTIPY_REDIRECT_URI', 'https://plantpal-4hx7.onrender.com/api/accounts/spotify/callback/')
+
+# Frontend URL for redirects
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://plantpal-three.vercel.app')
 
 # === FIREBASE CONFIGURATION ===
 FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID')

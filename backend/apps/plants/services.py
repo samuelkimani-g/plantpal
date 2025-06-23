@@ -282,6 +282,32 @@ class SpotifyService:
     """Service to handle Spotify API interactions"""
     
     @staticmethod
+    def get_auth_url(redirect_uri=None):
+        """Get Spotify authorization URL"""
+        if not redirect_uri:
+            redirect_uri = settings.SPOTIPY_REDIRECT_URI
+        
+        scopes = [
+            'user-read-recently-played',
+            'user-read-currently-playing',
+            'user-read-playback-state',
+            'user-top-read',
+            'user-library-read'
+        ]
+        
+        params = {
+            'client_id': settings.SPOTIFY_CLIENT_ID,
+            'response_type': 'code',
+            'redirect_uri': redirect_uri,
+            'scope': ' '.join(scopes),
+            'show_dialog': 'true'
+        }
+        
+        import urllib.parse
+        query_string = urllib.parse.urlencode(params)
+        return f"https://accounts.spotify.com/authorize?{query_string}"
+    
+    @staticmethod
     def exchange_code_for_tokens(code, redirect_uri):
         """Exchange authorization code for access and refresh tokens"""
         token_url = "https://accounts.spotify.com/api/token"
@@ -302,6 +328,8 @@ class SpotifyService:
                 'access_token': token_data['access_token'],
                 'refresh_token': token_data['refresh_token'],
                 'expires_in': token_data['expires_in'],
+                'token_type': token_data.get('token_type', 'Bearer'),
+                'scope': token_data.get('scope', '')
             }
         else:
             raise Exception(f"Failed to exchange code: {response.text}")
@@ -325,6 +353,8 @@ class SpotifyService:
             return {
                 'access_token': token_data['access_token'],
                 'expires_in': token_data['expires_in'],
+                'token_type': token_data.get('token_type', 'Bearer'),
+                'scope': token_data.get('scope', '')
             }
         else:
             raise Exception(f"Failed to refresh token: {response.text}")
@@ -334,33 +364,86 @@ class SpotifyService:
         """Get recent tracks and their valence scores"""
         headers = {'Authorization': f'Bearer {access_token}'}
         
-        # Get recently played tracks
-        recent_url = f"https://api.spotify.com/v1/me/player/recently-played?limit={limit}"
-        response = requests.get(recent_url, headers=headers)
-        
-        if response.status_code != 200:
-            raise Exception(f"Failed to get recent tracks: {response.text}")
-        
-        tracks_data = response.json()
-        track_ids = [item['track']['id'] for item in tracks_data['items'] if item['track']['id']]
-        
-        if not track_ids:
+        try:
+            # Get recently played tracks
+            recent_url = f"https://api.spotify.com/v1/me/player/recently-played?limit={limit}"
+            response = requests.get(recent_url, headers=headers)
+            
+            if response.status_code == 403:
+                print("Spotify API 403: Development mode restrictions")
+                return []
+            elif response.status_code == 429:
+                print("Spotify API 429: Rate limit exceeded")
+                return []
+            elif response.status_code != 200:
+                raise Exception(f"Failed to get recent tracks: {response.text}")
+            
+            tracks_data = response.json()
+            track_ids = [item['track']['id'] for item in tracks_data['items'] if item['track']['id']]
+            
+            if not track_ids:
+                return []
+            
+            # Limit to 5 tracks to reduce API calls
+            track_ids = track_ids[:5]
+            
+            # Get audio features for tracks
+            features_url = f"https://api.spotify.com/v1/audio-features?ids={','.join(track_ids)}"
+            features_response = requests.get(features_url, headers=headers)
+            
+            if features_response.status_code == 403:
+                print("Spotify API 403: Development mode restrictions on audio features")
+                return []
+            elif features_response.status_code == 429:
+                print("Spotify API 429: Rate limit exceeded on audio features")
+                return []
+            elif features_response.status_code != 200:
+                raise Exception(f"Failed to get audio features: {features_response.text}")
+            
+            features_data = features_response.json()
+            valence_scores = [
+                feature['valence'] for feature in features_data['audio_features'] 
+                if feature and 'valence' in feature
+            ]
+            
+            return valence_scores
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Spotify API request error: {e}")
             return []
+        except Exception as e:
+            print(f"Error getting Spotify valence: {e}")
+            return []
+    
+    @staticmethod
+    def get_current_track(access_token):
+        """Get currently playing track"""
+        headers = {'Authorization': f'Bearer {access_token}'}
         
-        # Get audio features for tracks
-        features_url = f"https://api.spotify.com/v1/audio-features?ids={','.join(track_ids)}"
-        features_response = requests.get(features_url, headers=headers)
-        
-        if features_response.status_code != 200:
-            raise Exception(f"Failed to get audio features: {features_response.text}")
-        
-        features_data = features_response.json()
-        valence_scores = [
-            feature['valence'] for feature in features_data['audio_features'] 
-            if feature and 'valence' in feature
-        ]
-        
-        return valence_scores
+        try:
+            current_url = "https://api.spotify.com/v1/me/player/currently-playing"
+            response = requests.get(current_url, headers=headers)
+            
+            if response.status_code == 204:
+                return None  # No track currently playing
+            elif response.status_code == 403:
+                print("Spotify API 403: Development mode restrictions")
+                return None
+            elif response.status_code == 429:
+                print("Spotify API 429: Rate limit exceeded")
+                return None
+            elif response.status_code != 200:
+                print(f"Failed to get current track: {response.text}")
+                return None
+            
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Spotify API request error: {e}")
+            return None
+        except Exception as e:
+            print(f"Error getting current track: {e}")
+            return None
 
 class FirestoreService:
     """Service to handle Firestore operations"""

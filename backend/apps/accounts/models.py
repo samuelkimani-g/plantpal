@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 class CustomUser(AbstractUser):
     """
@@ -54,3 +55,9 @@ class SpotifyProfile(models.Model):
 
     def __str__(self):
         return f"SpotifyProfile for {self.user.username}"
+    
+    def is_token_expired(self):
+        """Check if the access token is expired"""
+        if not self.token_expires_at:
+            return True
+        return timezone.now() >= self.token_expires_at

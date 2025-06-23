@@ -1,6 +1,9 @@
 console.log("SPOTIFY_CLIENT_ID:", import.meta.env.VITE_SPOTIFY_CLIENT_ID);
 console.log("ALL ENV VARS:", import.meta.env);
 
+// Import API service for backend calls
+import { apiService } from './api.js';
+
 const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
 // Use the current window location for the redirect URI if not specified
 const SPOTIFY_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || `${window.location.origin}/music`;
@@ -21,10 +24,17 @@ export class SpotifyService {
     this.cachedSession = null
     this.rateLimitDelay = 1000 // 1 second between requests
     this.lastRequestTime = 0
+    this.backendMode = true // Use backend endpoints
   }
 
-  // Generate Spotify authorization URL
-  getAuthUrl(state = null) {
+  // Get Spotify authorization URL from backend
+  async getAuthUrl(state = null) {
+    try {
+      const response = await apiService.get('/accounts/spotify/auth-url/');
+      return response.auth_url;
+    } catch (error) {
+      console.error('Failed to get Spotify auth URL:', error);
+      // Fallback to direct URL generation
     const params = new URLSearchParams({
       client_id: this.clientId,
       response_type: "code",
@@ -32,98 +42,99 @@ export class SpotifyService {
       scope: this.scopes,
       show_dialog: "true",
     })
-    
-    // Add state parameter if provided
-    if (state) {
-      params.append("state", state)
-    }
+      
+      // Add state parameter if provided
+      if (state) {
+        params.append("state", state)
+      }
 
     return `https://accounts.spotify.com/authorize?${params.toString()}`
+    }
   }
 
-  // Exchange authorization code for access token
-  async getAccessToken(code) {
-    const response = await fetch("https://accounts.spotify.com/api/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
+  // Exchange authorization code via backend
+  async connectWithCode(code) {
+    try {
+      const response = await apiService.post('/accounts/spotify/callback/', {
         code: code,
-        redirect_uri: this.redirectUri,
-        client_id: this.clientId,
-        client_secret: import.meta.env.VITE_SPOTIFY_CLIENT_SECRET,
-      }),
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw new Error(data.error_description || "Failed to get access token")
+        redirect_uri: this.redirectUri
+      });
+      
+      console.log('✅ Spotify connected via backend:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to connect Spotify via backend:', error);
+      throw error;
     }
-
-    // Store tokens
-    localStorage.setItem("spotify_access_token", data.access_token)
-    localStorage.setItem("spotify_refresh_token", data.refresh_token)
-    localStorage.setItem("spotify_expires_at", Date.now() + data.expires_in * 1000)
-
-    return data
   }
 
-  // Refresh access token
+  // Check Spotify connection status via backend
+  async getConnectionStatus() {
+    try {
+      const response = await apiService.get('/accounts/spotify/status/');
+      return response;
+    } catch (error) {
+      console.error('Failed to get Spotify status:', error);
+      return { connected: false, is_expired: true };
+    }
+  }
+
+  // Fetch valence data and update plant via backend
+  async fetchValenceAndUpdatePlant() {
+    try {
+      const response = await apiService.post('/accounts/spotify/fetch-valence/', {
+        limit: 10
+      });
+      
+      console.log('🎵 Valence data fetched and plant updated:', response);
+      return response;
+    } catch (error) {
+      console.error('Failed to fetch valence data:', error);
+      throw error;
+    }
+  }
+
+  // Disconnect Spotify via backend
+  async disconnect() {
+    try {
+      const response = await apiService.delete('/accounts/spotify/disconnect/');
+      console.log('Spotify disconnected via backend:', response);
+      return response;
+    } catch (error) {
+      console.error('Failed to disconnect Spotify:', error);
+      throw error;
+    }
+  }
+
+  // Legacy methods for backward compatibility (using localStorage for frontend-only features)
+  
+  // Exchange authorization code for access token (legacy - now uses backend)
+  async getAccessToken(code) {
+    // Use backend instead
+    return this.connectWithCode(code);
+  }
+
+  // Refresh access token (legacy - now handled by backend)
   async refreshAccessToken(refreshToken) {
-    const response = await fetch("https://accounts.spotify.com/api/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-        client_id: this.clientId,
-        client_secret: import.meta.env.VITE_SPOTIFY_CLIENT_SECRET,
-      }),
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw new Error(data.error_description || "Failed to refresh token")
-    }
-
-    // Update stored tokens
-    localStorage.setItem("spotify_access_token", data.access_token)
-    if (data.refresh_token) {
-      localStorage.setItem("spotify_refresh_token", data.refresh_token)
-    }
-    localStorage.setItem("spotify_expires_at", Date.now() + data.expires_in * 1000)
-
-    return data
+    // Backend handles token refresh automatically
+    console.log('Token refresh is now handled by backend');
+    return null;
   }
 
-  // Get valid access token (refresh if needed)
+  // Get valid access token (legacy - now handled by backend)
   async getValidAccessToken() {
-    const accessToken = localStorage.getItem("spotify_access_token")
-    const refreshToken = localStorage.getItem("spotify_refresh_token")
-    const expiresAt = localStorage.getItem("spotify_expires_at")
-
-    if (!accessToken || !refreshToken) {
-      throw new Error("No Spotify tokens found")
+    const status = await this.getConnectionStatus();
+    if (!status.connected || status.is_expired) {
+      throw new Error("Spotify not connected or token expired");
     }
-
-    // Check if token is expired (with 5 minute buffer)
-    if (Date.now() >= Number.parseInt(expiresAt) - 300000) {
-      console.log("Refreshing Spotify token...")
-      await this.refreshAccessToken(refreshToken)
-      return localStorage.getItem("spotify_access_token")
-    }
-
-    return accessToken
+    return "backend_managed"; // Placeholder since backend manages tokens
   }
 
-  // Make authenticated Spotify API request
+  // Make authenticated Spotify API request (legacy - now uses backend when possible)
   async apiRequest(endpoint, options = {}) {
+    // For now, keep the original implementation for features not yet moved to backend
+    // This allows gradual migration
+    
     // Rate limiting: ensure minimum delay between requests
     const now = Date.now()
     const timeSinceLastRequest = now - this.lastRequestTime
@@ -132,7 +143,11 @@ export class SpotifyService {
     }
     this.lastRequestTime = Date.now()
 
-    const accessToken = await this.getValidAccessToken()
+    // Check if we have locally stored tokens (for backward compatibility)
+    const accessToken = localStorage.getItem("spotify_access_token")
+    if (!accessToken) {
+      throw new Error("No Spotify access token available - please reconnect via backend")
+    }
 
     const response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
       ...options,
@@ -145,28 +160,8 @@ export class SpotifyService {
 
     if (!response.ok) {
       if (response.status === 401) {
-        // Token might be invalid, try refreshing once more
-        const refreshToken = localStorage.getItem("spotify_refresh_token")
-        if (refreshToken) {
-          await this.refreshAccessToken(refreshToken)
-          const newAccessToken = localStorage.getItem("spotify_access_token")
-
-          // Retry request with new token
-          const retryResponse = await fetch(`https://api.spotify.com/v1${endpoint}`, {
-            ...options,
-            headers: {
-              Authorization: `Bearer ${newAccessToken}`,
-              "Content-Type": "application/json",
-              ...options.headers,
-            },
-          })
-
-          if (!retryResponse.ok) {
-            throw new Error(`Spotify API error: ${retryResponse.status}`)
-          }
-
-          return retryResponse.json()
-        }
+        // Token might be invalid - suggest reconnection
+        throw new Error("Spotify token expired - please reconnect")
       } else if (response.status === 403) {
         // Handle development mode restrictions
         console.warn('Spotify API 403: Development mode restrictions. Add user to your Spotify app or request quota extension.')
@@ -209,27 +204,27 @@ export class SpotifyService {
     
     // Try to get Spotify audio features first
     if (audioFeatures && audioFeatures.length > 0) {
-      const avgFeatures = audioFeatures.reduce(
-        (acc, features) => {
-          if (!features) return acc // Skip null features
+    const avgFeatures = audioFeatures.reduce(
+      (acc, features) => {
+        if (!features) return acc // Skip null features
 
-          return {
-            valence: acc.valence + (features.valence || 0.5),
-            energy: acc.energy + (features.energy || 0.5),
-            danceability: acc.danceability + (features.danceability || 0.5),
-            count: acc.count + 1,
-          }
-        },
-        { valence: 0, energy: 0, danceability: 0, count: 0 },
-      )
+        return {
+          valence: acc.valence + (features.valence || 0.5),
+          energy: acc.energy + (features.energy || 0.5),
+          danceability: acc.danceability + (features.danceability || 0.5),
+          count: acc.count + 1,
+        }
+      },
+      { valence: 0, energy: 0, danceability: 0, count: 0 },
+    )
 
       if (avgFeatures.count > 0) {
-        // Calculate averages
-        const valence = avgFeatures.valence / avgFeatures.count
-        const energy = avgFeatures.energy / avgFeatures.count
-        const danceability = avgFeatures.danceability / avgFeatures.count
+    // Calculate averages
+    const valence = avgFeatures.valence / avgFeatures.count
+    const energy = avgFeatures.energy / avgFeatures.count
+    const danceability = avgFeatures.danceability / avgFeatures.count
 
-        // Weighted mood score (valence is most important for mood)
+    // Weighted mood score (valence is most important for mood)
         spotifyMood = valence * 0.6 + energy * 0.25 + danceability * 0.15
       }
     }
@@ -299,7 +294,7 @@ export class SpotifyService {
       let moodScore = 0.5 // Default neutral mood
       try {
         const trackIds = tracks.slice(0, 5).map((track) => track.id).filter(Boolean) // Limit to 5 tracks
-        const audioFeatures = await this.getAudioFeatures(trackIds)
+      const audioFeatures = await this.getAudioFeatures(trackIds)
         moodScore = this.calculateMoodScore(audioFeatures.audio_features, tracks.slice(0, 5))
       } catch (error) {
         console.warn("Could not fetch audio features for listening session, using text-based mood analysis:", error.message)
@@ -436,30 +431,30 @@ export class SpotifyService {
   // Calculate mood metrics from audio features
   calculateMoodMetrics(audioFeatures, trackInfo = null) {
     let spotifyMetrics = {
-      overallMood: 0.5,
-      energy: 0.5,
-      valence: 0.5,
-      danceability: 0.5,
+        overallMood: 0.5,
+        energy: 0.5,
+        valence: 0.5,
+        danceability: 0.5,
     }
 
     // Try to get Spotify audio features
     if (audioFeatures && audioFeatures.length > 0) {
-      const validFeatures = audioFeatures.filter((f) => f !== null)
+    const validFeatures = audioFeatures.filter((f) => f !== null)
 
       if (validFeatures.length > 0) {
-        const avgValence = validFeatures.reduce((sum, f) => sum + f.valence, 0) / validFeatures.length
-        const avgEnergy = validFeatures.reduce((sum, f) => sum + f.energy, 0) / validFeatures.length
-        const avgDanceability = validFeatures.reduce((sum, f) => sum + f.danceability, 0) / validFeatures.length
+    const avgValence = validFeatures.reduce((sum, f) => sum + f.valence, 0) / validFeatures.length
+    const avgEnergy = validFeatures.reduce((sum, f) => sum + f.energy, 0) / validFeatures.length
+    const avgDanceability = validFeatures.reduce((sum, f) => sum + f.danceability, 0) / validFeatures.length
 
-        // Combine metrics for overall mood (weighted toward valence)
-        const overallMood = avgValence * 0.6 + avgEnergy * 0.3 + avgDanceability * 0.1
+    // Combine metrics for overall mood (weighted toward valence)
+    const overallMood = avgValence * 0.6 + avgEnergy * 0.3 + avgDanceability * 0.1
 
         spotifyMetrics = {
-          overallMood: Math.max(0, Math.min(1, overallMood)),
-          energy: avgEnergy,
-          valence: avgValence,
-          danceability: avgDanceability,
-        }
+      overallMood: Math.max(0, Math.min(1, overallMood)),
+      energy: avgEnergy,
+      valence: avgValence,
+      danceability: avgDanceability,
+    }
       }
     }
 
@@ -625,13 +620,24 @@ export class SpotifyService {
     return finalScore
   }
 
-  // Check if user is connected to Spotify
-  isConnected() {
+  // Check if user is connected to Spotify (now uses backend)
+  async isConnected() {
+    try {
+      const status = await this.getConnectionStatus();
+      return status.connected && !status.is_expired;
+    } catch (error) {
+      console.error('Error checking Spotify connection:', error);
+      return false;
+    }
+  }
+
+  // Legacy isConnected method (synchronous)
+  isConnectedSync() {
     return !!(localStorage.getItem("spotify_access_token") && localStorage.getItem("spotify_refresh_token"))
   }
 
-  // Disconnect from Spotify
-  disconnect() {
+  // Clear local storage (for cleanup)
+  clearLocalTokens() {
     localStorage.removeItem("spotify_access_token")
     localStorage.removeItem("spotify_refresh_token")
     localStorage.removeItem("spotify_expires_at")
