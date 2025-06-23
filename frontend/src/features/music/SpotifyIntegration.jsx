@@ -19,6 +19,7 @@ export default function SpotifyIntegration() {
   const [isConnected, setIsConnected] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [listeningData, setListeningData] = useState(null)
+  const [currentTrack, setCurrentTrack] = useState(null)
   const [error, setError] = useState(null)
   const [lastUpdate, setLastUpdate] = useState(null)
   const navigate = useNavigate()
@@ -42,14 +43,20 @@ export default function SpotifyIntegration() {
 
   useEffect(() => {
     let interval
-    if (isConnected && currentPlant) {
-      // Update listening data every 30 seconds
+    if (isConnected) {
+      // Update current track every 10 seconds for real-time display
       interval = setInterval(() => {
-        updateListeningData()
-      }, 30000)
+        updateCurrentTrack()
+        if (currentPlant) {
+          updateListeningData()
+        }
+      }, 10000)
 
       // Initial update
-      updateListeningData()
+      updateCurrentTrack()
+      if (currentPlant) {
+        updateListeningData()
+      }
     }
 
     return () => {
@@ -114,6 +121,20 @@ export default function SpotifyIntegration() {
     }
   }
 
+  const updateCurrentTrack = async () => {
+    try {
+      const track = await spotifyService.getCurrentTrack()
+      setCurrentTrack(track)
+      setLastUpdate(new Date())
+    } catch (err) {
+      console.error("Error getting current track:", err)
+      // Don't show error for API restrictions
+      if (err.message.includes("403") || err.message.includes("429")) {
+        return
+      }
+    }
+  }
+
   const updateListeningData = async () => {
     try {
       const sessionData = await spotifyService.getDetailedListeningSession()
@@ -130,7 +151,7 @@ export default function SpotifyIntegration() {
     } catch (err) {
       console.error("Error updating listening data:", err)
       // Don't show error for API rate limits or temporary issues
-      if (err.message.includes("429") || err.message.includes("502")) {
+      if (err.message.includes("429") || err.message.includes("502") || err.message.includes("403")) {
         return
       }
       setError(err.message)
@@ -241,6 +262,47 @@ export default function SpotifyIntegration() {
         </CardHeader>
       </Card>
 
+      {/* Currently Playing Track */}
+      {currentTrack && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Play className="h-5 w-5 text-green-500 animate-pulse" />
+              Now Playing
+            </CardTitle>
+            <CardDescription>Your current Spotify track</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 rounded-lg border border-green-200 dark:border-green-800">
+              {currentTrack.albumArt && (
+                <img
+                  src={currentTrack.albumArt}
+                  alt={currentTrack.album}
+                  className="w-16 h-16 rounded-lg shadow-md"
+                />
+              )}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-lg truncate">{currentTrack.name}</h3>
+                <p className="text-muted-foreground truncate">{currentTrack.artists}</p>
+                <p className="text-sm text-muted-foreground truncate">{currentTrack.album}</p>
+                {currentTrack.progress_ms && currentTrack.duration_ms && (
+                  <div className="mt-2">
+                    <Progress 
+                      value={(currentTrack.progress_ms / currentTrack.duration_ms) * 100} 
+                      className="h-1"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                      <span>{Math.floor(currentTrack.progress_ms / 60000)}:{String(Math.floor((currentTrack.progress_ms % 60000) / 1000)).padStart(2, '0')}</span>
+                      <span>{Math.floor(currentTrack.duration_ms / 60000)}:{String(Math.floor((currentTrack.duration_ms % 60000) / 1000)).padStart(2, '0')}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Current Listening Data */}
       {listeningData && (
         <Card>
@@ -346,7 +408,7 @@ export default function SpotifyIntegration() {
             <p className="text-sm text-muted-foreground mb-4">
               Start playing music on Spotify to see how it affects your plants!
             </p>
-            <Button onClick={updateListeningData} disabled={isLoading}>
+            <Button onClick={() => { updateCurrentTrack(); updateListeningData(); }} disabled={isLoading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
               Check Now
             </Button>

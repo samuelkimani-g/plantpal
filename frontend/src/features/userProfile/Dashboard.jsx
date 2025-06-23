@@ -10,6 +10,7 @@ import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
 import { Progress } from "../../components/ui/progress"
 import Plant3DView from "../../components/Plant3DView"
+import NowPlayingWidget from "../../components/NowPlayingWidget"
 import { Leaf, BookOpen, Music, Heart, Droplets, Sun, Calendar, Sparkles, TrendingUp, Plus, Clock, Zap } from "lucide-react"
 
 const Dashboard = () => {
@@ -272,6 +273,11 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Now Playing Widget */}
+        <div className="animate-slide-up" style={{ animationDelay: "0.1s" }}>
+          <NowPlayingWidget />
+        </div>
 
         {/* Activity Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
