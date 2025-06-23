@@ -32,11 +32,6 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
         # First save the journal entry
         journal_entry = serializer.save(user=self.request.user)
         
-        # Analyze the mood from the text
-        mood, confidence = get_dominant_mood(journal_entry.text)
-        journal_entry.mood_type = mood
-        journal_entry.mood_confidence = confidence
-        
         # Calculate streak
         yesterday = timezone.now() - timedelta(days=1)
         has_recent_entry = JournalEntry.objects.filter(
@@ -45,10 +40,15 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
         ).exists()
         
         if has_recent_entry:
-            self.request.user.journal_streak = (self.request.user.journal_streak or 0) + 1
+            # Update user streak if they have the field
+            if hasattr(self.request.user, 'journal_streak'):
+                self.request.user.journal_streak = (self.request.user.journal_streak or 0) + 1
+                self.request.user.save()
         else:
-            self.request.user.journal_streak = 1
-        self.request.user.save()
+            # Reset streak to 1
+            if hasattr(self.request.user, 'journal_streak'):
+                self.request.user.journal_streak = 1
+                self.request.user.save()
         
         # Update plant mood if user has a plant
         if hasattr(self.request.user, 'plant'):
@@ -62,7 +62,7 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 print(f"Error processing journal sentiment: {e}")
         
-        journal_entry.save()
+        # Journal entry is already saved, no need to save again
 
     @action(detail=False, methods=['get'])
     def latest_entry(self, request):
@@ -81,17 +81,41 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
         """Get journal statistics"""
         entries = self.get_queryset()
         total_entries = entries.count()
-        streak = request.user.journal_streak or 0
+        streak = getattr(request.user, 'journal_streak', 0) or 0
         
-        # Get mood distribution
-        mood_counts = entries.values('mood_type').annotate(
-            count=models.Count('id')
-        )
+        # Get mood distribution from related mood entries
+        mood_counts = []
+        try:
+            # Count entries with mood associations
+            entries_with_mood = entries.filter(mood_entry__isnull=False)
+            mood_distribution = entries_with_mood.values(
+                'mood_entry__mood_type'
+            ).annotate(
+                count=models.Count('id')
+            ).order_by('-count')
+            
+            mood_counts = [
+                {
+                    'mood_type': item['mood_entry__mood_type'],
+                    'count': item['count']
+                }
+                for item in mood_distribution
+            ]
+        except Exception as e:
+            print(f"Error getting mood distribution: {e}")
+            # Fallback to basic stats without mood distribution
+            mood_counts = []
+        
+        # Calculate recent activity (last 7 days)
+        week_ago = timezone.now() - timedelta(days=7)
+        recent_entries = entries.filter(created_at__gte=week_ago).count()
         
         return Response({
             'total_entries': total_entries,
             'streak': streak,
-            'mood_distribution': mood_counts
+            'recent_entries': recent_entries,
+            'mood_distribution': mood_counts,
+            'has_entries': total_entries > 0
         })
 
     @action(detail=True, methods=['post'])
