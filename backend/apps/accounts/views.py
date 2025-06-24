@@ -14,6 +14,7 @@ from .services import SpotifyService
 from apps.plants.services import PlantGrowthService
 from django.conf import settings
 import logging
+import requests
 
 User = get_user_model()
 
@@ -315,21 +316,45 @@ class SpotifyStatusView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        logger = logging.getLogger(__name__)
         try:
+            print(f"DEBUG: SpotifyStatusView: Checking status for user {request.user.username}")
+            
             spotify_profile = SpotifyProfile.objects.get(user=request.user)
+            print(f"DEBUG: SpotifyStatusView: Found Spotify profile for user {request.user.username}")
+            print(f"DEBUG: SpotifyStatusView: Access token present: {bool(spotify_profile.access_token)}")
+            print(f"DEBUG: SpotifyStatusView: Refresh token present: {bool(spotify_profile.refresh_token)}")
+            print(f"DEBUG: SpotifyStatusView: Token expires at: {spotify_profile.token_expires_at}")
+            print(f"DEBUG: SpotifyStatusView: Token expired: {spotify_profile.is_token_expired()}")
+            
             return Response({
                 'connected': True,
                 'expires_at': spotify_profile.token_expires_at.isoformat() if spotify_profile.token_expires_at else None,
                 'is_expired': spotify_profile.is_token_expired(),
-                'scope': spotify_profile.scope
+                'scope': spotify_profile.scope,
+                'has_access_token': bool(spotify_profile.access_token),
+                'has_refresh_token': bool(spotify_profile.refresh_token),
+                'token_type': spotify_profile.token_type
             })
         except SpotifyProfile.DoesNotExist:
+            print(f"DEBUG: SpotifyStatusView: No Spotify profile found for user {request.user.username}")
             return Response({
                 'connected': False,
                 'expires_at': None,
                 'is_expired': True,
-                'scope': None
+                'scope': None,
+                'has_access_token': False,
+                'has_refresh_token': False,
+                'token_type': None,
+                'error': 'No Spotify profile found'
             })
+        except Exception as e:
+            print(f"DEBUG: SpotifyStatusView: Unexpected error: {str(e)}")
+            logger.error(f"Unexpected error in SpotifyStatusView for user {request.user.id}: {str(e)}")
+            return Response({
+                'connected': False,
+                'error': f'Unexpected error: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class SpotifyRefreshView(APIView):
     """Refresh Spotify access token"""
@@ -409,14 +434,6 @@ class SpotifyProxyView(APIView):
                 )
             
             # Make request to Spotify API
-            try:
-                import requests
-            except ImportError:
-                return Response(
-                    {'error': 'Requests library not available'}, 
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-            
             url = f"https://api.spotify.com/v1{endpoint}"
             spotify_headers = {
                 'Authorization': f'Bearer {spotify_profile.access_token}',
@@ -473,46 +490,42 @@ class SpotifyCurrentTrackView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        logger = logging.getLogger(__name__)
         try:
-            spotify_profile = SpotifyProfile.objects.get(user=request.user)
+            print(f"DEBUG: SpotifyCurrentTrackView: Request from user {request.user.username}")
             
-            # Refresh token if needed
-            if spotify_profile.is_token_expired():
-                token_data = SpotifyService.refresh_access_token(spotify_profile.refresh_token)
-                spotify_profile.access_token = token_data['access_token']
-                spotify_profile.token_expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
-                spotify_profile.save()
-            
-            # Get currently playing track
-            import requests
-            
-            url = "https://api.spotify.com/v1/me/player/currently-playing"
-            headers = {
-                'Authorization': f'Bearer {spotify_profile.access_token}',
-                'Content-Type': 'application/json',
-            }
-            
-            response = requests.get(url, headers=headers)
-            
-            if response.status_code == 204:  # No content
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            
-            if response.status_code == 200:
-                return Response(response.json())
-            else:
+            # Use the new SpotifyService method to get valid access token
+            access_token = SpotifyService.get_valid_access_token_for_user(request.user)
+            if not access_token:
+                print(f"DEBUG: SpotifyCurrentTrackView: No valid access token for user {request.user.username}")
                 return Response(
-                    {'error': f'Spotify API error: {response.status_code}'}, 
-                    status=response.status_code
+                    {'error': 'Spotify not connected or tokens invalid'}, 
+                    status=status.HTTP_403_FORBIDDEN
                 )
-                
-        except SpotifyProfile.DoesNotExist:
+            
+            # Get currently playing track using the service
+            track_data = SpotifyService.get_current_track(access_token)
+            
+            if track_data is None:
+                return Response(
+                    {'message': 'No track currently playing'}, 
+                    status=status.HTTP_204_NO_CONTENT
+                )
+            
+            return Response(track_data)
+            
+        except requests.exceptions.RequestException as e:
+            print(f"DEBUG: SpotifyCurrentTrackView: Request exception: {str(e)}")
+            logger.error(f"Spotify API request failed for user {request.user.id}: {str(e)}")
             return Response(
-                {'error': 'Spotify not connected'}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {'error': f'Spotify API request failed: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         except Exception as e:
+            print(f"DEBUG: SpotifyCurrentTrackView: Unexpected error: {str(e)}")
+            logger.error(f"Unexpected error in SpotifyCurrentTrackView for user {request.user.id}: {str(e)}")
             return Response(
-                {'error': f'Failed to get current track: {str(e)}'}, 
+                {'error': f'Unexpected error: {str(e)}'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -521,45 +534,41 @@ class SpotifyRecentlyPlayedView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        logger = logging.getLogger(__name__)
         try:
-            spotify_profile = SpotifyProfile.objects.get(user=request.user)
+            print(f"DEBUG: SpotifyRecentlyPlayedView: Request from user {request.user.username}")
             
-            # Refresh token if needed
-            if spotify_profile.is_token_expired():
-                token_data = SpotifyService.refresh_access_token(spotify_profile.refresh_token)
-                spotify_profile.access_token = token_data['access_token']
-                spotify_profile.token_expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
-                spotify_profile.save()
+            # Use the new SpotifyService method to get valid access token
+            access_token = SpotifyService.get_valid_access_token_for_user(request.user)
+            if not access_token:
+                print(f"DEBUG: SpotifyRecentlyPlayedView: No valid access token for user {request.user.username}")
+                return Response(
+                    {'error': 'Spotify not connected or tokens invalid'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
             
-            # Get limit from query params
             limit = request.GET.get('limit', 20)
             
-            # Get recently played tracks
-            import requests
+            # Get recently played tracks using the service
+            valence_scores = SpotifyService.get_recent_tracks_valence(access_token, int(limit))
             
-            url = f"https://api.spotify.com/v1/me/player/recently-played?limit={limit}"
-            headers = {
-                'Authorization': f'Bearer {spotify_profile.access_token}',
-                'Content-Type': 'application/json',
-            }
+            return Response({
+                'valence_scores': valence_scores,
+                'count': len(valence_scores),
+                'average_valence': sum(valence_scores) / len(valence_scores) if valence_scores else 0
+            })
             
-            response = requests.get(url, headers=headers)
-            
-            if response.status_code == 200:
-                return Response(response.json())
-            else:
-                return Response(
-                    {'error': f'Spotify API error: {response.status_code}'}, 
-                    status=response.status_code
-                )
-                
-        except SpotifyProfile.DoesNotExist:
+        except requests.exceptions.RequestException as e:
+            print(f"DEBUG: SpotifyRecentlyPlayedView: Request exception: {str(e)}")
+            logger.error(f"Spotify API request failed for user {request.user.id}: {str(e)}")
             return Response(
-                {'error': 'Spotify not connected'}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {'error': f'Spotify API request failed: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         except Exception as e:
+            print(f"DEBUG: SpotifyRecentlyPlayedView: Unexpected error: {str(e)}")
+            logger.error(f"Unexpected error in SpotifyRecentlyPlayedView for user {request.user.id}: {str(e)}")
             return Response(
-                {'error': f'Failed to get recently played: {str(e)}'}, 
+                {'error': f'Unexpected error: {str(e)}'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

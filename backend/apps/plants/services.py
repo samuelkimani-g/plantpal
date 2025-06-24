@@ -312,6 +312,8 @@ class SpotifyService:
     def exchange_code_for_tokens(code, redirect_uri):
         """Exchange authorization code for access and refresh tokens"""
         logger = logging.getLogger(__name__)
+        print(f"DEBUG: Exchange code received: {code[:10]}...")
+        
         token_url = "https://accounts.spotify.com/api/token"
         data = {
             'grant_type': 'authorization_code',
@@ -320,11 +322,16 @@ class SpotifyService:
             'client_id': settings.SPOTIFY_CLIENT_ID,
             'client_secret': settings.SPOTIFY_CLIENT_SECRET,
         }
+        
         logger.info(f"SpotifyService.exchange_code_for_tokens: Exchanging code={code} for tokens.")
         response = requests.post(token_url, data=data)
+        
+        print(f"DEBUG: Token exchange response status: {response.status_code}")
         logger.info(f"SpotifyService.exchange_code_for_tokens: Response status={response.status_code}, body={response.text}")
+        
         if response.status_code == 200:
             token_data = response.json()
+            print(f"DEBUG: Token info received: {token_data}")
             return {
                 'access_token': token_data['access_token'],
                 'refresh_token': token_data['refresh_token'],
@@ -343,6 +350,9 @@ class SpotifyService:
         if not refresh_token:
             logger.error("SpotifyService.refresh_access_token: No refresh token provided.")
             raise Exception("No refresh token provided.")
+        
+        print(f"DEBUG: Attempting to refresh token")
+        
         token_url = "https://accounts.spotify.com/api/token"
         data = {
             'grant_type': 'refresh_token',
@@ -350,11 +360,16 @@ class SpotifyService:
             'client_id': settings.SPOTIFY_CLIENT_ID,
             'client_secret': settings.SPOTIFY_CLIENT_SECRET,
         }
+        
         logger.info(f"SpotifyService.refresh_access_token: Refreshing token for refresh_token={refresh_token[:6]}***")
         response = requests.post(token_url, data=data)
+        
+        print(f"DEBUG: Refresh token response status: {response.status_code}")
         logger.info(f"SpotifyService.refresh_access_token: Response status={response.status_code}, body={response.text}")
+        
         if response.status_code == 200:
             token_data = response.json()
+            print(f"DEBUG: New Access Token (first 10 chars): {token_data['access_token'][:10]}...")
             return {
                 'access_token': token_data['access_token'],
                 'expires_in': token_data['expires_in'],
@@ -366,18 +381,78 @@ class SpotifyService:
             raise Exception(f"Failed to refresh token: {response.text}")
 
     @staticmethod
+    def get_user_spotify_profile(user):
+        """Get user's Spotify profile or return None if not connected"""
+        logger = logging.getLogger(__name__)
+        try:
+            from apps.accounts.models import SpotifyProfile
+            spotify_profile = SpotifyProfile.objects.get(user=user)
+            print(f"DEBUG: Found Spotify profile for user: {user.username} (ID: {user.id})")
+            print(f"DEBUG: Spotify profile access token present: {bool(spotify_profile.access_token)}")
+            print(f"DEBUG: Spotify profile refresh token present: {bool(spotify_profile.refresh_token)}")
+            print(f"DEBUG: Spotify profile token expires at: {spotify_profile.token_expires_at}")
+            print(f"DEBUG: Spotify profile token expired: {spotify_profile.is_token_expired()}")
+            return spotify_profile
+        except SpotifyProfile.DoesNotExist:
+            print(f"DEBUG: No Spotify profile found for user: {user.username} (ID: {user.id})")
+            logger.warning(f"No Spotify profile found for user {user.id}")
+            return None
+
+    @staticmethod
+    def get_valid_access_token_for_user(user):
+        """Get a valid access token for a user, refreshing if necessary"""
+        logger = logging.getLogger(__name__)
+        print(f"DEBUG: Calling get_valid_access_token_for_user for user: {user.username}")
+        
+        spotify_profile = SpotifyService.get_user_spotify_profile(user)
+        if not spotify_profile:
+            print(f"DEBUG: No Spotify profile found for user: {user.username}")
+            return None
+        
+        print(f"DEBUG: Current access token present: {bool(spotify_profile.access_token)}")
+        print(f"DEBUG: Current token expires at: {spotify_profile.token_expires_at}. Current time: {timezone.now()}")
+        
+        # Check if token is expired
+        if spotify_profile.is_token_expired():
+            print(f"DEBUG: Token expired, attempting to refresh for user: {user.username}")
+            try:
+                token_data = SpotifyService.refresh_access_token(spotify_profile.refresh_token)
+                spotify_profile.access_token = token_data['access_token']
+                spotify_profile.token_expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
+                spotify_profile.token_type = token_data.get('token_type', 'Bearer')
+                spotify_profile.scope = token_data.get('scope', '')
+                spotify_profile.save()
+                
+                print(f"DEBUG: Token refreshed successfully for user: {user.username}")
+                print(f"DEBUG: New Access Token (first 10 chars): {spotify_profile.access_token[:10]}...")
+                print(f"DEBUG: New Token expires at: {spotify_profile.token_expires_at}")
+                
+                return spotify_profile.access_token
+            except Exception as e:
+                print(f"DEBUG: Failed to refresh token for user {user.username}: {str(e)}")
+                logger.error(f"Failed to refresh token for user {user.id}: {str(e)}")
+                return None
+        else:
+            print(f"DEBUG: Token still valid for user: {user.username}")
+            return spotify_profile.access_token
+
+    @staticmethod
     def get_recent_tracks_valence(access_token, limit=20):
         """Get recent tracks and their valence scores"""
         logger = logging.getLogger(__name__)
         if not access_token:
             logger.error("SpotifyService.get_recent_tracks_valence: No access token provided.")
             return []
+        
         headers = {'Authorization': f'Bearer {access_token}'}
         
         try:
             # Get recently played tracks
             recent_url = f"https://api.spotify.com/v1/me/player/recently-played?limit={limit}"
+            print(f"DEBUG: Making Spotify API call to: {recent_url}")
+            
             response = requests.get(recent_url, headers=headers)
+            print(f"DEBUG: Spotify API response status for {recent_url}: {response.status_code}")
             
             if response.status_code == 403:
                 print("Spotify API 403: Development mode restrictions")
@@ -386,6 +461,7 @@ class SpotifyService:
                 print("Spotify API 429: Rate limit exceeded")
                 return []
             elif response.status_code != 200:
+                print(f"DEBUG: Spotify API error response: {response.text}")
                 raise Exception(f"Failed to get recent tracks: {response.text}")
             
             tracks_data = response.json()
@@ -396,10 +472,14 @@ class SpotifyService:
             
             # Limit to 5 tracks to reduce API calls
             track_ids = track_ids[:5]
+            print(f"DEBUG: Processing {len(track_ids)} track IDs for valence")
             
             # Get audio features for tracks
             features_url = f"https://api.spotify.com/v1/audio-features?ids={','.join(track_ids)}"
+            print(f"DEBUG: Making Spotify API call to: {features_url}")
+            
             features_response = requests.get(features_url, headers=headers)
+            print(f"DEBUG: Spotify API response status for {features_url}: {features_response.status_code}")
             
             if features_response.status_code == 403:
                 print("Spotify API 403: Development mode restrictions on audio features")
@@ -408,6 +488,7 @@ class SpotifyService:
                 print("Spotify API 429: Rate limit exceeded on audio features")
                 return []
             elif features_response.status_code != 200:
+                print(f"DEBUG: Spotify API error response: {features_response.text}")
                 raise Exception(f"Failed to get audio features: {features_response.text}")
             
             features_data = features_response.json()
@@ -415,6 +496,11 @@ class SpotifyService:
                 feature['valence'] for feature in features_data['audio_features'] 
                 if feature and 'valence' in feature
             ]
+            
+            print(f"DEBUG: Got {len(valence_scores)} valence scores")
+            if valence_scores:
+                avg_valence = sum(valence_scores) / len(valence_scores)
+                print(f"DEBUG: Average valence: {avg_valence}")
             
             return valence_scores
             
@@ -432,13 +518,18 @@ class SpotifyService:
         if not access_token:
             logger.error("SpotifyService.get_current_track: No access token provided.")
             return None
+        
         headers = {'Authorization': f'Bearer {access_token}'}
         
         try:
             current_url = "https://api.spotify.com/v1/me/player/currently-playing"
+            print(f"DEBUG: Making Spotify API call to: {current_url}")
+            
             response = requests.get(current_url, headers=headers)
+            print(f"DEBUG: Spotify API response status for {current_url}: {response.status_code}")
             
             if response.status_code == 204:
+                print("DEBUG: No track currently playing")
                 return None  # No track currently playing
             elif response.status_code == 403:
                 print("Spotify API 403: Development mode restrictions")
@@ -447,6 +538,7 @@ class SpotifyService:
                 print("Spotify API 429: Rate limit exceeded")
                 return None
             elif response.status_code != 200:
+                print(f"DEBUG: Spotify API error response: {response.text}")
                 print(f"Failed to get current track: {response.text}")
                 return None
             
@@ -458,6 +550,26 @@ class SpotifyService:
         except Exception as e:
             print(f"Error getting current track: {e}")
             return None
+
+    @staticmethod
+    def get_and_process_valence_for_user(user, limit=5):
+        """Get and process valence scores for a specific user"""
+        logger = logging.getLogger(__name__)
+        print(f"DEBUG: In get_and_process_valence_for_user for user: {user.username}")
+        
+        access_token = SpotifyService.get_valid_access_token_for_user(user)
+        if not access_token:
+            print(f"DEBUG: No valid access token for user: {user.username}")
+            return []
+        
+        valence_scores = SpotifyService.get_recent_tracks_valence(access_token, limit)
+        print(f"DEBUG: Got {len(valence_scores)} valence scores for user: {user.username}")
+        
+        if valence_scores:
+            avg_valence = sum(valence_scores) / len(valence_scores)
+            print(f"DEBUG: Average valence for user {user.username}: {avg_valence}")
+        
+        return valence_scores
 
 class FirestoreService:
     """Service to handle Firestore operations"""
