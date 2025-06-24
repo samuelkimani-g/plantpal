@@ -8,8 +8,12 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # Allowed hosts configured by environment variable for flexibility
 # The string should be a comma-separated list of hostnames.
-ALLOWED_HOSTS_STRING = os.environ.get('ALLOWED_HOSTS', 'plantpal-4hx7.onrender.com,localhost')
+ALLOWED_HOSTS_STRING = os.environ.get('ALLOWED_HOSTS', 'plantpal-4hx7.onrender.com,localhost,127.0.0.1')
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_STRING.split(',') if host.strip()]
+
+# Ensure the Render domain is always included
+if 'plantpal-4hx7.onrender.com' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('plantpal-4hx7.onrender.com')
 
 # Database configuration for Render
 if 'DATABASE_URL' in os.environ:
@@ -26,8 +30,12 @@ else:
     }
 
 # CORS settings for production, configured by environment variable
-CORS_ALLOWED_ORIGINS_STRING = os.environ.get('CORS_ALLOWED_ORIGINS', 'https://plantpal-three.vercel.app,http://localhost:5173')
+CORS_ALLOWED_ORIGINS_STRING = os.environ.get('CORS_ALLOWED_ORIGINS', 'https://plantpal-three.vercel.app,http://localhost:5173,https://localhost:5173')
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_STRING.split(',') if origin.strip()]
+
+# Ensure the Vercel frontend is always included
+if 'https://plantpal-three.vercel.app' not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append('https://plantpal-three.vercel.app')
 
 CORS_ALLOW_CREDENTIALS = True
 
