@@ -269,6 +269,36 @@ class PlantLogViewSet(viewsets.ModelViewSet):
             return PlantLog.objects.filter(plant=self.request.user.plant)
         return PlantLog.objects.none()
 
+    def create(self, request, *args, **kwargs):
+        """Create a new plant log with better error handling"""
+        try:
+            # Check if user has a plant
+            if not hasattr(request.user, 'plant') or not request.user.plant:
+                return Response(
+                    {'error': 'You need to create a plant first before logging activities'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Add the plant to the request data if not provided
+            data = request.data.copy()
+            if 'plant' not in data:
+                data['plant'] = request.user.plant.id
+            
+            serializer = self.get_serializer(data=data)
+            if serializer.is_valid():
+                plant_log = serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                print(f"PlantLog validation errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            print(f"Error creating plant log: {e}")
+            return Response(
+                {'error': f'Failed to create plant log: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 class PublicGardenView(APIView):
     """List all public plants for the public garden feature"""
     permission_classes = [permissions.IsAuthenticated]

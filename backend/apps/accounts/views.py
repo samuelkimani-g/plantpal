@@ -281,12 +281,10 @@ class SpotifyDisconnectView(APIView):
         try:
             spotify_profile = SpotifyProfile.objects.get(user=request.user)
             spotify_profile.delete()
-            return Response({'message': 'Spotify disconnected successfully'})
+            return Response({'message': 'Spotify disconnected successfully'}, status=status.HTTP_200_OK)
         except SpotifyProfile.DoesNotExist:
-            return Response(
-                {'error': 'Spotify not connected'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            # User is already disconnected, so the operation is successful
+            return Response({'message': 'Spotify already disconnected'}, status=status.HTTP_200_OK)
 
 class SpotifyStatusView(APIView):
     """Check Spotify connection status"""
