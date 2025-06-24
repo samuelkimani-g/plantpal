@@ -274,17 +274,99 @@ class SpotifyFetchValenceView(APIView):
             )
 
 class SpotifyDisconnectView(APIView):
-    """Disconnect Spotify account"""
+    """Disconnect Spotify account completely - removes ALL traces of Spotify connection"""
     permission_classes = [permissions.IsAuthenticated]
 
     def delete(self, request):
+        logger = logging.getLogger(__name__)
+        print(f"DEBUG: ============ COMPLETE SPOTIFY DISCONNECT ============")
+        print(f"DEBUG: Disconnecting Spotify for user: {request.user.username} (ID: {request.user.id})")
+        
         try:
+            # Step 1: Delete Spotify profile if it exists
             spotify_profile = SpotifyProfile.objects.get(user=request.user)
+            print(f"DEBUG: ✅ Found Spotify profile - deleting...")
+            print(f"DEBUG: Profile had access_token: {bool(spotify_profile.access_token)}")
+            print(f"DEBUG: Profile had refresh_token: {bool(spotify_profile.refresh_token)}")
+            print(f"DEBUG: Profile token expires at: {spotify_profile.token_expires_at}")
+            
             spotify_profile.delete()
-            return Response({'message': 'Spotify disconnected successfully'}, status=status.HTTP_200_OK)
+            print(f"DEBUG: ✅ Spotify profile deleted successfully")
+            profile_existed = True
+            
         except SpotifyProfile.DoesNotExist:
-            # User is already disconnected, so the operation is successful
-            return Response({'message': 'Spotify already disconnected'}, status=status.HTTP_200_OK)
+            print(f"DEBUG: ℹ️ No Spotify profile found (already disconnected)")
+            profile_existed = False
+        
+        # Step 2: Reset plant's Spotify-related fields if user has a plant
+        try:
+            if hasattr(request.user, 'plant') and request.user.plant:
+                plant = request.user.plant
+                print(f"DEBUG: ✅ Found user's plant: {plant.name}")
+                print(f"DEBUG: Current spotify_mood_score: {plant.spotify_mood_score}")
+                print(f"DEBUG: Current music_boost_active: {plant.music_boost_active}")
+                print(f"DEBUG: Current total_music_minutes: {plant.total_music_minutes}")
+                
+                # Reset all Spotify/music-related fields to defaults
+                plant.spotify_mood_score = 0.5  # Reset to neutral
+                plant.music_boost_active = False
+                plant.total_music_minutes = 0
+                
+                # Recalculate combined mood score without Spotify influence
+                plant.update_mood_influence()
+                plant.save()
+                
+                print(f"DEBUG: ✅ Plant Spotify data reset successfully")
+                print(f"DEBUG: New spotify_mood_score: {plant.spotify_mood_score}")
+                print(f"DEBUG: New music_boost_active: {plant.music_boost_active}")
+                print(f"DEBUG: New total_music_minutes: {plant.total_music_minutes}")
+                plant_reset = True
+            else:
+                print(f"DEBUG: ℹ️ User has no plant to reset")
+                plant_reset = False
+                
+        except Exception as e:
+            print(f"DEBUG: ⚠️ Error resetting plant data: {str(e)}")
+            logger.warning(f"Error resetting plant data for user {request.user.id}: {str(e)}")
+            plant_reset = False
+        
+        # Step 3: Delete all Spotify-related plant logs
+        try:
+            from apps.plants.models import PlantLog
+            if hasattr(request.user, 'plant') and request.user.plant:
+                spotify_logs = PlantLog.objects.filter(
+                    plant=request.user.plant,
+                    activity_type__in=['spotify_mood', 'music_boost']
+                )
+                log_count = spotify_logs.count()
+                spotify_logs.delete()
+                print(f"DEBUG: ✅ Deleted {log_count} Spotify-related plant logs")
+                logs_deleted = log_count
+            else:
+                logs_deleted = 0
+                print(f"DEBUG: ℹ️ No plant logs to delete")
+                
+        except Exception as e:
+            print(f"DEBUG: ⚠️ Error deleting Spotify logs: {str(e)}")
+            logger.warning(f"Error deleting Spotify logs for user {request.user.id}: {str(e)}")
+            logs_deleted = 0
+        
+        print(f"DEBUG: ============ DISCONNECT COMPLETE ============")
+        print(f"DEBUG: Summary:")
+        print(f"  - Spotify profile deleted: {profile_existed}")
+        print(f"  - Plant data reset: {plant_reset}")
+        print(f"  - Spotify logs deleted: {logs_deleted}")
+        
+        logger.info(f"Complete Spotify disconnect for user {request.user.id}: profile_deleted={profile_existed}, plant_reset={plant_reset}, logs_deleted={logs_deleted}")
+        
+        return Response({
+            'message': 'Spotify disconnected completely - all traces removed',
+            'details': {
+                'profile_deleted': profile_existed,
+                'plant_data_reset': plant_reset,
+                'logs_deleted': logs_deleted
+            }
+        }, status=status.HTTP_200_OK)
 
 class SpotifyStatusView(APIView):
     """Check Spotify connection status"""

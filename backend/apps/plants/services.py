@@ -355,9 +355,15 @@ class SpotifyService:
             logger.error("SpotifyService.refresh_access_token: No refresh token provided.")
             raise Exception("No refresh token provided.")
         
-        print(f"DEBUG: Attempting to refresh token")
+        print(f"DEBUG: ============ SPOTIFY TOKEN REFRESH ATTEMPT ============")
+        print(f"DEBUG: Refresh token provided: {bool(refresh_token)}")
+        print(f"DEBUG: Refresh token (first 10 chars): {refresh_token[:10]}...")
+        print(f"DEBUG: Refresh token (last 10 chars): ...{refresh_token[-10:]}")
         
         token_url = "https://accounts.spotify.com/api/token"
+        print(f"DEBUG: Token refresh URL: {token_url}")
+        
+        # Prepare request data
         data = {
             'grant_type': 'refresh_token',
             'refresh_token': refresh_token,
@@ -365,24 +371,71 @@ class SpotifyService:
             'client_secret': settings.SPOTIFY_CLIENT_SECRET,
         }
         
-        logger.info(f"SpotifyService.refresh_access_token: Refreshing token for refresh_token={refresh_token[:6]}***")
-        response = requests.post(token_url, data=data)
+        # Log request details (mask sensitive data)
+        print(f"DEBUG: Request POST data:")
+        print(f"  - grant_type: {data['grant_type']}")
+        print(f"  - refresh_token: {refresh_token[:10]}...{refresh_token[-10:]}")
+        print(f"  - client_id: {settings.SPOTIFY_CLIENT_ID}")
+        print(f"  - client_secret: {'*' * len(settings.SPOTIFY_CLIENT_SECRET)}")
         
-        print(f"DEBUG: Refresh token response status: {response.status_code}")
-        logger.info(f"SpotifyService.refresh_access_token: Response status={response.status_code}, body={response.text}")
+        # Prepare headers
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        print(f"DEBUG: Request headers: {headers}")
         
-        if response.status_code == 200:
-            token_data = response.json()
-            print(f"DEBUG: New Access Token (first 10 chars): {token_data['access_token'][:10]}...")
-            return {
-                'access_token': token_data['access_token'],
-                'expires_in': token_data['expires_in'],
-                'token_type': token_data.get('token_type', 'Bearer'),
-                'scope': token_data.get('scope', '')
-            }
-        else:
-            logger.error(f"SpotifyService.refresh_access_token: Failed to refresh token: {response.text}")
-            raise Exception(f"Failed to refresh token: {response.text}")
+        try:
+            logger.info(f"SpotifyService.refresh_access_token: Refreshing token for refresh_token={refresh_token[:6]}***")
+            
+            print(f"DEBUG: Making POST request to Spotify token endpoint...")
+            response = requests.post(token_url, data=data, headers=headers)
+            
+            print(f"DEBUG: ============ SPOTIFY TOKEN REFRESH RESPONSE ============")
+            print(f"DEBUG: Response status code: {response.status_code}")
+            print(f"DEBUG: Response headers: {dict(response.headers)}")
+            print(f"DEBUG: Response body (full): {response.text}")
+            
+            logger.info(f"SpotifyService.refresh_access_token: Response status={response.status_code}, body={response.text}")
+            
+            if response.status_code == 200:
+                token_data = response.json()
+                print(f"DEBUG: ✅ TOKEN REFRESH SUCCESSFUL!")
+                print(f"DEBUG: New access_token (first 10 chars): {token_data['access_token'][:10]}...")
+                print(f"DEBUG: Token expires_in: {token_data['expires_in']} seconds")
+                print(f"DEBUG: Token type: {token_data.get('token_type', 'Bearer')}")
+                print(f"DEBUG: Token scope: {token_data.get('scope', 'N/A')}")
+                
+                return {
+                    'access_token': token_data['access_token'],
+                    'expires_in': token_data['expires_in'],
+                    'token_type': token_data.get('token_type', 'Bearer'),
+                    'scope': token_data.get('scope', '')
+                }
+            else:
+                print(f"DEBUG: ❌ TOKEN REFRESH FAILED!")
+                print(f"DEBUG: Error status: {response.status_code}")
+                print(f"DEBUG: Error response: {response.text}")
+                
+                # Parse error details if possible
+                try:
+                    error_data = response.json()
+                    print(f"DEBUG: Parsed error data: {error_data}")
+                    error_msg = error_data.get('error_description', error_data.get('error', 'Unknown error'))
+                    print(f"DEBUG: Spotify error message: {error_msg}")
+                except:
+                    error_msg = response.text
+                
+                logger.error(f"SpotifyService.refresh_access_token: Failed to refresh token: {response.text}")
+                raise Exception(f"Failed to refresh token: {error_msg}")
+                
+        except requests.exceptions.RequestException as e:
+            print(f"DEBUG: ❌ REQUEST EXCEPTION during token refresh: {str(e)}")
+            logger.error(f"SpotifyService.refresh_access_token: Request exception: {str(e)}")
+            raise Exception(f"Network error during token refresh: {str(e)}")
+        except Exception as e:
+            print(f"DEBUG: ❌ UNEXPECTED EXCEPTION during token refresh: {str(e)}")
+            logger.error(f"SpotifyService.refresh_access_token: Unexpected error: {str(e)}")
+            raise
 
     def get_user_spotify_profile(self):
         """Get user's Spotify profile or return None if not connected"""
@@ -402,38 +455,66 @@ class SpotifyService:
 
     def _get_valid_access_token(self):
         """Get a valid access token for the user, refreshing if necessary"""
-        print(f"DEBUG: Calling _get_valid_access_token for user: {self.user.username}")
+        print(f"DEBUG: ============ GET VALID ACCESS TOKEN ============")
+        print(f"DEBUG: Called for user: {self.user.username} (ID: {self.user.id})")
         
         spotify_profile = self.get_user_spotify_profile()
         if not spotify_profile:
-            print(f"DEBUG: No Spotify profile found for user: {self.user.username}")
+            print(f"DEBUG: ❌ No Spotify profile found for user: {self.user.username}")
+            print(f"DEBUG: User needs to connect Spotify first")
             return None
         
-        print(f"DEBUG: Current access token present: {bool(spotify_profile.access_token)}")
-        print(f"DEBUG: Current token expires at: {spotify_profile.token_expires_at}. Current time: {timezone.now()}")
+        print(f"DEBUG: ✅ Spotify profile exists for user: {self.user.username}")
+        print(f"DEBUG: Access token present: {bool(spotify_profile.access_token)}")
+        print(f"DEBUG: Refresh token present: {bool(spotify_profile.refresh_token)}")
+        print(f"DEBUG: Token expires at: {spotify_profile.token_expires_at}")
+        print(f"DEBUG: Current time: {timezone.now()}")
+        print(f"DEBUG: Token expired: {spotify_profile.is_token_expired()}")
+        
+        if not spotify_profile.refresh_token:
+            print(f"DEBUG: ❌ No refresh token available for user: {self.user.username}")
+            print(f"DEBUG: User needs to reconnect Spotify to get new refresh token")
+            return None
         
         # Check if token is expired
         if spotify_profile.is_token_expired():
-            print(f"DEBUG: Token expired, attempting to refresh for user: {self.user.username}")
+            print(f"DEBUG: 🔄 Token expired, attempting to refresh for user: {self.user.username}")
+            print(f"DEBUG: Using refresh token: {spotify_profile.refresh_token[:10]}...{spotify_profile.refresh_token[-10:]}")
+            
             try:
+                print(f"DEBUG: Calling SpotifyService.refresh_access_token...")
                 token_data = SpotifyService.refresh_access_token(spotify_profile.refresh_token)
+                
+                print(f"DEBUG: ✅ Token refresh successful, updating profile...")
+                print(f"DEBUG: Old access token: {spotify_profile.access_token[:10] if spotify_profile.access_token else 'None'}...")
+                print(f"DEBUG: New access token: {token_data['access_token'][:10]}...")
+                
+                # Update profile with new token data
                 spotify_profile.access_token = token_data['access_token']
                 spotify_profile.token_expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
                 spotify_profile.token_type = token_data.get('token_type', 'Bearer')
                 spotify_profile.scope = token_data.get('scope', '')
                 spotify_profile.save()
                 
-                print(f"DEBUG: Token refreshed successfully for user: {self.user.username}")
-                print(f"DEBUG: New Access Token (first 10 chars): {spotify_profile.access_token[:10]}...")
-                print(f"DEBUG: New Token expires at: {spotify_profile.token_expires_at}")
+                print(f"DEBUG: ✅ Profile updated successfully!")
+                print(f"DEBUG: New token expires at: {spotify_profile.token_expires_at}")
+                print(f"DEBUG: Token type: {spotify_profile.token_type}")
+                print(f"DEBUG: Token scope: {spotify_profile.scope}")
                 
                 return spotify_profile.access_token
+                
             except Exception as e:
-                print(f"DEBUG: Failed to refresh token for user {self.user.username}: {str(e)}")
+                print(f"DEBUG: ❌ Failed to refresh token for user {self.user.username}: {str(e)}")
+                print(f"DEBUG: Exception type: {type(e).__name__}")
+                print(f"DEBUG: Exception details: {str(e)}")
                 self.logger.error(f"Failed to refresh token for user {self.user.id}: {str(e)}")
+                
+                # If refresh fails, the user needs to reconnect
+                print(f"DEBUG: Token refresh failed - user needs to reconnect Spotify")
                 return None
         else:
-            print(f"DEBUG: Token still valid for user: {self.user.username}")
+            print(f"DEBUG: ✅ Token still valid for user: {self.user.username}")
+            print(f"DEBUG: Token expires in: {spotify_profile.token_expires_at - timezone.now()}")
             return spotify_profile.access_token
 
     def get_recent_tracks_valence(self, limit=20):
