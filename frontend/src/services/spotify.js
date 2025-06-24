@@ -145,51 +145,50 @@ export class SpotifyService {
     return "backend_managed"; // Placeholder since backend manages tokens
   }
 
-  // Make authenticated Spotify API request (legacy - now uses backend when possible)
-  async apiRequest(endpoint, options = {}) {
-    // For now, keep the original implementation for features not yet moved to backend
-    // This allows gradual migration
-    
+  // Make authenticated Spotify API request via backend
+  async apiRequest(method, endpoint, options = {}) {
     // Rate limiting: ensure minimum delay between requests
     const now = Date.now()
     const timeSinceLastRequest = now - this.lastRequestTime
     if (timeSinceLastRequest < this.rateLimitDelay) {
       await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay - timeSinceLastRequest))
     }
-    this.lastRequestTime = Date.now()
+    this.lastRequestTime = now
 
-    // Check if we have locally stored tokens (for backward compatibility)
-    const accessToken = localStorage.getItem("spotify_access_token")
-    if (!accessToken) {
-      throw new Error("No Spotify access token available - please reconnect via backend")
-    }
+    try {
+      // Use backend to proxy the Spotify API request
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/accounts/spotify/proxy/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          method: method,
+          endpoint: endpoint,
+          data: options.body || null,
+          headers: options.headers || {}
+        })
+      });
 
-    const response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
-      ...options,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    })
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        // Token might be invalid - suggest reconnection
-        throw new Error("Spotify token expired - please reconnect")
-      } else if (response.status === 403) {
-        // Handle development mode restrictions
-        console.warn('Spotify API 403: Development mode restrictions. Add user to your Spotify app or request quota extension.')
-        throw new Error('Spotify API access restricted. Please check app permissions.')
-      } else if (response.status === 429) {
-        // Rate limit exceeded
-        console.warn('Spotify API rate limit exceeded. Please try again later.')
-        throw new Error('Too many requests. Please wait before trying again.')
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token might be invalid - suggest reconnection
+          throw new Error("Spotify token expired - please reconnect")
+        } else if (response.status === 403) {
+          throw new Error('Spotify API access restricted. Please check app permissions.')
+        } else if (response.status === 429) {
+          throw new Error('Too many requests. Please wait before trying again.')
+        }
+        throw new Error(`Spotify API error: ${response.status}`)
       }
-      throw new Error(`Spotify API error: ${response.status}`)
-    }
 
-    return response.json()
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Spotify API request failed:', error);
+      throw error;
+    }
   }
 
   // Get currently playing track
@@ -197,25 +196,18 @@ export class SpotifyService {
     try {
       const response = await this.apiRequest('GET', '/me/player/currently-playing');
       
-      if (response.status === 401) {
-        // Token expired - try reconnection once
-        if (!this.reconnectionAttempted) {
-          console.log('🔄 Token expired, attempting reconnection...');
-          const reconnected = await this.attemptReconnection();
-          if (reconnected) {
-            // Retry the request once after successful reconnection
-            return await this.apiRequest('GET', '/me/player/currently-playing');
-          }
-        }
-        // If reconnection failed or already attempted, throw error
-        throw new Error('Spotify token expired - please reconnect');
+      // Handle 204 No Content (no track playing)
+      if (!response || response.status === 204) {
+        return null;
       }
       
-      if (response.status === 204) {
-        return null; // No track playing
+      // If response has data property, extract it
+      if (response.data) {
+        return response.data;
       }
       
-      return response.data;
+      // Otherwise return the response directly
+      return response;
     } catch (error) {
       console.error('Error getting current track:', error);
       throw error;
@@ -224,18 +216,56 @@ export class SpotifyService {
 
   // Get recently played tracks
   async getRecentlyPlayed(limit = 20) {
-    return this.apiRequest(`/me/player/recently-played?limit=${limit}`)
+    try {
+      const response = await this.apiRequest('GET', `/me/player/recently-played?limit=${limit}`);
+      
+      // If response has data property, extract it
+      if (response.data) {
+        return response.data;
+      }
+      
+      // Otherwise return the response directly
+      return response;
+    } catch (error) {
+      console.error('Error getting recently played:', error);
+      throw error;
+    }
   }
 
-  // Get user's top tracks (for mood analysis)
+  // Get top tracks
   async getTopTracks(timeRange = "short_term", limit = 20) {
-    return this.apiRequest(`/me/top/tracks?time_range=${timeRange}&limit=${limit}`)
+    try {
+      const response = await this.apiRequest('GET', `/me/top/tracks?time_range=${timeRange}&limit=${limit}`);
+      
+      // If response has data property, extract it
+      if (response.data) {
+        return response.data;
+      }
+      
+      // Otherwise return the response directly
+      return response;
+    } catch (error) {
+      console.error('Error getting top tracks:', error);
+      throw error;
+    }
   }
 
-  // Get audio features for tracks (for mood calculation)
+  // Get audio features for tracks
   async getAudioFeatures(trackIds) {
-    const ids = Array.isArray(trackIds) ? trackIds.join(",") : trackIds
-    return this.apiRequest(`/audio-features?ids=${ids}`)
+    try {
+      const response = await this.apiRequest('GET', `/audio-features?ids=${trackIds.join(',')}`);
+      
+      // If response has data property, extract it
+      if (response.data) {
+        return response.data;
+      }
+      
+      // Otherwise return the response directly
+      return response;
+    } catch (error) {
+      console.error('Error getting audio features:', error);
+      throw error;
+    }
   }
 
   // Calculate mood score from audio features
