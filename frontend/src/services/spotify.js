@@ -194,20 +194,24 @@ export class SpotifyService {
   // Get currently playing track
   async getCurrentTrack() {
     try {
-      const response = await this.apiRequest('GET', '/me/player/currently-playing');
-      
-      // Handle 204 No Content (no track playing)
-      if (!response || response.status === 204) {
-        return null;
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/accounts/spotify/current-track/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.status === 204) {
+        return null; // No track playing
       }
-      
-      // If response has data property, extract it
-      if (response.data) {
-        return response.data;
+
+      if (!response.ok) {
+        throw new Error(`Spotify API error: ${response.status}`);
       }
-      
-      // Otherwise return the response directly
-      return response;
+
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error('Error getting current track:', error);
       throw error;
@@ -217,15 +221,20 @@ export class SpotifyService {
   // Get recently played tracks
   async getRecentlyPlayed(limit = 20) {
     try {
-      const response = await this.apiRequest('GET', `/me/player/recently-played?limit=${limit}`);
-      
-      // If response has data property, extract it
-      if (response.data) {
-        return response.data;
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/accounts/spotify/recently-played/?limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Spotify API error: ${response.status}`);
       }
-      
-      // Otherwise return the response directly
-      return response;
+
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error('Error getting recently played:', error);
       throw error;
