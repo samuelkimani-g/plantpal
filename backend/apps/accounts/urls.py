@@ -15,6 +15,8 @@ from .views import (
     SpotifyStatusView,
     SpotifyRefreshView,
     SpotifyProxyView,
+    SpotifyCurrentTrackView,
+    SpotifyRecentlyPlayedView,
     UserViewSet,
     SpotifyConnectionView
 )
@@ -41,6 +43,8 @@ urlpatterns = [
     path('spotify/status/', SpotifyStatusView.as_view(), name='spotify_status'),
     path('spotify/refresh/', SpotifyRefreshView.as_view(), name='spotify_refresh'),
     path('spotify/proxy/', SpotifyProxyView.as_view(), name='spotify_proxy'),
+    path('spotify/current-track/', SpotifyCurrentTrackView.as_view(), name='spotify_current_track'),
+    path('spotify/recently-played/', SpotifyRecentlyPlayedView.as_view(), name='spotify_recently_played'),
     path('spotify/disconnect/', SpotifyDisconnectView.as_view(), name='spotify_disconnect'),
     path('spotify/', SpotifyConnectionView.as_view(), name='spotify_connection'),
     

@@ -373,6 +373,111 @@ class SpotifyProxyView(APIView):
 
     def post(self, request):
         try:
+            # Log the incoming request for debugging
+            print(f"SpotifyProxyView: Received request data: {request.data}")
+            
+            spotify_profile = SpotifyProfile.objects.get(user=request.user)
+            print(f"SpotifyProxyView: Found Spotify profile for user {request.user.id}")
+            
+            # Refresh token if needed
+            if spotify_profile.is_token_expired():
+                print("SpotifyProxyView: Token expired, refreshing...")
+                token_data = SpotifyService.refresh_access_token(spotify_profile.refresh_token)
+                spotify_profile.access_token = token_data['access_token']
+                spotify_profile.token_expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
+                spotify_profile.save()
+                print("SpotifyProxyView: Token refreshed successfully")
+            
+            # Get request details from frontend
+            method = request.data.get('method', 'GET')
+            endpoint = request.data.get('endpoint', '')
+            data = request.data.get('data')
+            headers = request.data.get('headers', {})
+            
+            print(f"SpotifyProxyView: Making {method} request to {endpoint}")
+            
+            # Validate required fields
+            if not endpoint:
+                return Response(
+                    {'error': 'Endpoint is required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Make request to Spotify API
+            try:
+                import requests
+            except ImportError:
+                return Response(
+                    {'error': 'Requests library not available'}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            url = f"https://api.spotify.com/v1{endpoint}"
+            spotify_headers = {
+                'Authorization': f'Bearer {spotify_profile.access_token}',
+                'Content-Type': 'application/json',
+                **headers
+            }
+            
+            print(f"SpotifyProxyView: Making request to {url}")
+            
+            try:
+                if method.upper() == 'GET':
+                    response = requests.get(url, headers=spotify_headers)
+                elif method.upper() == 'POST':
+                    response = requests.post(url, headers=spotify_headers, json=data)
+                elif method.upper() == 'PUT':
+                    response = requests.put(url, headers=spotify_headers, json=data)
+                elif method.upper() == 'DELETE':
+                    response = requests.delete(url, headers=spotify_headers)
+                else:
+                    return Response(
+                        {'error': f'Unsupported method: {method}'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                print(f"SpotifyProxyView: Spotify API response status: {response.status_code}")
+                
+                # Return Spotify API response
+                if response.status_code == 204:  # No content
+                    return Response(status=status.HTTP_204_NO_CONTENT)
+                
+                try:
+                    response_data = response.json()
+                    return Response(response_data, status=response.status_code)
+                except ValueError:
+                    # Response is not JSON
+                    return Response(
+                        {'content': response.text}, 
+                        status=response.status_code
+                    )
+                    
+            except requests.exceptions.RequestException as e:
+                print(f"SpotifyProxyView: Request failed: {str(e)}")
+                return Response(
+                    {'error': f'Spotify API request failed: {str(e)}'}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+                
+        except SpotifyProfile.DoesNotExist:
+            print("SpotifyProxyView: Spotify profile not found")
+            return Response(
+                {'error': 'Spotify not connected'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            print(f"SpotifyProxyView: Unexpected error: {str(e)}")
+            return Response(
+                {'error': f'Spotify API request failed: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class SpotifyCurrentTrackView(APIView):
+    """Get currently playing track"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
             spotify_profile = SpotifyProfile.objects.get(user=request.user)
             
             # Refresh token if needed
@@ -382,47 +487,25 @@ class SpotifyProxyView(APIView):
                 spotify_profile.token_expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
                 spotify_profile.save()
             
-            # Get request details from frontend
-            method = request.data.get('method', 'GET')
-            endpoint = request.data.get('endpoint', '')
-            data = request.data.get('data')
-            headers = request.data.get('headers', {})
-            
-            # Make request to Spotify API
+            # Get currently playing track
             import requests
             
-            url = f"https://api.spotify.com/v1{endpoint}"
-            spotify_headers = {
+            url = "https://api.spotify.com/v1/me/player/currently-playing"
+            headers = {
                 'Authorization': f'Bearer {spotify_profile.access_token}',
                 'Content-Type': 'application/json',
-                **headers
             }
             
-            if method.upper() == 'GET':
-                response = requests.get(url, headers=spotify_headers)
-            elif method.upper() == 'POST':
-                response = requests.post(url, headers=spotify_headers, json=data)
-            elif method.upper() == 'PUT':
-                response = requests.put(url, headers=spotify_headers, json=data)
-            elif method.upper() == 'DELETE':
-                response = requests.delete(url, headers=spotify_headers)
-            else:
-                return Response(
-                    {'error': f'Unsupported method: {method}'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            response = requests.get(url, headers=headers)
             
-            # Return Spotify API response
             if response.status_code == 204:  # No content
                 return Response(status=status.HTTP_204_NO_CONTENT)
             
-            try:
-                response_data = response.json()
-                return Response(response_data, status=response.status_code)
-            except ValueError:
-                # Response is not JSON
+            if response.status_code == 200:
+                return Response(response.json())
+            else:
                 return Response(
-                    {'content': response.text}, 
+                    {'error': f'Spotify API error: {response.status_code}'}, 
                     status=response.status_code
                 )
                 
@@ -433,6 +516,54 @@ class SpotifyProxyView(APIView):
             )
         except Exception as e:
             return Response(
-                {'error': f'Spotify API request failed: {str(e)}'}, 
+                {'error': f'Failed to get current track: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class SpotifyRecentlyPlayedView(APIView):
+    """Get recently played tracks"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            spotify_profile = SpotifyProfile.objects.get(user=request.user)
+            
+            # Refresh token if needed
+            if spotify_profile.is_token_expired():
+                token_data = SpotifyService.refresh_access_token(spotify_profile.refresh_token)
+                spotify_profile.access_token = token_data['access_token']
+                spotify_profile.token_expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
+                spotify_profile.save()
+            
+            # Get limit from query params
+            limit = request.GET.get('limit', 20)
+            
+            # Get recently played tracks
+            import requests
+            
+            url = f"https://api.spotify.com/v1/me/player/recently-played?limit={limit}"
+            headers = {
+                'Authorization': f'Bearer {spotify_profile.access_token}',
+                'Content-Type': 'application/json',
+            }
+            
+            response = requests.get(url, headers=headers)
+            
+            if response.status_code == 200:
+                return Response(response.json())
+            else:
+                return Response(
+                    {'error': f'Spotify API error: {response.status_code}'}, 
+                    status=response.status_code
+                )
+                
+        except SpotifyProfile.DoesNotExist:
+            return Response(
+                {'error': 'Spotify not connected'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to get recently played: {str(e)}'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
