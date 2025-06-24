@@ -8,28 +8,41 @@ export default function NowPlayingWidget() {
   const [isConnected, setIsConnected] = useState(false)
 
   useEffect(() => {
-    // Check if Spotify is connected
-    setIsConnected(spotifyService.isConnected())
+    let intervalId
+    let mounted = true
 
-    if (spotifyService.isConnected()) {
-      // Update current track immediately
-      updateCurrentTrack()
+    const updateCurrentTrack = async () => {
+      if (!mounted) return
+      
+      try {
+        const track = await spotifyService.getCurrentTrack()
+        if (mounted) {
+          setCurrentTrack(track)
+        }
+      } catch (error) {
+        if (mounted) {
+          console.error("Error getting current track:", error)
+          setCurrentTrack(null)
+        }
+      }
+    }
 
-      // Update every 15 seconds
-      const interval = setInterval(updateCurrentTrack, 15000)
-      return () => clearInterval(interval)
+    // Initial update
+    updateCurrentTrack()
+
+    // Set up interval for updates
+    intervalId = setInterval(updateCurrentTrack, 5000)
+
+    // Cleanup function
+    return () => {
+      mounted = false
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+      // Cleanup Spotify service to prevent memory leaks
+      spotifyService.cleanup()
     }
   }, [])
-
-  const updateCurrentTrack = async () => {
-    try {
-      const track = await spotifyService.getCurrentTrack()
-      setCurrentTrack(track)
-    } catch (err) {
-      // Silently handle errors for this widget
-      console.log("Now Playing widget: Could not fetch current track")
-    }
-  }
 
   if (!isConnected || !currentTrack) {
     return null

@@ -25,6 +25,8 @@ export class SpotifyService {
     this.rateLimitDelay = 1000 // 1 second between requests
     this.lastRequestTime = 0
     this.backendMode = true // Use backend endpoints
+    this.reconnectionAttempted = false // Prevent infinite reconnection loops
+    this.reconnectionTimeout = null // Track reconnection timeout
   }
 
   // Get Spotify authorization URL from backend
@@ -191,8 +193,33 @@ export class SpotifyService {
   }
 
   // Get currently playing track
-  async getCurrentlyPlaying() {
-    return this.apiRequest("/me/player/currently-playing")
+  async getCurrentTrack() {
+    try {
+      const response = await this.apiRequest('GET', '/me/player/currently-playing');
+      
+      if (response.status === 401) {
+        // Token expired - try reconnection once
+        if (!this.reconnectionAttempted) {
+          console.log('🔄 Token expired, attempting reconnection...');
+          const reconnected = await this.attemptReconnection();
+          if (reconnected) {
+            // Retry the request once after successful reconnection
+            return await this.apiRequest('GET', '/me/player/currently-playing');
+          }
+        }
+        // If reconnection failed or already attempted, throw error
+        throw new Error('Spotify token expired - please reconnect');
+      }
+      
+      if (response.status === 204) {
+        return null; // No track playing
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error getting current track:', error);
+      throw error;
+    }
   }
 
   // Get recently played tracks
@@ -278,7 +305,7 @@ export class SpotifyService {
 
       const [recentTracks, currentTrack] = await Promise.all([
         this.getRecentlyPlayed(5), // Reduced from 10 to 5
-        this.getCurrentlyPlaying().catch(() => null),
+        this.getCurrentTrack().catch(() => null),
       ])
 
       const tracks = []
@@ -398,30 +425,6 @@ export class SpotifyService {
       }
       
       throw error
-    }
-  }
-
-  // Get current track
-  async getCurrentTrack() {
-    try {
-      const response = await this.apiRequest("/me/player/currently-playing")
-
-      if (!response || !response.item) {
-        return null
-      }
-
-      return {
-        id: response.item.id,
-        name: response.item.name,
-        artists: response.item.artists.map((artist) => artist.name).join(", "),
-        album: response.item.album.name,
-        albumArt: response.item.album.images[0]?.url,
-        duration_ms: response.item.duration_ms,
-        progress_ms: response.progress_ms,
-      }
-    } catch (error) {
-      console.error("Error getting current track:", error)
-      return null
     }
   }
 
@@ -653,8 +656,15 @@ export class SpotifyService {
 
   // Attempt automatic reconnection if tokens are expired
   async attemptReconnection() {
+    // Prevent multiple simultaneous reconnection attempts
+    if (this.reconnectionAttempted) {
+      console.log('🔄 Reconnection already attempted, skipping...');
+      return false;
+    }
+
     try {
       console.log('🔄 Attempting automatic Spotify reconnection...');
+      this.reconnectionAttempted = true;
       
       // Check current status
       const status = await this.getConnectionStatus();
@@ -674,16 +684,31 @@ export class SpotifyService {
           
           if (response.ok) {
             console.log('✅ Spotify tokens refreshed automatically');
+            this.reconnectionAttempted = false; // Reset flag on success
             return true;
+          } else {
+            console.log('❌ Token refresh failed with status:', response.status);
           }
         } catch (refreshError) {
-          console.log('❌ Automatic token refresh failed, user needs to reconnect');
+          console.log('❌ Automatic token refresh failed:', refreshError.message);
         }
       }
+      
+      // Reset flag after a delay to allow future attempts
+      this.reconnectionTimeout = setTimeout(() => {
+        this.reconnectionAttempted = false;
+        console.log('🔄 Reconnection flag reset, can attempt again');
+      }, 30000); // 30 second cooldown
       
       return status.connected && !status.is_expired;
     } catch (error) {
       console.error('Error during automatic reconnection:', error);
+      
+      // Reset flag after error
+      this.reconnectionTimeout = setTimeout(() => {
+        this.reconnectionAttempted = false;
+      }, 30000);
+      
       return false;
     }
   }
@@ -710,6 +735,15 @@ export class SpotifyService {
     localStorage.removeItem("spotify_access_token")
     localStorage.removeItem("spotify_refresh_token")
     localStorage.removeItem("spotify_expires_at")
+  }
+
+  // Cleanup method to clear timeouts and reset flags
+  cleanup() {
+    if (this.reconnectionTimeout) {
+      clearTimeout(this.reconnectionTimeout);
+      this.reconnectionTimeout = null;
+    }
+    this.reconnectionAttempted = false;
   }
 }
 

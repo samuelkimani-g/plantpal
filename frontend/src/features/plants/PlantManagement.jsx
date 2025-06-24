@@ -430,41 +430,28 @@ const PlantManagement = () => {
                   </CardContent>
                 </Card>
 
-                {/* Quick Actions */}
+                {/* Plant Status Summary */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Wand2 className="h-5 w-5" />
-                      Quick Actions
+                      <TrendingUp className="h-5 w-5" />
+                      Plant Status
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 gap-3">
-                      <Button onClick={handleWaterPlant} className="bg-blue-500 hover:bg-blue-600">
-                        <Droplets className="h-4 w-4 mr-2" />
-                        Water Plant
-                      </Button>
-                      <Button onClick={handleFertilizePlant} variant="outline" className="border-green-500 text-green-600">
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Fertilize
-                      </Button>
-                      <Button onClick={handleSunshine} variant="outline" className="border-yellow-500 text-yellow-600">
-                        <Sun className="h-4 w-4 mr-2" />
-                        Give Sunshine
-                      </Button>
-                      <Button 
-                        onClick={handleSyncMusicMood} 
-                        disabled={isSyncingMusic}
-                        variant="outline" 
-                        className="border-purple-500 text-purple-600"
-                      >
-                        {isSyncingMusic ? (
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Music className="h-4 w-4 mr-2" />
-                        )}
-                        {isSyncingMusic ? "Syncing..." : "Sync Music Mood"}
-                      </Button>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">{currentPlant.health_score || 50}%</div>
+                        <div className="text-sm text-muted-foreground">Health</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">{currentPlant.water_level || 50}%</div>
+                        <div className="text-sm text-muted-foreground">Water</div>
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">{currentPlant.level || 1}</div>
+                      <div className="text-sm text-muted-foreground">Level</div>
                     </div>
                   </CardContent>
                 </Card>
@@ -633,27 +620,18 @@ const PlantManagement = () => {
                           <div>{((currentPlant.spotify_mood_score || 0.5) * 100).toFixed(0)}%</div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Quick Care Actions */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Heart className="h-5 w-5" />
-                      Quick Care
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <Button onClick={handleWaterPlant} className="w-full bg-blue-500 hover:bg-blue-600">
-                        <Droplets className="h-4 w-4 mr-2" />
-                        Water ({currentPlant.water_level || 50}%)
-                      </Button>
-                      <Button onClick={handleFertilizePlant} variant="outline" className="w-full border-green-500 text-green-600">
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Fertilize
+                      <Button 
+                        onClick={handleSyncMusicMood} 
+                        disabled={isSyncingMusic}
+                        variant="outline" 
+                        className="w-full border-purple-500 text-purple-600"
+                      >
+                        {isSyncingMusic ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Music className="h-4 w-4 mr-2" />
+                        )}
+                        {isSyncingMusic ? "Syncing..." : "Sync Music Mood"}
                       </Button>
                     </div>
                   </CardContent>
