@@ -282,6 +282,10 @@ class PlantGrowthService:
 class SpotifyService:
     """Service to handle Spotify API interactions"""
     
+    def __init__(self, user):
+        self.user = user
+        self.logger = logging.getLogger(__name__)
+    
     @staticmethod
     def get_auth_url(redirect_uri=None):
         """Get Spotify authorization URL"""
@@ -380,33 +384,29 @@ class SpotifyService:
             logger.error(f"SpotifyService.refresh_access_token: Failed to refresh token: {response.text}")
             raise Exception(f"Failed to refresh token: {response.text}")
 
-    @staticmethod
-    def get_user_spotify_profile(user):
+    def get_user_spotify_profile(self):
         """Get user's Spotify profile or return None if not connected"""
-        logger = logging.getLogger(__name__)
         try:
             from apps.accounts.models import SpotifyProfile
-            spotify_profile = SpotifyProfile.objects.get(user=user)
-            print(f"DEBUG: Found Spotify profile for user: {user.username} (ID: {user.id})")
+            spotify_profile = SpotifyProfile.objects.get(user=self.user)
+            print(f"DEBUG: Found Spotify profile for user: {self.user.username} (ID: {self.user.id})")
             print(f"DEBUG: Spotify profile access token present: {bool(spotify_profile.access_token)}")
             print(f"DEBUG: Spotify profile refresh token present: {bool(spotify_profile.refresh_token)}")
             print(f"DEBUG: Spotify profile token expires at: {spotify_profile.token_expires_at}")
             print(f"DEBUG: Spotify profile token expired: {spotify_profile.is_token_expired()}")
             return spotify_profile
         except SpotifyProfile.DoesNotExist:
-            print(f"DEBUG: No Spotify profile found for user: {user.username} (ID: {user.id})")
-            logger.warning(f"No Spotify profile found for user {user.id}")
+            print(f"DEBUG: No Spotify profile found for user: {self.user.username} (ID: {self.user.id})")
+            self.logger.warning(f"No Spotify profile found for user {self.user.id}")
             return None
 
-    @staticmethod
-    def get_valid_access_token_for_user(user):
-        """Get a valid access token for a user, refreshing if necessary"""
-        logger = logging.getLogger(__name__)
-        print(f"DEBUG: Calling get_valid_access_token_for_user for user: {user.username}")
+    def _get_valid_access_token(self):
+        """Get a valid access token for the user, refreshing if necessary"""
+        print(f"DEBUG: Calling _get_valid_access_token for user: {self.user.username}")
         
-        spotify_profile = SpotifyService.get_user_spotify_profile(user)
+        spotify_profile = self.get_user_spotify_profile()
         if not spotify_profile:
-            print(f"DEBUG: No Spotify profile found for user: {user.username}")
+            print(f"DEBUG: No Spotify profile found for user: {self.user.username}")
             return None
         
         print(f"DEBUG: Current access token present: {bool(spotify_profile.access_token)}")
@@ -414,7 +414,7 @@ class SpotifyService:
         
         # Check if token is expired
         if spotify_profile.is_token_expired():
-            print(f"DEBUG: Token expired, attempting to refresh for user: {user.username}")
+            print(f"DEBUG: Token expired, attempting to refresh for user: {self.user.username}")
             try:
                 token_data = SpotifyService.refresh_access_token(spotify_profile.refresh_token)
                 spotify_profile.access_token = token_data['access_token']
@@ -423,25 +423,24 @@ class SpotifyService:
                 spotify_profile.scope = token_data.get('scope', '')
                 spotify_profile.save()
                 
-                print(f"DEBUG: Token refreshed successfully for user: {user.username}")
+                print(f"DEBUG: Token refreshed successfully for user: {self.user.username}")
                 print(f"DEBUG: New Access Token (first 10 chars): {spotify_profile.access_token[:10]}...")
                 print(f"DEBUG: New Token expires at: {spotify_profile.token_expires_at}")
                 
                 return spotify_profile.access_token
             except Exception as e:
-                print(f"DEBUG: Failed to refresh token for user {user.username}: {str(e)}")
-                logger.error(f"Failed to refresh token for user {user.id}: {str(e)}")
+                print(f"DEBUG: Failed to refresh token for user {self.user.username}: {str(e)}")
+                self.logger.error(f"Failed to refresh token for user {self.user.id}: {str(e)}")
                 return None
         else:
-            print(f"DEBUG: Token still valid for user: {user.username}")
+            print(f"DEBUG: Token still valid for user: {self.user.username}")
             return spotify_profile.access_token
 
-    @staticmethod
-    def get_recent_tracks_valence(access_token, limit=20):
+    def get_recent_tracks_valence(self, limit=20):
         """Get recent tracks and their valence scores"""
-        logger = logging.getLogger(__name__)
+        access_token = self._get_valid_access_token()
         if not access_token:
-            logger.error("SpotifyService.get_recent_tracks_valence: No access token provided.")
+            self.logger.error("SpotifyService.get_recent_tracks_valence: No access token provided.")
             return []
         
         headers = {'Authorization': f'Bearer {access_token}'}
@@ -511,12 +510,11 @@ class SpotifyService:
             print(f"Error getting Spotify valence: {e}")
             return []
     
-    @staticmethod
-    def get_current_track(access_token):
+    def get_current_track(self):
         """Get currently playing track"""
-        logger = logging.getLogger(__name__)
+        access_token = self._get_valid_access_token()
         if not access_token:
-            logger.error("SpotifyService.get_current_track: No access token provided.")
+            self.logger.error("SpotifyService.get_current_track: No access token provided.")
             return None
         
         headers = {'Authorization': f'Bearer {access_token}'}
@@ -551,25 +549,20 @@ class SpotifyService:
             print(f"Error getting current track: {e}")
             return None
 
-    @staticmethod
-    def get_and_process_valence_for_user(user, limit=5):
-        """Get and process valence scores for a specific user"""
-        logger = logging.getLogger(__name__)
-        print(f"DEBUG: In get_and_process_valence_for_user for user: {user.username}")
+    def get_and_process_valence(self, limit=5):
+        """Get and process valence scores for the user"""
+        print(f"DEBUG: In get_and_process_valence for user: {self.user.username}")
         
-        access_token = SpotifyService.get_valid_access_token_for_user(user)
-        if not access_token:
-            print(f"DEBUG: No valid access token for user: {user.username}")
-            return []
-        
-        valence_scores = SpotifyService.get_recent_tracks_valence(access_token, limit)
-        print(f"DEBUG: Got {len(valence_scores)} valence scores for user: {user.username}")
+        valence_scores = self.get_recent_tracks_valence(limit)
+        print(f"DEBUG: Got {len(valence_scores)} valence scores for user: {self.user.username}")
         
         if valence_scores:
             avg_valence = sum(valence_scores) / len(valence_scores)
-            print(f"DEBUG: Average valence for user {user.username}: {avg_valence}")
-        
-        return valence_scores
+            print(f"DEBUG: Average valence for user {self.user.username}: {avg_valence}")
+            return avg_valence
+        else:
+            print(f"DEBUG: No valence scores for user {self.user.username}")
+            return None
 
 class FirestoreService:
     """Service to handle Firestore operations"""

@@ -18,7 +18,7 @@ from .views import (
     SpotifyCurrentTrackView,
     SpotifyRecentlyPlayedView,
     UserViewSet,
-    SpotifyConnectionView
+    SpotifyMoodView
 )
 
 router = DefaultRouter()
@@ -46,7 +46,7 @@ urlpatterns = [
     path('spotify/current-track/', SpotifyCurrentTrackView.as_view(), name='spotify_current_track'),
     path('spotify/recently-played/', SpotifyRecentlyPlayedView.as_view(), name='spotify_recently_played'),
     path('spotify/disconnect/', SpotifyDisconnectView.as_view(), name='spotify_disconnect'),
-    path('spotify/', SpotifyConnectionView.as_view(), name='spotify_connection'),
+    path('spotify/mood/', SpotifyMoodView.as_view(), name='spotify_mood'),
     
     # Router URLs
     path('', include(router.urls)),

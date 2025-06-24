@@ -71,10 +71,8 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
         if latest:
             serializer = self.get_serializer(latest)
             return Response(serializer.data)
-        return Response(
-            {"detail": "No journal entries found. Start your journey by writing your first entry!"},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        # Return 200 OK with empty data instead of 404
+        return Response({}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'])
     def stats(self, request):
