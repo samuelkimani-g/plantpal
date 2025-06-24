@@ -17,7 +17,7 @@ import { useNavigate } from "react-router-dom"
 
 export default function SpotifyIntegration() {
   const { user, updateProfile } = useAuth()
-  const { plants, currentPlant } = usePlant()
+  const { plants, currentPlant, checkSpotifyStatus } = usePlant()
   const [isConnected, setIsConnected] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [listeningData, setListeningData] = useState(null)
@@ -108,15 +108,34 @@ export default function SpotifyIntegration() {
   const disconnectSpotify = async () => {
     try {
       setIsLoading(true)
+      console.log('🔄 Starting complete Spotify disconnect from SpotifyIntegration...')
       
       // Use the spotifyService disconnect method which calls the correct endpoint
       await spotifyService.disconnect()
 
+      // Reset all local component state
+      console.log('🔄 Resetting SpotifyIntegration component state...')
       setIsConnected(false)
       setListeningData(null)
+      setCurrentTrack(null)
+      setError(null)
+      setLastUpdate(null)
+      
+      // Force refresh of Spotify status in PlantContext
+      console.log('🔄 Refreshing global Spotify status...')
+      if (typeof checkSpotifyStatus === 'function') {
+        await checkSpotifyStatus()
+      }
+      
+      console.log('✅ SpotifyIntegration disconnect complete - reset to Phase 1')
     } catch (err) {
-      console.error("Disconnect error:", err)
+      console.error("❌ Disconnect error:", err)
       setError(err.message)
+      
+      // Even if there's an error, reset local state to ensure UI shows disconnected
+      setIsConnected(false)
+      setListeningData(null)
+      setCurrentTrack(null)
     } finally {
       setIsLoading(false)
     }

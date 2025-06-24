@@ -109,14 +109,78 @@ export class SpotifyService {
     }
   }
 
-  // Disconnect Spotify via backend
+  // Disconnect Spotify via backend and clear ALL frontend data
   async disconnect() {
     try {
+      console.log('🔄 Starting complete Spotify disconnect...');
+      
+      // Step 1: Disconnect via backend (removes server-side data)
       const response = await authAPI.delete('/spotify/disconnect/', {});
-      console.log('Spotify disconnected via backend:', response);
+      console.log('✅ Spotify disconnected via backend:', response);
+      
+      // Step 2: Clear all local storage data
+      console.log('🧹 Clearing all local Spotify data...');
+      this.clearLocalTokens();
+      
+      // Also clear any other Spotify-related localStorage keys
+      localStorage.removeItem('spotify_connected');
+      localStorage.removeItem('spotify_user_id');
+      localStorage.removeItem('spotify_display_name');
+      localStorage.removeItem('spotify_return_path');
+      localStorage.removeItem('spotify_state');
+      
+      // Step 3: Reset service state
+      console.log('🔄 Resetting service state...');
+      this.reconnectionAttempted = false;
+      this.cleanup();
+      
+      // Step 4: Clear any session storage
+      sessionStorage.removeItem('spotify_access_token');
+      sessionStorage.removeItem('spotify_refresh_token');
+      sessionStorage.removeItem('spotify_connected');
+      
+      // Step 5: Clear browser cache for Spotify domains (if possible)
+      try {
+        // This will clear any cached Spotify session data
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (let registration of registrations) {
+            if (registration.scope.includes('spotify')) {
+              await registration.unregister();
+            }
+          }
+        }
+      } catch (e) {
+        console.log('⚠️ Could not clear service workers:', e.message);
+      }
+      
+      console.log('✅ Complete Spotify disconnect successful - reset to Phase 1');
+      console.log('ℹ️ User will need to reconnect from scratch');
+      
+      // Force a page refresh after a short delay to ensure complete reset
+      setTimeout(() => {
+        console.log('🔄 Forcing page refresh to complete Spotify disconnect...');
+        window.location.reload();
+      }, 1000); // 1 second delay to let the UI update
+      
       return response.data;
     } catch (error) {
-      console.error('Failed to disconnect Spotify:', error);
+      console.error('❌ Failed to disconnect Spotify:', error);
+      
+      // Even if backend fails, still clear frontend data
+      console.log('🧹 Backend disconnect failed, but clearing frontend data anyway...');
+      this.clearLocalTokens();
+      localStorage.removeItem('spotify_connected');
+      localStorage.removeItem('spotify_user_id');
+      localStorage.removeItem('spotify_display_name');
+      localStorage.removeItem('spotify_return_path');
+      localStorage.removeItem('spotify_state');
+      sessionStorage.removeItem('spotify_access_token');
+      sessionStorage.removeItem('spotify_refresh_token');
+      sessionStorage.removeItem('spotify_connected');
+      this.reconnectionAttempted = false;
+      this.cleanup();
+      
       throw error;
     }
   }
