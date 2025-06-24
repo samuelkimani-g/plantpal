@@ -94,7 +94,6 @@ export const authAPI = {
   changePassword: (passwordData) => api.post("/accounts/change-password/", passwordData),
   deleteAccount: (refreshToken) => api.delete("/accounts/delete-account/", { data: { refresh: refreshToken } }),
   connectSpotify: (spotifyData) => api.post("/accounts/spotify/", spotifyData),
-  disconnectSpotify: () => api.delete("/accounts/spotify/"),
   // Convenience methods for direct API calls
   post: (url, data) => api.post(`/accounts${url}`, data),
   delete: (url, config) => api.delete(`/accounts${url}`, config),

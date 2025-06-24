@@ -108,10 +108,9 @@ export default function SpotifyIntegration() {
   const disconnectSpotify = async () => {
     try {
       setIsLoading(true)
-      spotifyService.disconnect()
-
-      // Remove from backend
-      await authAPI.delete("/spotify/")
+      
+      // Use the spotifyService disconnect method which calls the correct endpoint
+      await spotifyService.disconnect()
 
       setIsConnected(false)
       setListeningData(null)
