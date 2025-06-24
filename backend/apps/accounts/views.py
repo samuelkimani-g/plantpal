@@ -328,3 +328,41 @@ class SpotifyStatusView(APIView):
                 'is_expired': True,
                 'scope': None
             })
+
+class SpotifyRefreshView(APIView):
+    """Refresh Spotify access token"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            spotify_profile = SpotifyProfile.objects.get(user=request.user)
+            
+            if spotify_profile.is_token_expired():
+                # Refresh the token
+                token_data = SpotifyService.refresh_access_token(spotify_profile.refresh_token)
+                spotify_profile.access_token = token_data['access_token']
+                spotify_profile.token_expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
+                spotify_profile.save()
+                
+                return Response({
+                    'message': 'Spotify token refreshed successfully',
+                    'expires_at': spotify_profile.token_expires_at.isoformat(),
+                    'connected': True
+                })
+            else:
+                return Response({
+                    'message': 'Token is still valid',
+                    'expires_at': spotify_profile.token_expires_at.isoformat(),
+                    'connected': True
+                })
+                
+        except SpotifyProfile.DoesNotExist:
+            return Response(
+                {'error': 'Spotify not connected'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to refresh token: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

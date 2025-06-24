@@ -71,8 +71,21 @@ export class SpotifyService {
   // Check Spotify connection status via backend
   async getConnectionStatus() {
     try {
-      const response = await authAPI.post('/spotify/status/', {});
-      return response.data;
+      // Use the default api instance for GET request since authAPI only supports POST/DELETE
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/accounts/spotify/status/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      } else {
+        throw new Error(`HTTP ${response.status}`);
+      }
     } catch (error) {
       console.error('Failed to get Spotify status:', error);
       return { connected: false, is_expired: true };
@@ -319,6 +332,13 @@ export class SpotifyService {
   // Get detailed listening session with mood analysis
   async getDetailedListeningSession() {
     try {
+      // Ensure connection before making API calls
+      const isConnected = await this.ensureConnection();
+      if (!isConnected) {
+        console.log('❌ Spotify not connected, cannot fetch listening session');
+        return null;
+      }
+
       // Return cached data if recent (within 2 minutes)
       const now = Date.now()
       if (this.cachedSession && (now - this.lastSessionUpdate) < 120000) {
@@ -629,6 +649,55 @@ export class SpotifyService {
       console.error('Error checking Spotify connection:', error);
       return false;
     }
+  }
+
+  // Attempt automatic reconnection if tokens are expired
+  async attemptReconnection() {
+    try {
+      console.log('🔄 Attempting automatic Spotify reconnection...');
+      
+      // Check current status
+      const status = await this.getConnectionStatus();
+      
+      if (status.connected && status.is_expired) {
+        console.log('🔄 Spotify tokens expired, attempting refresh...');
+        
+        // Try to refresh tokens via backend
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/accounts/spotify/refresh/`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+              'Content-Type': 'application/json',
+            }
+          });
+          
+          if (response.ok) {
+            console.log('✅ Spotify tokens refreshed automatically');
+            return true;
+          }
+        } catch (refreshError) {
+          console.log('❌ Automatic token refresh failed, user needs to reconnect');
+        }
+      }
+      
+      return status.connected && !status.is_expired;
+    } catch (error) {
+      console.error('Error during automatic reconnection:', error);
+      return false;
+    }
+  }
+
+  // Enhanced connection check with automatic reconnection
+  async ensureConnection() {
+    const isConnected = await this.isConnected();
+    
+    if (!isConnected) {
+      console.log('🔄 Spotify not connected, attempting automatic reconnection...');
+      return await this.attemptReconnection();
+    }
+    
+    return true;
   }
 
   // Legacy isConnected method (synchronous)
