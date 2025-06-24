@@ -366,3 +366,73 @@ class SpotifyRefreshView(APIView):
                 {'error': f'Failed to refresh token: {str(e)}'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class SpotifyProxyView(APIView):
+    """Proxy Spotify API requests through backend"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            spotify_profile = SpotifyProfile.objects.get(user=request.user)
+            
+            # Refresh token if needed
+            if spotify_profile.is_token_expired():
+                token_data = SpotifyService.refresh_access_token(spotify_profile.refresh_token)
+                spotify_profile.access_token = token_data['access_token']
+                spotify_profile.token_expires_at = timezone.now() + timedelta(seconds=token_data['expires_in'])
+                spotify_profile.save()
+            
+            # Get request details from frontend
+            method = request.data.get('method', 'GET')
+            endpoint = request.data.get('endpoint', '')
+            data = request.data.get('data')
+            headers = request.data.get('headers', {})
+            
+            # Make request to Spotify API
+            import requests
+            
+            url = f"https://api.spotify.com/v1{endpoint}"
+            spotify_headers = {
+                'Authorization': f'Bearer {spotify_profile.access_token}',
+                'Content-Type': 'application/json',
+                **headers
+            }
+            
+            if method.upper() == 'GET':
+                response = requests.get(url, headers=spotify_headers)
+            elif method.upper() == 'POST':
+                response = requests.post(url, headers=spotify_headers, json=data)
+            elif method.upper() == 'PUT':
+                response = requests.put(url, headers=spotify_headers, json=data)
+            elif method.upper() == 'DELETE':
+                response = requests.delete(url, headers=spotify_headers)
+            else:
+                return Response(
+                    {'error': f'Unsupported method: {method}'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Return Spotify API response
+            if response.status_code == 204:  # No content
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            
+            try:
+                response_data = response.json()
+                return Response(response_data, status=response.status_code)
+            except ValueError:
+                # Response is not JSON
+                return Response(
+                    {'content': response.text}, 
+                    status=response.status_code
+                )
+                
+        except SpotifyProfile.DoesNotExist:
+            return Response(
+                {'error': 'Spotify not connected'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Spotify API request failed: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
