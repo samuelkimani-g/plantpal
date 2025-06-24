@@ -465,8 +465,11 @@ class SpotifyCurrentTrackView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        print(f"DEBUG: SpotifyCurrentTrackView called for user {request.user.id} - NEW VERSION")
         try:
+            print(f"DEBUG: About to instantiate SpotifyService with user: {request.user}")
             spotify_service = SpotifyService(request.user)
+            print(f"DEBUG: SpotifyService instantiated successfully: {spotify_service}")
             current_track = spotify_service.get_current_track()
             
             if current_track:
@@ -482,6 +485,7 @@ class SpotifyCurrentTrackView(APIView):
                 return Response({'message': 'No track currently playing'}, status=status.HTTP_204_NO_CONTENT)
                 
         except Exception as e:
+            print(f"DEBUG: Exception in SpotifyCurrentTrackView: {type(e).__name__}: {e}")
             print(f"Unexpected error in SpotifyCurrentTrackView for user {request.user.id}: {e}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
