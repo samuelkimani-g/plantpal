@@ -10,8 +10,7 @@ from django.utils import timezone
 from datetime import timedelta
 from .serializers import UserSerializer, RegisterSerializer, CustomTokenObtainPairSerializer, PasswordChangeSerializer
 from .models import SpotifyProfile
-from .services import SpotifyService
-from apps.plants.services import PlantGrowthService
+from apps.plants.services import SpotifyService, PlantGrowthService
 from django.conf import settings
 import logging
 import requests
