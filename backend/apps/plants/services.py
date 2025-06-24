@@ -8,6 +8,7 @@ import google.generativeai as genai
 import firebase_admin
 from firebase_admin import credentials, firestore
 import numpy as np
+import logging
 
 class PlantGrowthService:
     """Service to handle plant growth logic and state updates"""
@@ -310,8 +311,8 @@ class SpotifyService:
     @staticmethod
     def exchange_code_for_tokens(code, redirect_uri):
         """Exchange authorization code for access and refresh tokens"""
+        logger = logging.getLogger(__name__)
         token_url = "https://accounts.spotify.com/api/token"
-        
         data = {
             'grant_type': 'authorization_code',
             'code': code,
@@ -319,9 +320,9 @@ class SpotifyService:
             'client_id': settings.SPOTIFY_CLIENT_ID,
             'client_secret': settings.SPOTIFY_CLIENT_SECRET,
         }
-        
+        logger.info(f"SpotifyService.exchange_code_for_tokens: Exchanging code={code} for tokens.")
         response = requests.post(token_url, data=data)
-        
+        logger.info(f"SpotifyService.exchange_code_for_tokens: Response status={response.status_code}, body={response.text}")
         if response.status_code == 200:
             token_data = response.json()
             return {
@@ -332,22 +333,26 @@ class SpotifyService:
                 'scope': token_data.get('scope', '')
             }
         else:
+            logger.error(f"SpotifyService.exchange_code_for_tokens: Failed to exchange code: {response.text}")
             raise Exception(f"Failed to exchange code: {response.text}")
 
     @staticmethod
     def refresh_access_token(refresh_token):
         """Refresh an expired access token"""
+        logger = logging.getLogger(__name__)
+        if not refresh_token:
+            logger.error("SpotifyService.refresh_access_token: No refresh token provided.")
+            raise Exception("No refresh token provided.")
         token_url = "https://accounts.spotify.com/api/token"
-        
         data = {
             'grant_type': 'refresh_token',
             'refresh_token': refresh_token,
             'client_id': settings.SPOTIFY_CLIENT_ID,
             'client_secret': settings.SPOTIFY_CLIENT_SECRET,
         }
-        
+        logger.info(f"SpotifyService.refresh_access_token: Refreshing token for refresh_token={refresh_token[:6]}***")
         response = requests.post(token_url, data=data)
-        
+        logger.info(f"SpotifyService.refresh_access_token: Response status={response.status_code}, body={response.text}")
         if response.status_code == 200:
             token_data = response.json()
             return {
@@ -357,11 +362,16 @@ class SpotifyService:
                 'scope': token_data.get('scope', '')
             }
         else:
+            logger.error(f"SpotifyService.refresh_access_token: Failed to refresh token: {response.text}")
             raise Exception(f"Failed to refresh token: {response.text}")
 
     @staticmethod
     def get_recent_tracks_valence(access_token, limit=20):
         """Get recent tracks and their valence scores"""
+        logger = logging.getLogger(__name__)
+        if not access_token:
+            logger.error("SpotifyService.get_recent_tracks_valence: No access token provided.")
+            return []
         headers = {'Authorization': f'Bearer {access_token}'}
         
         try:
@@ -418,6 +428,10 @@ class SpotifyService:
     @staticmethod
     def get_current_track(access_token):
         """Get currently playing track"""
+        logger = logging.getLogger(__name__)
+        if not access_token:
+            logger.error("SpotifyService.get_current_track: No access token provided.")
+            return None
         headers = {'Authorization': f'Bearer {access_token}'}
         
         try:

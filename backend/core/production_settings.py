@@ -6,12 +6,10 @@ from .settings import *
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-# Security settings
-ALLOWED_HOSTS = [
-    'plantpal-4hx7.onrender.com',  # Render domain
-    'localhost',
-    '127.0.0.1',
-]
+# Allowed hosts configured by environment variable for flexibility
+# The string should be a comma-separated list of hostnames.
+ALLOWED_HOSTS_STRING = os.environ.get('ALLOWED_HOSTS', 'plantpal-4hx7.onrender.com,localhost')
+ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_STRING.split(',') if host.strip()]
 
 # Database configuration for Render
 if 'DATABASE_URL' in os.environ:
@@ -27,12 +25,9 @@ else:
         }
     }
 
-# CORS settings for production
-CORS_ALLOWED_ORIGINS = [
-    "https://plantpal-three.vercel.app",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+# CORS settings for production, configured by environment variable
+CORS_ALLOWED_ORIGINS_STRING = os.environ.get('CORS_ALLOWED_ORIGINS', 'https://plantpal-three.vercel.app,http://localhost:5173')
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_STRING.split(',') if origin.strip()]
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -66,7 +61,8 @@ X_FRAME_OPTIONS = 'DENY'
 # Spotify settings from environment
 SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID', '')
 SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET', '')
-SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'https://plantpal-three.vercel.app/music')
+# This URI must point to your BACKEND callback endpoint
+SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'https://plantpal-4hx7.onrender.com/api/accounts/spotify/callback/')
 
 # Gemini API key
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
