@@ -58,7 +58,6 @@ class Plant(models.Model):
     date_added = models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    last_sunshine = models.DateTimeField(null=True, blank=True)
 
     combined_mood_score = models.FloatField(default=0.5, help_text="Weighted average of journal and music mood (0.0 to 1.0)")
     fantasy_params = models.JSONField(default=dict, blank=True, help_text="Parameters for fantasy/creative plant appearance")

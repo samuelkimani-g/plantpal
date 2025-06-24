@@ -10,7 +10,8 @@ from django.utils import timezone
 from datetime import timedelta
 from .serializers import UserSerializer, RegisterSerializer, CustomTokenObtainPairSerializer, PasswordChangeSerializer
 from .models import SpotifyProfile
-from apps.plants.services import SpotifyService, PlantGrowthService
+from .services import SpotifyService
+from apps.plants.services import PlantGrowthService
 from django.conf import settings
 
 User = get_user_model()
