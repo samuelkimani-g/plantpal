@@ -19,7 +19,7 @@ class PlantSerializer(serializers.ModelSerializer):
             'health', 'health_score', 'health_status', 'last_watered', 'last_watered_at', 'last_fertilized',
             'water_level', 'current_mood_influence', 'music_boost_active', 'date_added', 'created_at', 'updated_at',
             'combined_mood_score', 'fantasy_params', 'memory_seeds', 'three_d_model_params',
-            'last_sunshine', 'care_streak', 'last_care_date', 'journal_mood_score', 'spotify_mood_score',
+            'care_streak', 'last_care_date', 'journal_mood_score', 'spotify_mood_score',
             'age_days', 'total_music_minutes', 'last_watered_formatted'
         ]
         read_only_fields = [

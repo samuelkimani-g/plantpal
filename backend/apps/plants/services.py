@@ -449,24 +449,40 @@ class FirestoreService:
     """Service to handle Firestore operations"""
     
     def __init__(self):
-        if not firebase_admin._apps:
-            # Initialize Firebase Admin SDK
-            cred = credentials.Certificate({
-                "type": "service_account",
-                "project_id": settings.FIREBASE_PROJECT_ID,
-                "private_key_id": settings.FIREBASE_PRIVATE_KEY_ID,
-                "private_key": settings.FIREBASE_PRIVATE_KEY.replace('\\n', '\n'),
-                "client_email": settings.FIREBASE_CLIENT_EMAIL,
-                "client_id": settings.FIREBASE_CLIENT_ID,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            })
-            firebase_admin.initialize_app(cred)
-        
-        self.db = firestore.client()
+        try:
+            # Check if Firebase settings are available
+            if not hasattr(settings, 'FIREBASE_PROJECT_ID') or not settings.FIREBASE_PROJECT_ID:
+                print("Firebase settings not configured, FirestoreService will be disabled")
+                self.enabled = False
+                return
+            
+            if not firebase_admin._apps:
+                # Initialize Firebase Admin SDK
+                cred = credentials.Certificate({
+                    "type": "service_account",
+                    "project_id": settings.FIREBASE_PROJECT_ID,
+                    "private_key_id": settings.FIREBASE_PRIVATE_KEY_ID,
+                    "private_key": settings.FIREBASE_PRIVATE_KEY.replace('\\n', '\n'),
+                    "client_email": settings.FIREBASE_CLIENT_EMAIL,
+                    "client_id": settings.FIREBASE_CLIENT_ID,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                })
+                firebase_admin.initialize_app(cred)
+            
+            self.db = firestore.client()
+            self.enabled = True
+            
+        except Exception as e:
+            print(f"Failed to initialize FirestoreService: {e}")
+            self.enabled = False
 
     def write_plant_data(self, user_id, plant_data):
         """Write plant data to Firestore"""
+        if not self.enabled:
+            print("FirestoreService is disabled, skipping write operation")
+            return
+            
         try:
             app_id = settings.FIREBASE_APP_ID
             doc_ref = self.db.collection('artifacts').document(app_id).collection('public').document('data').collection('plants').document(user_id)
@@ -477,6 +493,10 @@ class FirestoreService:
 
     def get_plant_data(self, user_id):
         """Get plant data from Firestore"""
+        if not self.enabled:
+            print("FirestoreService is disabled, returning None")
+            return None
+            
         try:
             app_id = settings.FIREBASE_APP_ID
             doc_ref = self.db.collection('artifacts').document(app_id).collection('public').document('data').collection('plants').document(user_id)
@@ -488,6 +508,10 @@ class FirestoreService:
 
     def list_all_public_plants(self):
         """List all public plants from Firestore"""
+        if not self.enabled:
+            print("FirestoreService is disabled, returning empty list")
+            return []
+            
         try:
             app_id = settings.FIREBASE_APP_ID
             plants_collection = self.db.collection('artifacts').document(app_id).collection('public').document('data').collection('plants')

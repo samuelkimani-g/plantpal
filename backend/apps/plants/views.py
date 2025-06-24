@@ -36,6 +36,11 @@ class PlantViewSet(viewsets.ModelViewSet):
                 # Check if plant has all required fields before serializing
                 print(f"Plant object: {plant}")
                 print(f"Plant fields: {[f.name for f in plant._meta.fields]}")
+                
+                # Ensure 3D params are initialized
+                if not plant.three_d_model_params:
+                    plant.update_3d_params()
+                
                 serializer = self.get_serializer(plant)
                 data = serializer.data
                 print(f"Serialized data: {data}")
@@ -46,21 +51,37 @@ class PlantViewSet(viewsets.ModelViewSet):
             import traceback
             print(f"Error in PlantViewSet.list: {e}")
             print(traceback.format_exc())
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"Internal server error: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def create(self, request):
         """Create a new plant (only if user doesn't have one)"""
-        if Plant.objects.filter(user=request.user).exists():
+        try:
+            if Plant.objects.filter(user=request.user).exists():
+                return Response(
+                    {"error": "You already have a plant companion! Each user can have only one plant."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            print(f"Creating plant with data: {request.data}")
+            serializer = self.get_serializer(data=request.data)
+            if serializer.is_valid():
+                plant = serializer.save(user=request.user)
+                print(f"Plant created successfully: {plant}")
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                print(f"Serializer errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            import traceback
+            print(f"Error in PlantViewSet.create: {e}")
+            print(traceback.format_exc())
             return Response(
-                {"error": "You already have a plant companion! Each user can have only one plant."}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": f"Internal server error: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            plant = serializer.save(user=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, pk=None):
         """Update the user's plant"""
@@ -140,10 +161,9 @@ class PlantViewSet(viewsets.ModelViewSet):
             return Response({"error": "No plant found."}, status=status.HTTP_404_NOT_FOUND)
 
         now = timezone.now()
-        # Use last_fertilized as a placeholder for last_sunshine if not present
-        last_sunshine = getattr(plant, 'last_sunshine', None)
-        if last_sunshine and (now - last_sunshine).total_seconds() < 3600:
-            minutes_left = int((3600 - (now - last_sunshine).total_seconds()) // 60) + 1
+        # Use last_fertilized as a cooldown field for sunshine (since last_sunshine was removed)
+        if plant.last_fertilized and (now - plant.last_fertilized).total_seconds() < 3600:
+            minutes_left = int((3600 - (now - plant.last_fertilized).total_seconds()) // 60) + 1
             return Response({
                 "error": f"You can only give sunshine once per hour. Please wait {minutes_left} more minutes."
             }, status=status.HTTP_429_TOO_MANY_REQUESTS)
@@ -153,7 +173,9 @@ class PlantViewSet(viewsets.ModelViewSet):
         if plant.growth_stage >= 10:
             plant.growth_level = min(10, plant.growth_level + 1)
             plant.growth_stage = 0
-        plant.last_sunshine = now
+        
+        # Use last_fertilized as the cooldown field for sunshine
+        plant.last_fertilized = now
         plant.save()
 
         # Log the action
