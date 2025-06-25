@@ -171,7 +171,7 @@ export function AuthProvider({ children }) {
         username: username,
         email: email,
         password: password,
-        password2: confirmPassword, // Map confirmPassword to password2
+        password_confirm: confirmPassword, // Map confirmPassword to password_confirm
       }
 
       console.log("Sending registration request to:", "/api/accounts/register/")
@@ -197,8 +197,8 @@ export function AuthProvider({ children }) {
           errorMessage = `Email: ${errors.email[0]}`
         } else if (errors.password) {
           errorMessage = `Password: ${errors.password[0]}`
-        } else if (errors.password2) {
-          errorMessage = `Password confirmation: ${errors.password2[0]}`
+        } else if (errors.password_confirm) {
+          errorMessage = `Password confirmation: ${errors.password_confirm[0]}`
         } else if (errors.non_field_errors) {
           errorMessage = errors.non_field_errors[0]
         } else {
