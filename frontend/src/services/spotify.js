@@ -157,11 +157,20 @@ export class SpotifyService {
       console.log('✅ Complete Spotify disconnect successful - reset to Phase 1');
       console.log('ℹ️ User will need to reconnect from scratch');
       
-      // Force a page refresh after a short delay to ensure complete reset
-      setTimeout(() => {
-        console.log('🔄 Forcing page refresh to complete Spotify disconnect...');
-        window.location.reload();
-      }, 1000); // 1 second delay to let the UI update
+      // Let's verify the disconnect worked by checking status
+      setTimeout(async () => {
+        try {
+          const status = await this.getConnectionStatus();
+          console.log('🔍 Post-disconnect status check:', status);
+          if (status.connected) {
+            console.error('❌ DISCONNECT FAILED - User is still connected!');
+          } else {
+            console.log('✅ Disconnect verified - user is no longer connected');
+          }
+        } catch (e) {
+          console.log('✅ Disconnect verified - connection status check failed (expected)');
+        }
+      }, 500);
       
       return response.data;
     } catch (error) {

@@ -27,8 +27,25 @@ export default function SpotifyIntegration() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Check if already connected
-    setIsConnected(spotifyService.isConnected() || user?.spotify_connected)
+    // Check if already connected (async)
+    const checkConnection = async () => {
+      try {
+        console.log('🔍 Checking initial Spotify connection status...')
+        const isSpotifyConnected = await spotifyService.isConnected()
+        console.log('🔍 Spotify service says connected:', isSpotifyConnected)
+        console.log('🔍 User object spotify_connected:', user?.spotify_connected)
+        
+        const finalConnectionStatus = isSpotifyConnected || user?.spotify_connected
+        console.log('🔍 Final connection status:', finalConnectionStatus)
+        
+        setIsConnected(finalConnectionStatus)
+      } catch (error) {
+        console.error('Error checking Spotify connection:', error)
+        setIsConnected(false)
+      }
+    }
+
+    checkConnection()
 
     // Handle OAuth callback
     const urlParams = new URLSearchParams(window.location.search)
@@ -121,10 +138,35 @@ export default function SpotifyIntegration() {
       setError(null)
       setLastUpdate(null)
       
+      // Force refresh of user profile to update spotify_connected field
+      console.log('🔄 Refreshing user profile...')
+      try {
+        const profileResponse = await authAPI.getProfile()
+        console.log('🔍 Updated profile data:', profileResponse.data)
+        console.log('🔍 Profile spotify_connected after disconnect:', profileResponse.data.is_spotify_connected)
+      } catch (e) {
+        console.error('Failed to refresh profile:', e)
+      }
+      
       // Force refresh of Spotify status in PlantContext
       console.log('🔄 Refreshing global Spotify status...')
       if (typeof checkSpotifyStatus === 'function') {
         await checkSpotifyStatus()
+      }
+      
+      // Additional verification - check connection status directly
+      console.log('🔍 Verifying disconnect with direct status check...')
+      try {
+        const status = await spotifyService.getConnectionStatus()
+        console.log('🔍 Direct status check result:', status)
+        if (status.connected) {
+          console.error('❌ CRITICAL: Backend still shows user as connected!')
+          console.error('❌ This means the backend disconnect failed!')
+        } else {
+          console.log('✅ Backend confirms user is disconnected')
+        }
+      } catch (e) {
+        console.log('✅ Status check failed (expected after disconnect):', e.message)
       }
       
       console.log('✅ SpotifyIntegration disconnect complete - reset to Phase 1')
