@@ -10,11 +10,15 @@ services:
       - key: DEBUG
         value: False
       - key: DJANGO_SETTINGS_MODULE
-        value: core.production_settings
+        value: core.settings
       - key: SECRET_KEY
         generateValue: true
       - key: WEB_CONCURRENCY
         value: 4
+      - key: DATABASE_URL
+        fromDatabase:
+          name: plantpal-db
+          property: connectionString
   
   - type: pserv
     name: plantpal-db

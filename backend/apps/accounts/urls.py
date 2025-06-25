@@ -1,53 +1,27 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import (
-    RegisterView, 
-    CustomTokenObtainPairView, 
-    UserDetailView, 
-    LogoutAndBlacklistTokenView,
-    ChangePasswordView,
-    DeleteAccountView,
-    SpotifyCallbackView,
-    SpotifyFetchValenceView,
-    SpotifyDisconnectView,
-    SpotifyAuthURLView,
-    SpotifyStatusView,
-    SpotifyRefreshView,
-    SpotifyProxyView,
-    SpotifyCurrentTrackView,
-    SpotifyRecentlyPlayedView,
-    UserViewSet,
-    SpotifyMoodView
-)
+from . import views
 
-router = DefaultRouter()
-router.register(r'users', UserViewSet)
+app_name = 'accounts'
 
 urlpatterns = [
-    # Authentication endpoints
-    path('register/', RegisterView.as_view(), name='register'),
-    path('login/', CustomTokenObtainPairView.as_view(), name='login'),
-    path('logout/', LogoutAndBlacklistTokenView.as_view(), name='logout'),
+    # Authentication endpoints as specified in architecture
+    path('register/', views.RegisterView.as_view(), name='register'),
+    path('login/', views.LoginView.as_view(), name='login'),
+    path('logout/', views.LogoutView.as_view(), name='logout'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
-    # Profile management
-    path('profile/', UserDetailView.as_view(), name='profile'),
-    path('change-password/', ChangePasswordView.as_view(), name='change_password'),
-    path('delete-account/', DeleteAccountView.as_view(), name='delete_account'),
+    # User profile endpoints as specified
+    path('me/', views.MeView.as_view(), name='me'),
+    path('me/update/', views.ProfileView.as_view(), name='profile'),
+    path('change-password/', views.PasswordChangeView.as_view(), name='change_password'),
     
-    # Spotify integration
-    path('spotify/auth-url/', SpotifyAuthURLView.as_view(), name='spotify_auth_url'),
-    path('spotify/callback/', SpotifyCallbackView.as_view(), name='spotify_callback'),
-    path('spotify/fetch-valence/', SpotifyFetchValenceView.as_view(), name='spotify_fetch_valence'),
-    path('spotify/status/', SpotifyStatusView.as_view(), name='spotify_status'),
-    path('spotify/refresh/', SpotifyRefreshView.as_view(), name='spotify_refresh'),
-    path('spotify/proxy/', SpotifyProxyView.as_view(), name='spotify_proxy'),
-    path('spotify/current-track/', SpotifyCurrentTrackView.as_view(), name='spotify_current_track'),
-    path('spotify/recently-played/', SpotifyRecentlyPlayedView.as_view(), name='spotify_recently_played'),
-    path('spotify/disconnect/', SpotifyDisconnectView.as_view(), name='spotify_disconnect'),
-    path('spotify/mood/', SpotifyMoodView.as_view(), name='spotify_mood'),
+    # Additional user management
+    path('stats/', views.UserStatsView.as_view(), name='user_stats'),
+    path('toggle-reminders/', views.toggle_reminders, name='toggle_reminders'),
+    path('spotify-status/', views.update_spotify_status, name='spotify_status'),
     
-    # Router URLs
-    path('', include(router.urls)),
+    # Legacy endpoints for backward compatibility
+    path('profile/', views.UserViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update'}), name='profile_legacy'),
+    path('delete/', views.DeleteAccountView.as_view(), name='delete_account'),
 ]

@@ -1,15 +1,16 @@
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.decorators import action
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import timedelta
-from .serializers import UserSerializer, RegisterSerializer, CustomTokenObtainPairSerializer, PasswordChangeSerializer
-from .models import SpotifyProfile
+from .serializers import UserSerializer, RegisterSerializer, CustomTokenObtainPairSerializer, PasswordChangeSerializer, UserProfileSerializer
+# SpotifyProfile moved to apps.music.models - old Spotify views deprecated
 from apps.plants.services import SpotifyService, PlantGrowthService
 from django.conf import settings
 import logging
@@ -21,8 +22,7 @@ User = get_user_model()
 
 class RegisterView(generics.CreateAPIView):
     """
-    API endpoint for user registration.
-    Uses RegisterSerializer to create a new user.
+    User registration endpoint: POST /api/accounts/register/
     """
     queryset = User.objects.all()
     permission_classes = (permissions.AllowAny,)
@@ -32,18 +32,188 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        return Response(
-            {"message": "User created successfully", "username": user.username},
-            status=status.HTTP_201_CREATED
-        )
+        
+        # Generate tokens for immediate login
+        refresh = RefreshToken.for_user(user)
+        access_token = refresh.access_token
+        
+        return Response({
+            'message': 'User registered successfully',
+            'user': UserSerializer(user).data,
+            'tokens': {
+                'refresh': str(refresh),
+                'access': str(access_token),
+            }
+        }, status=status.HTTP_201_CREATED)
 
-class CustomTokenObtainPairView(TokenObtainPairView):
+
+class LoginView(TokenObtainPairView):
     """
-    API endpoint for obtaining JWT access and refresh tokens.
-    Handles username/password login. This is what the frontend's loginAPI.login hits.
+    JWT Login endpoint: POST /api/accounts/login/
+    Uses custom serializer to include user data
     """
     serializer_class = CustomTokenObtainPairSerializer
-    permission_classes = (permissions.AllowAny,)
+
+
+class LogoutView(APIView):
+    """
+    Logout endpoint: POST /api/accounts/logout/
+    Blacklists the refresh token
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh_token"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({
+                'message': 'Successfully logged out'
+            }, status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response({
+                'error': 'Invalid token'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class MeView(APIView):
+    """
+    Current user info endpoint: GET /api/accounts/me/
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        user = request.user
+        user_data = UserSerializer(user).data
+        
+        return Response({
+            'user': user_data
+        }, status=status.HTTP_200_OK)
+
+
+class ProfileView(generics.RetrieveUpdateAPIView):
+    """
+    Profile view/edit endpoints: 
+    GET /api/accounts/me/update/ - View profile
+    PUT/PATCH /api/accounts/me/update/ - Edit profile
+    """
+    serializer_class = UserProfileSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_object(self):
+        # Get or create profile for current user
+        profile, created = UserProfile.objects.get_or_create(user=self.request.user)
+        return profile
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response({
+            'message': 'Profile updated successfully',
+            'profile': serializer.data
+        })
+
+
+class PasswordChangeView(APIView):
+    """
+    Password change endpoint: POST /api/accounts/change-password/
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        serializer = PasswordChangeSerializer(data=request.data, instance=request.user)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'message': 'Password changed successfully'
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserStatsView(APIView):
+    """
+    User statistics endpoint: GET /api/accounts/stats/
+    Returns journal streak, plant status, etc.
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        user = request.user
+        profile = getattr(user, 'profile', None)
+        
+        if not profile:
+            profile = UserProfile.objects.create(user=user)
+
+        # Get related data from other apps
+        stats = {
+            'journal_streak': profile.journal_streak,
+            'reminder_enabled': profile.reminder_enabled,
+            'spotify_connected': profile.spotify_connected,
+            'timezone': profile.timezone,
+        }
+
+        # Add journal count if journal app is available
+        try:
+            from apps.journal.models import JournalEntry
+            stats['total_journal_entries'] = JournalEntry.objects.filter(user=user).count()
+        except ImportError:
+            stats['total_journal_entries'] = 0
+
+        # Add plant status if plants app is available
+        try:
+            from apps.plants.models import Plant
+            plant = Plant.objects.filter(user=user).first()
+            if plant:
+                stats['plant_stage'] = plant.stage
+                stats['plant_growth_points'] = plant.growth_points
+            else:
+                stats['plant_stage'] = None
+                stats['plant_growth_points'] = 0
+        except ImportError:
+            stats['plant_stage'] = None
+            stats['plant_growth_points'] = 0
+
+        return Response({
+            'stats': stats
+        }, status=status.HTTP_200_OK)
+
+
+# Simple function-based views for specific endpoints
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def toggle_reminders(request):
+    """
+    Toggle reminder settings: POST /api/accounts/toggle-reminders/
+    """
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    profile.reminder_enabled = not profile.reminder_enabled
+    profile.save()
+    
+    return Response({
+        'reminder_enabled': profile.reminder_enabled,
+        'message': f"Reminders {'enabled' if profile.reminder_enabled else 'disabled'}"
+    })
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def update_spotify_status(request):
+    """
+    Update Spotify connection status: POST /api/accounts/spotify-status/
+    """
+    connected = request.data.get('connected', False)
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    profile.spotify_connected = connected
+    profile.save()
+    
+    return Response({
+        'spotify_connected': profile.spotify_connected,
+        'message': f"Spotify {'connected' if connected else 'disconnected'}"
+    })
 
 # --- User Profile Management Views ---
 
@@ -61,21 +231,6 @@ class UserDetailView(generics.RetrieveUpdateAPIView):
         Ensures that only the currently authenticated user's profile is returned.
         """
         return self.request.user
-
-class ChangePasswordView(APIView):
-    """
-    API endpoint for changing user password
-    """
-    permission_classes = (permissions.IsAuthenticated,)
-
-    def post(self, request):
-        serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            user = request.user
-            user.set_password(serializer.validated_data['new_password'])
-            user.save()
-            return Response({"detail": "Password changed successfully."}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class DeleteAccountView(APIView):
     """

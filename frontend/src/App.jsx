@@ -12,11 +12,12 @@ import Register from "./features/userProfile/Register"
 import Dashboard from "./features/userProfile/Dashboard"
 import PlantManagement from "./features/plants/PlantManagement"
 import ProfilePage from "./features/userProfile/ProfilePage"
-import SpotifyIntegration from "./features/music/SpotifyIntegration"
+import MusicDashboard from "./features/music/MusicDashboard"
 import JournalPage from "./features/journal/JournalPage"
 import CreatePlantForm from "./features/plantGrowth/CreatePlantForm"
 import { PublicGarden, MindfulnessPage } from "./features/plants"
 import { UserPlantProfile } from "./features/userProfile"
+import ReminderSettings from "./features/reminders/ReminderSettings"
 
 function App() {
   return (
@@ -29,7 +30,7 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-              <Route path="/callback" element={<SpotifyIntegration />} />
+              <Route path="/callback" element={<MusicDashboard />} />
 
             {/* Protected routes with Layout */}
             <Route
@@ -85,7 +86,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <SpotifyIntegration />
+                    <MusicDashboard />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -116,6 +117,16 @@ function App() {
                   <ProtectedRoute>
                     <Layout>
                       <MindfulnessPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/reminders"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <ReminderSettings />
                     </Layout>
                   </ProtectedRoute>
                 }

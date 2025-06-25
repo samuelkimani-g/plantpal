@@ -47,6 +47,7 @@ if DEBUG:
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
+SPOTIFY_REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI', 'https://plantpal-4hx7.onrender.com/api/music/callback/')
 SPOTIPY_REDIRECT_URI = os.getenv('SPOTIPY_REDIRECT_URI', 'https://plantpal-4hx7.onrender.com/api/accounts/spotify/callback/')
 
 # Frontend URL for redirects
@@ -77,7 +78,8 @@ INSTALLED_APPS = [
     'apps.journal',
     'apps.plants',
     'apps.moods',
-    'apps.reminders', 
+    'apps.reminders',
+    'apps.music',
 ]
 
 MIDDLEWARE = [
@@ -231,7 +233,19 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = 'accounts.CustomUser'
+# Email settings for reminders
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
+# For production, use SMTP:
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = 'PlantPal <noreply@plantpal.app>'
+
+# Use standard Django User model with UserProfile (as per architecture)
+# AUTH_USER_MODEL = 'auth.User'  # Standard Django user
 
 # Logging configuration for debugging
 LOGGING = {

@@ -88,12 +88,13 @@ export const authAPI = {
   register: (userData) => api.post("/accounts/register/", userData),
   login: (credentials) => api.post("/accounts/login/", credentials),
   logout: (refreshToken) => api.post("/accounts/logout/", { refresh: refreshToken }),
-  refreshToken: (refreshToken) => api.post("/token/refresh/", { refresh: refreshToken }),
-  getProfile: () => api.get("/accounts/profile/"),
-  updateProfile: (userData) => api.patch("/accounts/profile/", userData),
+  refreshToken: (refreshToken) => api.post("/accounts/token/refresh/", { refresh: refreshToken }),
+  getProfile: () => api.get("/accounts/me/"),
+  updateProfile: (userData) => api.patch("/accounts/me/update/", userData),
   changePassword: (passwordData) => api.post("/accounts/change-password/", passwordData),
-  deleteAccount: (refreshToken) => api.delete("/accounts/delete-account/", { data: { refresh: refreshToken } }),
-  connectSpotify: (spotifyData) => api.post("/accounts/spotify/", spotifyData),
+  deleteAccount: (refreshToken) => api.delete("/accounts/delete/", { data: { refresh: refreshToken } }),
+  connectSpotify: (spotifyData) => api.post("/accounts/spotify-status/", spotifyData),
+  getUserStats: () => api.get("/accounts/stats/"),
   // Convenience methods for direct API calls
   post: (url, data) => api.post(`/accounts${url}`, data),
   delete: (url, config) => api.delete(`/accounts${url}`, config),
@@ -153,6 +154,37 @@ export const reminderAPI = {
   getReminder: (id) => api.get(`/reminders/reminders/${id}/`),
   updateReminder: (id, reminderData) => api.patch(`/reminders/reminders/${id}/`, reminderData),
   deleteReminder: (id) => api.delete(`/reminders/reminders/${id}/`),
+}
+
+// Music API calls (music app)
+export const musicAPI = {
+  // Spotify Authentication
+  getAuthUrl: () => api.get("/music/auth/"),
+  handleCallback: (code, state) => api.post("/music/callback/", { code, state }),
+  disconnect: () => api.delete("/music/disconnect/"),
+  getConnectionStatus: () => api.get("/music/status/"),
+  
+  // Spotify Data
+  getTopTracks: (timeRange = 'medium_term', limit = 20) => 
+    api.get("/music/top-tracks/", { params: { time_range: timeRange, limit } }),
+  getRecentlyPlayed: (limit = 20) => 
+    api.get("/music/recently-played/", { params: { limit } }),
+  getCurrentTrack: () => api.get("/music/current-track/"),
+  
+  // Mood Analysis
+  getMoodAnalysis: (days = 7) => 
+    api.get("/music/mood/analysis/", { params: { days } }),
+  getMoodSummary: () => api.get("/music/mood/summary/"),
+  getMoodSettings: () => api.get("/music/mood/settings/"),
+  updateMoodSettings: (settings) => api.put("/music/mood/settings/", settings),
+  
+  // Statistics
+  getListeningStats: (days = 30) => 
+    api.get("/music/stats/", { params: { days } }),
+  getWeeklyReport: () => api.get("/music/reports/weekly/"),
+  
+  // Data Management
+  syncListeningData: () => api.post("/music/sync/"),
 }
 
 export default api

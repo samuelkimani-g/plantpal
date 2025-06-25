@@ -15,6 +15,7 @@ import {
   Settings,
   ChevronRight,
   Smile,
+  Bell,
 } from "lucide-react"
 import { Button } from "./ui/button"
 
@@ -54,6 +55,9 @@ const Navigation = () => {
     }
     if (segments.includes("mindfulness")) {
       breadcrumbs.push({ name: "Mindfulness", path: "/mindfulness" })
+    }
+    if (segments.includes("reminders")) {
+      breadcrumbs.push({ name: "Reminders", path: "/reminders" })
     }
 
     return breadcrumbs
@@ -167,6 +171,16 @@ const Navigation = () => {
                   >
                     <Settings className="h-4 w-4 mr-2" />
                     Profile Settings
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate("/reminders")
+                      setIsUserMenuOpen(false)
+                    }}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600"
+                  >
+                    <Bell className="h-4 w-4 mr-2" />
+                    Reminders
                   </button>
                   <hr className="my-1" />
                   <button
