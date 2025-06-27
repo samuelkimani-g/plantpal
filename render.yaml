@@ -3,14 +3,12 @@ services:
     name: plantpal-backend
     runtime: python3
     buildCommand: "./backend/build.sh"
-    startCommand: "cd backend && python manage.py migrate && gunicorn core.wsgi:application"
+    startCommand: "cd backend && python manage.py migrate --settings=core.production_settings && gunicorn core.wsgi:application"
     plan: free
     autoDeploy: false
     envVars:
       - key: DEBUG
         value: False
-      - key: DJANGO_SETTINGS_MODULE
-        value: core.production_settings
       - key: SECRET_KEY
         generateValue: true
       - key: WEB_CONCURRENCY
