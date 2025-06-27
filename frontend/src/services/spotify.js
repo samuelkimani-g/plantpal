@@ -73,8 +73,9 @@ export class SpotifyService {
   // Check Spotify connection status via backend
   async getConnectionStatus() {
     try {
-      // Use the default api instance for GET request since authAPI only supports POST/DELETE
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/music/status/`, {
+      // Use the correct API base URL construction
+      const API_BASE_ROOT_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+      const response = await fetch(`${API_BASE_ROOT_URL}/api/music/status/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -115,7 +116,8 @@ export class SpotifyService {
       console.log('🔄 Starting complete Spotify disconnect...');
       
       // Step 1: Disconnect via backend (removes server-side data)
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/music/disconnect/`, {
+      const API_BASE_ROOT_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+      const response = await fetch(`${API_BASE_ROOT_URL}/api/music/disconnect/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -288,7 +290,8 @@ export class SpotifyService {
   // Get currently playing track
   async getCurrentTrack() {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/music/current-track/`, {
+      const API_BASE_ROOT_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+      const response = await fetch(`${API_BASE_ROOT_URL}/api/music/current-track/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -315,7 +318,8 @@ export class SpotifyService {
   // Get recently played tracks
   async getRecentlyPlayed(limit = 20) {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/music/recently-played/?limit=${limit}`, {
+      const API_BASE_ROOT_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+      const response = await fetch(`${API_BASE_ROOT_URL}/api/music/recently-played/?limit=${limit}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
