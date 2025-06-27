@@ -19,7 +19,6 @@ urlpatterns = [
     # Additional user management
     path('stats/', views.UserStatsView.as_view(), name='user_stats'),
     path('toggle-reminders/', views.toggle_reminders, name='toggle_reminders'),
-    path('spotify-status/', views.update_spotify_status, name='spotify_status'),
     
     # Legacy endpoints for backward compatibility
     path('profile/', views.UserViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update'}), name='profile_legacy'),
