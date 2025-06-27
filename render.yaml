@@ -10,7 +10,7 @@ services:
       - key: DEBUG
         value: False
       - key: DJANGO_SETTINGS_MODULE
-        value: core.settings
+        value: core.production_settings
       - key: SECRET_KEY
         generateValue: true
       - key: WEB_CONCURRENCY
