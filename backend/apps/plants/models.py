@@ -222,12 +222,12 @@ class Plant(models.Model):
             self.current_mood_influence = combined_mood.get('mood_type', 'neutral')
             
             # Calculate growth points from mood
-            mood_bonus = MoodEngine.calculate_mood_growth_bonus(combined_mood, self.stage)
+            mood_impact = MoodEngine.calculate_plant_growth_impact(combined_mood, self.growth_points)
             
-            if mood_bonus['growth_change'] != 0:
+            if mood_impact['growth_change'] != 0:
                 self.add_growth_points(
-                    mood_bonus['growth_change'], 
-                    source=f"mood_update_{mood_bonus['mood_type']}"
+                    mood_impact['growth_change'], 
+                    source=f"mood_update_{mood_impact['mood_influence']}"
                 )
             
             self.last_mood_update = timezone.now()

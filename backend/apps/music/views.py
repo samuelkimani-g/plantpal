@@ -663,8 +663,8 @@ class MoodSummaryView(APIView):
                 'mood_type': 'happy' if mood_score > 0.6 else 'neutral' if mood_score > 0.4 else 'sad'
             }
             
-            bonus = MoodEngine.calculate_mood_growth_bonus(mood_data, 'sprout')
-            return bonus.get('growth_change', 0)
+            impact = MoodEngine.calculate_plant_growth_impact(mood_data, 0)
+            return impact.get('growth_change', 0)
             
         except ImportError:
             # Fallback calculation
