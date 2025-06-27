@@ -11,28 +11,53 @@ django.setup()
 from apps.accounts.serializers import RegisterSerializer
 
 def test_registration():
-    # Test data that matches what frontend is sending
-    test_data = {
-        'username': 'sam',
-        'email': 'sam@gmail.com',
-        'password': 'kimani@90',
-        'password_confirm': 'kimani@90'
-    }
+    # Test different passwords
+    test_cases = [
+        {
+            'name': 'Original password',
+            'data': {
+                'username': 'sam',
+                'email': 'sam@gmail.com',
+                'password': 'kimani@90',
+                'password_confirm': 'kimani@90'
+            }
+        },
+        {
+            'name': 'Strong password',
+            'data': {
+                'username': 'sam2',
+                'email': 'sam2@gmail.com',
+                'password': 'StrongPassword123!',
+                'password_confirm': 'StrongPassword123!'
+            }
+        },
+        {
+            'name': 'Different user, same original password',
+            'data': {
+                'username': 'testuser',
+                'email': 'test@gmail.com',
+                'password': 'kimani@90',
+                'password_confirm': 'kimani@90'
+            }
+        }
+    ]
     
-    print("Testing registration with data:")
-    print(test_data)
-    
-    serializer = RegisterSerializer(data=test_data)
-    
-    if serializer.is_valid():
-        print("✅ Validation passed!")
-        user = serializer.save()
-        print(f"✅ User created: {user.username}")
-        return True
-    else:
-        print("❌ Validation failed!")
-        print("Errors:", serializer.errors)
-        return False
+    for test_case in test_cases:
+        print(f"\n--- Testing: {test_case['name']} ---")
+        print(f"Data: {test_case['data']}")
+        
+        serializer = RegisterSerializer(data=test_case['data'])
+        
+        if serializer.is_valid():
+            print("✅ Validation passed!")
+            try:
+                user = serializer.save()
+                print(f"✅ User created: {user.username}")
+            except Exception as e:
+                print(f"❌ User creation failed: {e}")
+        else:
+            print("❌ Validation failed!")
+            print("Errors:", serializer.errors)
 
 if __name__ == '__main__':
     test_registration() 
