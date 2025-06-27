@@ -132,7 +132,7 @@ class JournalEntry(models.Model):
                         value=self.mood_score,
                         growth_impact=MoodEngine.calculate_plant_growth_impact(
                             {'mood_score': avg_mood_score}, 
-                            plant.growth_stage
+                            plant.growth_points
                         )['growth_change']
                     )
         except Exception as e:
