@@ -74,7 +74,7 @@ export class SpotifyService {
   async getConnectionStatus() {
     try {
       // Use the default api instance for GET request since authAPI only supports POST/DELETE
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/accounts/spotify/status/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/music/status/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -115,7 +115,13 @@ export class SpotifyService {
       console.log('🔄 Starting complete Spotify disconnect...');
       
       // Step 1: Disconnect via backend (removes server-side data)
-      const response = await authAPI.delete('/spotify/disconnect/', {});
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/music/disconnect/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
       console.log('✅ Spotify disconnected via backend:', response);
       
       // Step 2: Clear all local storage data
@@ -229,19 +235,34 @@ export class SpotifyService {
     this.lastRequestTime = now
 
     try {
-      // Use backend to proxy the Spotify API request
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/accounts/spotify/proxy/`, {
-        method: 'POST',
+      // Map Spotify API endpoints to backend endpoints
+      let backendEndpoint = '';
+      let params = {};
+      
+      if (endpoint.includes('/me/top/tracks')) {
+        backendEndpoint = '/music/top-tracks/';
+        const urlParams = new URLSearchParams(endpoint.split('?')[1]);
+        params = {
+          time_range: urlParams.get('time_range') || 'medium_term',
+          limit: urlParams.get('limit') || 20
+        };
+      } else if (endpoint.includes('/me/player/recently-played')) {
+        backendEndpoint = '/music/recently-played/';
+        const urlParams = new URLSearchParams(endpoint.split('?')[1]);
+        params = { limit: urlParams.get('limit') || 20 };
+      } else {
+        throw new Error(`Unsupported Spotify endpoint: ${endpoint}`);
+      }
+
+      const queryString = new URLSearchParams(params).toString();
+      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${backendEndpoint}${queryString ? '?' + queryString : ''}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          method: method,
-          endpoint: endpoint,
-          data: options.body || null,
-          headers: options.headers || {}
-        })
+        }
       });
 
       if (!response.ok) {
@@ -267,7 +288,7 @@ export class SpotifyService {
   // Get currently playing track
   async getCurrentTrack() {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/accounts/spotify/current-track/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/music/current-track/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -294,7 +315,7 @@ export class SpotifyService {
   // Get recently played tracks
   async getRecentlyPlayed(limit = 20) {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/accounts/spotify/recently-played/?limit=${limit}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/music/recently-played/?limit=${limit}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -335,15 +356,10 @@ export class SpotifyService {
   // Get audio features for tracks
   async getAudioFeatures(trackIds) {
     try {
-      const response = await this.apiRequest('GET', `/audio-features?ids=${trackIds.join(',')}`);
-      
-      // If response has data property, extract it
-      if (response.data) {
-        return response.data;
-      }
-      
-      // Otherwise return the response directly
-      return response;
+      // Audio features endpoint doesn't exist in backend, return null
+      // This will cause the mood calculation to fall back to text-based analysis
+      console.log('⚠️ Audio features endpoint not available in backend, using text-based mood analysis');
+      return { audio_features: null };
     } catch (error) {
       console.error('Error getting audio features:', error);
       throw error;
@@ -781,29 +797,12 @@ export class SpotifyService {
       // Check current status
       const status = await this.getConnectionStatus();
       
-      if (status.connected && status.is_expired) {
-        console.log('🔄 Spotify tokens expired, attempting refresh...');
-        
-        // Try to refresh tokens via backend
-        try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/accounts/spotify/refresh/`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-              'Content-Type': 'application/json',
-            }
-          });
-          
-          if (response.ok) {
-            console.log('✅ Spotify tokens refreshed automatically');
-            this.reconnectionAttempted = false; // Reset flag on success
-            return true;
-          } else {
-            console.log('❌ Token refresh failed with status:', response.status);
-          }
-        } catch (refreshError) {
-          console.log('❌ Automatic token refresh failed:', refreshError.message);
-        }
+      if (status.connected && !status.is_expired) {
+        console.log('✅ Spotify connection is valid');
+        this.reconnectionAttempted = false; // Reset flag on success
+        return true;
+      } else {
+        console.log('❌ Spotify connection is invalid or expired');
       }
       
       // Reset flag after a delay to allow future attempts
