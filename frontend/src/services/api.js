@@ -93,7 +93,7 @@ export const authAPI = {
   updateProfile: (userData) => api.patch("/accounts/me/update/", userData),
   changePassword: (passwordData) => api.post("/accounts/change-password/", passwordData),
   deleteAccount: (refreshToken) => api.delete("/accounts/delete/", { data: { refresh: refreshToken } }),
-  connectSpotify: (spotifyData) => api.post("/accounts/spotify-status/", spotifyData),
+  connectSpotify: (spotifyData) => api.post("/music/status/", spotifyData),
   getUserStats: () => api.get("/accounts/stats/"),
   // Convenience methods for direct API calls
   post: (url, data) => api.post(`/accounts${url}`, data),
