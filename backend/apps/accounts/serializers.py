@@ -108,7 +108,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name', 'date_joined',
-            'avatar', 'music_mood_weight', 'is_spotify_connected', 'profile'
+            'is_spotify_connected', 'profile'
         )
         read_only_fields = ('id', 'date_joined', 'is_spotify_connected')
 
