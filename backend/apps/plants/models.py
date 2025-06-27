@@ -217,9 +217,9 @@ class Plant(models.Model):
                 self.music_mood_score = mood_data['music_mood']  # Alias
             
             # Calculate combined mood using MoodEngine
-            combined_mood = MoodEngine.determine_user_mood(self.user)
+            combined_mood = MoodEngine.get_combined_user_mood(self.user)
             self.combined_mood_score = combined_mood.get('mood_score', 0.5)
-            self.current_mood_influence = combined_mood.get('mood_type', 'neutral')
+            self.current_mood_influence = combined_mood.get('unified_mood', 'neutral')
             
             # Calculate growth points from mood
             mood_impact = MoodEngine.calculate_plant_growth_impact(combined_mood, self.growth_points)
