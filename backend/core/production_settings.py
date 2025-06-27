@@ -18,7 +18,7 @@ if 'plantpal-4hx7.onrender.com' not in ALLOWED_HOSTS:
 # Database configuration for Render
 if 'DATABASE_URL' in os.environ:
     DATABASES = {
-        'default': dj_database_url.parse(os.environ.get('DATABASE_URL'))
+        'default': dj_database_url.parse(os.environ.get('DATABASE_URL'), conn_health_checks=True)
     }
 else:
     # Fallback to SQLite for local development
