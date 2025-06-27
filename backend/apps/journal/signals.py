@@ -23,7 +23,7 @@ def analyze_journal_sentiment(sender, instance, created, **kwargs):
     if not sid:
         return  # Skip if NLTK is not available
         
-    if created or instance.mood_entry is None:  # Only run on creation or if mood_entry is missing
+    if created:  # Only run on creation
         # Perform sentiment analysis
         sentiment_scores = sid.polarity_scores(instance.text)
         compound_score = sentiment_scores['compound']
@@ -39,23 +39,11 @@ def analyze_journal_sentiment(sender, instance, created, **kwargs):
         else:
             mood_type = "Neutral"
 
-        # Create or update the MoodEntry
-        if instance.mood_entry:
-            # Update existing mood entry if linked
-            mood_entry = instance.mood_entry
-            mood_entry.mood_type = mood_type
-            mood_entry.mood_score = mood_score
-            mood_entry.note = f"Auto-generated from journal entry {instance.id}"
-            mood_entry.save()
-        else:
-            # Create a new MoodEntry for this journal entry
-            mood_entry = MoodEntry.objects.create(
-                user=instance.user,
-                mood_type=mood_type,
-                mood_score=mood_score,
-                note=f"Auto-generated from journal entry {instance.id}",
-                created_at=instance.created_at  # Use journal entry's created_at for consistency
-            )
-            # Link the newly created mood entry back to the journal entry
-            instance.mood_entry = mood_entry
-            instance.save()  # Save the journal entry to update the foreign key
+        # Create a new MoodEntry for this journal entry
+        mood_entry = MoodEntry.objects.create(
+            user=instance.user,
+            mood_type=mood_type,
+            mood_score=mood_score,
+            note=f"Auto-generated from journal entry {instance.id}",
+            created_at=instance.created_at  # Use journal entry's created_at for consistency
+        )

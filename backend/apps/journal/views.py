@@ -81,20 +81,19 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
         total_entries = entries.count()
         streak = getattr(request.user, 'journal_streak', 0) or 0
         
-        # Get mood distribution from related mood entries
+        # Get mood distribution from journal entries directly
         mood_counts = []
         try:
-            # Count entries with mood associations
-            entries_with_mood = entries.filter(mood_entry__isnull=False)
-            mood_distribution = entries_with_mood.values(
-                'mood_entry__mood_type'
+            # Count entries by mood directly
+            mood_distribution = entries.values(
+                'mood'
             ).annotate(
                 count=models.Count('id')
             ).order_by('-count')
             
             mood_counts = [
                 {
-                    'mood_type': item['mood_entry__mood_type'],
+                    'mood_type': item['mood'],
                     'count': item['count']
                 }
                 for item in mood_distribution

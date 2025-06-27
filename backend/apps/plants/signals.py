@@ -23,15 +23,15 @@ def update_plant_from_journal_mood(sender, instance, created, **kwargs):
     if not created: # Only process newly created journal entries for mood impact
         return
 
-    # Check if the journal entry has an associated mood entry with a score
-    if instance.mood_entry and instance.mood_entry.mood_score is not None:
+    # Check if the journal entry has a mood score
+    if instance.mood_score is not None:
         user_plant = Plant.objects.filter(user=instance.user).first() # Get the user's first plant (or current primary)
 
         if user_plant:
             # Calculate health change based on mood_score (0.0 to 1.0)
             # A higher mood_score boosts health, lower can reduce it
             # Neutral (0.5) implies no significant change from mood alone
-            mood_health_change = (instance.mood_entry.mood_score - 0.5) * MOOD_IMPACT_FACTOR
+            mood_health_change = (instance.mood_score - 0.5) * MOOD_IMPACT_FACTOR
             
             # Apply health change, clamping between 0 and 100
             user_plant.health = max(0, min(100, user_plant.health + mood_health_change))
@@ -49,8 +49,8 @@ def update_plant_from_journal_mood(sender, instance, created, **kwargs):
             PlantLog.objects.create(
                 plant=user_plant,
                 activity_type="journal_sentiment",
-                note=f"Mood from journal entry {instance.id}: {instance.mood_entry.mood_type} ({instance.mood_entry.mood_score:.2f}) affected plant health by {mood_health_change:.2f}.",
-                value=instance.mood_entry.mood_score # Store the mood score for reference
+                note=f"Mood from journal entry {instance.id}: {instance.mood} ({instance.mood_score:.2f}) affected plant health by {mood_health_change:.2f}.",
+                value=instance.mood_score # Store the mood score for reference
             )
         else:
             print(f"User {instance.user.username} has no plants to update for journal entry {instance.id}")
