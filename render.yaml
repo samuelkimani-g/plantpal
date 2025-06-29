@@ -3,7 +3,7 @@ services:
     name: plantpal-backend
     runtime: python3
     buildCommand: "./backend/build.sh"
-    startCommand: "cd backend && python manage.py migrate --settings=core.production_settings && gunicorn core.wsgi:application"
+    startCommand: "./backend/start.sh"
     plan: free
     autoDeploy: false
     envVars:
