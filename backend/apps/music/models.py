@@ -138,7 +138,7 @@ class Track(models.Model):
     album_image_url = models.URLField(blank=True)
     duration_ms = models.IntegerField()
     popularity = models.IntegerField(default=0)
-    preview_url = models.URLField(blank=True)
+    preview_url = models.URLField(blank=True, null=True)
     
     # Audio features (from Spotify Audio Features API)
     valence = models.FloatField(null=True, blank=True)  # 0.0-1.0 (sad to happy)
