@@ -32,7 +32,7 @@ export class SpotifyService {
   // Get Spotify authorization URL from backend
   async getAuthUrl(state = null) {
     try {
-      const response = await authAPI.post('/spotify/auth-url/', {});
+      const response = await musicAPI.getAuthUrl();
       return response.data.auth_url;
     } catch (error) {
       console.error('Failed to get Spotify auth URL:', error);
@@ -57,10 +57,7 @@ export class SpotifyService {
   // Exchange authorization code via backend
   async connectWithCode(code) {
     try {
-      const response = await authAPI.post('/spotify/callback/', {
-        code: code,
-        redirect_uri: this.redirectUri
-      });
+      const response = await musicAPI.handleCallback(code, this.redirectUri);
       
       console.log('✅ Spotify connected via backend:', response);
       return response.data;
@@ -85,9 +82,7 @@ export class SpotifyService {
   // Fetch valence data and update plant via backend
   async fetchValenceAndUpdatePlant() {
     try {
-      const response = await authAPI.post('/spotify/fetch-valence/', {
-        limit: 10
-      });
+      const response = await musicAPI.syncListeningData();
       
       console.log('🎵 Valence data fetched and plant updated:', response);
       return response.data;
