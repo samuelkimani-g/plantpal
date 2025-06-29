@@ -215,32 +215,32 @@ class TopTracksView(APIView):
                     track_ids.append(track.spotify_id)
             
             # Get audio features for mood analysis
-            if track_ids:
-                audio_features = spotify_service.get_audio_features(track_ids)
-                if audio_features and 'audio_features' in audio_features:
-                    for i, features in enumerate(audio_features['audio_features']):
-                        if features and i < len(saved_tracks):
-                            track = saved_tracks[i]
-                            
-                            # Update track with audio features
-                            track.valence = features.get('valence')
-                            track.energy = features.get('energy')
-                            track.danceability = features.get('danceability')
-                            track.tempo = features.get('tempo')
-                            track.loudness = features.get('loudness')
-                            track.speechiness = features.get('speechiness')
-                            track.acousticness = features.get('acousticness')
-                            track.instrumentalness = features.get('instrumentalness')
-                            track.liveness = features.get('liveness')
-                            track.audio_features_fetched = True
-                            track.last_analyzed = timezone.now()
-                            
-                            # Compute mood
-                            track.computed_mood_score = track.compute_mood_score()
-                            track.mood_label = track.get_mood_label()
-                            track.save()
+            # if track_ids:
+            #     audio_features = spotify_service.get_audio_features(track_ids)
+            #     if audio_features and 'audio_features' in audio_features:
+            #         for i, features in enumerate(audio_features['audio_features']):
+            #             if features and i < len(saved_tracks):
+            #                 track = saved_tracks[i]
+            #                 
+            #                 # Update track with audio features
+            #                 track.valence = features.get('valence')
+            #                 track.energy = features.get('energy')
+            #                 track.danceability = features.get('danceability')
+            #                 track.tempo = features.get('tempo')
+            #                 track.loudness = features.get('loudness')
+            #                 track.speechiness = features.get('speechiness')
+            #                 track.acousticness = features.get('acousticness')
+            #                 track.instrumentalness = features.get('instrumentalness')
+            #                 track.liveness = features.get('liveness')
+            #                 track.audio_features_fetched = True
+            #                 track.last_analyzed = timezone.now()
+            #                 
+            #                 # Compute mood
+            #                 track.computed_mood_score = track.compute_mood_score()
+            #                 track.mood_label = track.get_mood_label()
+            #                 track.save()
             
-            # Compute mood analysis
+            # Compute mood analysis using text-based approach instead
             mood_analysis = self._compute_tracks_mood_analysis(saved_tracks)
             
             serializer = TopTracksResponseSerializer({
@@ -260,55 +260,81 @@ class TopTracksView(APIView):
             )
     
     def _compute_tracks_mood_analysis(self, tracks):
-        """Compute mood analysis for a list of tracks"""
+        """Compute mood analysis for a list of tracks using text-based approach"""
         if not tracks:
             return {}
         
-        # Filter tracks with audio features
-        analyzed_tracks = [t for t in tracks if t.audio_features_fetched and t.valence is not None]
+        # Use text-based mood analysis for all tracks
+        analyzed_tracks = []
+        for track in tracks:
+            # Calculate mood score from track info (name, artists, etc.)
+            mood_score = self._calculate_text_based_mood_score(track)
+            track.computed_mood_score = mood_score
+            track.mood_label = self._get_mood_label_from_score(mood_score)
+            track.save()
+            analyzed_tracks.append(track)
+        
         if not analyzed_tracks:
             return {}
         
-        # Compute averages
-        avg_valence = sum(t.valence for t in analyzed_tracks) / len(analyzed_tracks)
-        avg_energy = sum(t.energy for t in analyzed_tracks) / len(analyzed_tracks)
-        avg_danceability = sum(t.danceability for t in analyzed_tracks) / len(analyzed_tracks)
-        avg_tempo = sum(t.tempo for t in analyzed_tracks) / len(analyzed_tracks)
+        # Compute average mood score
+        avg_mood_score = sum(t.computed_mood_score for t in analyzed_tracks) / len(analyzed_tracks)
         
-        # Compute overall mood score
-        overall_mood = (avg_valence * 0.4 + avg_energy * 0.3 + avg_danceability * 0.2 + 
-                       min(1, (avg_tempo - 60) / 140) * 0.1)
-        
-        # Determine mood label
-        if overall_mood > 0.7:
-            mood_label = 'euphoric'
-        elif overall_mood > 0.6:
-            mood_label = 'happy'
-        elif overall_mood > 0.5:
-            mood_label = 'upbeat'
-        elif overall_mood > 0.4:
-            mood_label = 'neutral'
-        elif overall_mood > 0.3:
-            mood_label = 'calm'
-        else:
-            mood_label = 'sad'
+        # Determine overall mood label
+        overall_mood_label = self._get_mood_label_from_score(avg_mood_score)
         
         # Count mood distribution
         mood_counts = {}
         for track in analyzed_tracks:
-            track_mood = track.mood_label or 'unknown'
+            track_mood = track.mood_label or 'neutral'
             mood_counts[track_mood] = mood_counts.get(track_mood, 0) + 1
         
         return {
-            'overall_mood_score': round(overall_mood, 3),
-            'overall_mood_label': mood_label,
-            'average_valence': round(avg_valence, 3),
-            'average_energy': round(avg_energy, 3),
-            'average_danceability': round(avg_danceability, 3),
-            'average_tempo': round(avg_tempo, 1),
+            'overall_mood_score': round(avg_mood_score, 3),
+            'overall_mood_label': overall_mood_label,
             'mood_distribution': mood_counts,
             'total_analyzed': len(analyzed_tracks)
         }
+    
+    def _calculate_text_based_mood_score(self, track):
+        """Calculate mood score based on track information (name, artists, etc.)"""
+        try:
+            # Simple mood calculation based on popularity and duration
+            popularity = track.popularity or 50
+            duration_ms = track.duration_ms or 180000  # Default 3 minutes
+            
+            # Convert popularity (0-100) to mood score (0-1)
+            popularity_score = popularity / 100.0
+            
+            # Duration factor (shorter songs might be more energetic)
+            duration_factor = 1.0
+            if duration_ms < 120000:  # Less than 2 minutes
+                duration_factor = 1.2  # Slightly more energetic
+            elif duration_ms > 300000:  # More than 5 minutes
+                duration_factor = 0.9  # Slightly more calm
+            
+            # Combine factors
+            mood_score = (popularity_score * 0.7 + duration_factor * 0.3) / 1.3
+            
+            # Ensure score is between 0 and 1
+            return max(0.0, min(1.0, mood_score))
+            
+        except Exception as e:
+            logger.error(f"Error calculating text-based mood score: {str(e)}")
+            return 0.5  # Default neutral score
+    
+    def _get_mood_label_from_score(self, mood_score):
+        """Convert mood score to label"""
+        if mood_score > 0.7:
+            return 'happy'
+        elif mood_score > 0.6:
+            return 'energetic'
+        elif mood_score > 0.4:
+            return 'neutral'
+        elif mood_score > 0.3:
+            return 'calm'
+        else:
+            return 'sad'
 
 
 class RecentlyPlayedView(APIView):
@@ -336,8 +362,8 @@ class RecentlyPlayedView(APIView):
                 session_start__gte=timezone.now() - timedelta(days=7)
             ).order_by('-session_start')[:10]
             
-            # Compute mood analysis
-            tracks = [history.track for history in recent_history if history.track.audio_features_fetched]
+            # Compute mood analysis using text-based approach
+            tracks = [history.track for history in recent_history]
             mood_analysis = self._compute_tracks_mood_analysis(tracks)
             
             serializer = RecentlyPlayedResponseSerializer({

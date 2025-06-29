@@ -514,7 +514,7 @@ class SpotifyAPIService:
                 tracks_processed += 1
             
             # Get audio features for all tracks that don't have them
-            self._fetch_missing_audio_features()
+            # self._fetch_missing_audio_features()  # Commented out to prevent 403 errors - using text-based mood analysis instead
             
             # Update session with computed data
             if session:

@@ -100,7 +100,7 @@ def update_plant_mood_from_music(sender, instance, created, **kwargs):
         current_mood_score = instance.current_mood_score
         
         try:
-            plant = Plant.objects.get(owner=user)
+            plant = Plant.objects.get(user=user)
             logger.info(f"Updating plant {plant.name} for user {user.username} with mood score: {current_mood_score}")
 
             # Example logic: Adjust plant health based on mood score
