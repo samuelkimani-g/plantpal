@@ -290,7 +290,8 @@ class SpotifyService:
     def get_auth_url(redirect_uri=None):
         """Get Spotify authorization URL"""
         if not redirect_uri:
-            redirect_uri = settings.SPOTIPY_REDIRECT_URI
+            # Use frontend URL for redirect URI since frontend handles the callback
+            redirect_uri = getattr(settings, 'FRONTEND_URL', 'https://plantpal-three.vercel.app') + '/music'
         
         scopes = [
             'user-read-recently-played',
@@ -313,10 +314,14 @@ class SpotifyService:
         return f"https://accounts.spotify.com/authorize?{query_string}"
     
     @staticmethod
-    def exchange_code_for_tokens(code, redirect_uri):
+    def exchange_code_for_tokens(code, redirect_uri=None):
         """Exchange authorization code for access and refresh tokens"""
         logger = logging.getLogger(__name__)
         print(f"DEBUG: Exchange code received: {code[:10]}...")
+        
+        if not redirect_uri:
+            # Use frontend URL for redirect URI since frontend handles the callback
+            redirect_uri = getattr(settings, 'FRONTEND_URL', 'https://plantpal-three.vercel.app') + '/music'
         
         token_url = "https://accounts.spotify.com/api/token"
         data = {

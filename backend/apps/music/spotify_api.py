@@ -18,7 +18,8 @@ class SpotifyAPIService:
         self.user = user
         self.client_id = getattr(settings, 'SPOTIFY_CLIENT_ID', None)
         self.client_secret = getattr(settings, 'SPOTIFY_CLIENT_SECRET', None)
-        self.redirect_uri = getattr(settings, 'SPOTIFY_REDIRECT_URI', None)
+        # Use frontend URL for redirect URI since frontend handles the callback
+        self.redirect_uri = getattr(settings, 'FRONTEND_URL', 'https://plantpal-three.vercel.app') + '/music'
         
         # API endpoints
         self.auth_url = "https://accounts.spotify.com/authorize"
@@ -66,7 +67,7 @@ class SpotifyAPIService:
             data = {
                 'grant_type': 'authorization_code',
                 'code': code,
-                'redirect_uri': self.redirect_uri
+                'redirect_uri': self.redirect_uri  # Use the same redirect URI as authorization
             }
             
             logger.info(f"Exchanging code for token - User: {self.user.username if self.user else 'Anonymous'}")

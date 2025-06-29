@@ -22,11 +22,14 @@ class SpotifyService:
                 'user-read-playback-state'
             ]
             
+            # Use frontend URL for redirect URI since frontend handles the callback
+            redirect_uri = getattr(settings, 'FRONTEND_URL', 'https://plantpal-three.vercel.app') + '/music'
+            
             # Build the authorization URL
             params = {
                 'client_id': settings.SPOTIPY_CLIENT_ID,
                 'response_type': 'code',
-                'redirect_uri': settings.SPOTIPY_REDIRECT_URI,
+                'redirect_uri': redirect_uri,
                 'scope': ' '.join(scopes),
                 'show_dialog': 'true'  # Force user to authorize each time
             }
@@ -38,12 +41,16 @@ class SpotifyService:
             raise Exception(f"Failed to generate auth URL: {str(e)}")
     
     @staticmethod
-    def exchange_code_for_tokens(code, redirect_uri):
+    def exchange_code_for_tokens(code, redirect_uri=None):
         """Exchange authorization code for access and refresh tokens"""
         try:
             # Encode client credentials
             client_credentials = f"{settings.SPOTIPY_CLIENT_ID}:{settings.SPOTIPY_CLIENT_SECRET}"
             encoded_credentials = base64.b64encode(client_credentials.encode()).decode()
+            
+            # Use frontend URL for redirect URI if none provided
+            if not redirect_uri:
+                redirect_uri = getattr(settings, 'FRONTEND_URL', 'https://plantpal-three.vercel.app') + '/music'
             
             # Prepare token exchange request
             token_url = "https://accounts.spotify.com/api/token"

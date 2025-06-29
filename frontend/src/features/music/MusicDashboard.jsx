@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -25,6 +26,8 @@ import MoodAnalysisDashboard from './components/MoodAnalysisDashboard';
 import musicAPI from '../../services/music/musicApi';
 
 const MusicDashboard = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [connectionStatus, setConnectionStatus] = useState({
     isConnected: false,
     profile: null,
@@ -38,6 +41,63 @@ const MusicDashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [isProcessingCallback, setIsProcessingCallback] = useState(false);
+
+  // Handle Spotify OAuth callback
+  useEffect(() => {
+    const handleSpotifyCallback = async () => {
+      const params = new URLSearchParams(location.search);
+      const code = params.get('code');
+      const state = params.get('state');
+      const error = params.get('error');
+
+      // Check for error from Spotify (e.g., user denied access)
+      if (error) {
+        console.error('Spotify Authorization Error:', error);
+        setError(`Spotify authorization failed: ${error}`);
+        // Clean up URL
+        navigate('/music', { replace: true });
+        return;
+      }
+
+      // If we have a code, process the callback
+      if (code) {
+        console.log('✅ Spotify Callback: Authorization code received. Processing...');
+        setIsProcessingCallback(true);
+        setError(null);
+
+        try {
+          const result = await musicAPI.handleCallback(code, state);
+          
+          if (result.is_connected) {
+            console.log('🎉 Spotify connection successful!', result);
+            setConnectionStatus({
+              isConnected: true,
+              profile: result.profile || null,
+              moodProfile: result.mood_profile || null
+            });
+            
+            // Clean up URL and show success
+            navigate('/music', { replace: true });
+          } else {
+            throw new Error('Connection failed after callback');
+          }
+        } catch (err) {
+          console.error('❌ Spotify connection failed on backend callback:', err);
+          setError('Failed to complete Spotify connection. Please try again.');
+          // Clean up URL
+          navigate('/music', { replace: true });
+        } finally {
+          setIsProcessingCallback(false);
+        }
+      }
+    };
+
+    // Only process callback if we have URL parameters
+    if (location.search) {
+      handleSpotifyCallback();
+    }
+  }, [location.search, navigate]);
 
   useEffect(() => {
     if (connectionStatus.isConnected) {
@@ -326,7 +386,25 @@ const MusicDashboard = () => {
               Connect your Spotify account to track your music mood and boost your plant growth
             </p>
           </div>
-          <SpotifyConnect onConnectionChange={handleConnectionChange} />
+          
+          {/* Show loading state when processing callback */}
+          {isProcessingCallback ? (
+            <div className="text-center p-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+              <h2 className="text-xl font-semibold mb-2">Connecting to Spotify...</h2>
+              <p className="text-gray-600">Please wait while we establish your connection.</p>
+            </div>
+          ) : (
+            <>
+              {error && (
+                <Alert className="mb-6">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <SpotifyConnect onConnectionChange={handleConnectionChange} />
+            </>
+          )}
         </div>
       </div>
     );

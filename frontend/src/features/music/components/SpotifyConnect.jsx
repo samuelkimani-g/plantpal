@@ -56,37 +56,9 @@ const SpotifyConnect = ({ onConnectionChange }) => {
       // Get authorization URL
       const authData = await musicAPI.getAuthUrl();
       
-      // Open Spotify authorization in a new window
-      const popup = window.open(
-        authData.auth_url,
-        'spotify_auth',
-        'width=500,height=700,scrollbars=yes,resizable=yes'
-      );
-
-      // Listen for the callback
-      const checkClosed = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(checkClosed);
-          setIsConnecting(false);
-          // Check if connection was successful
-          setTimeout(checkConnectionStatus, 1000);
-        }
-      }, 1000);
-
-      // Handle the callback URL if we're in development
-      if (process.env.NODE_ENV === 'development') {
-        const handleMessage = (event) => {
-          if (event.origin !== window.location.origin) return;
-          
-          if (event.data.type === 'SPOTIFY_CALLBACK') {
-            popup.close();
-            handleCallback(event.data.code, event.data.state);
-            window.removeEventListener('message', handleMessage);
-          }
-        };
-        
-        window.addEventListener('message', handleMessage);
-      }
+      // Redirect directly to Spotify authorization
+      // The callback will be handled by the MusicDashboard component
+      window.location.href = authData.auth_url;
 
     } catch (error) {
       console.error('Error connecting to Spotify:', error);
@@ -94,33 +66,6 @@ const SpotifyConnect = ({ onConnectionChange }) => {
         ...prev,
         error: 'Failed to connect to Spotify'
       }));
-      setIsConnecting(false);
-    }
-  };
-
-  const handleCallback = async (code, state) => {
-    try {
-      const result = await musicAPI.handleCallback(code, state);
-      
-      if (result.is_connected) {
-        setConnectionState(prev => ({
-          ...prev,
-          isConnected: true,
-          profile: result.profile,
-          moodProfile: result.mood_profile
-        }));
-
-        if (onConnectionChange) {
-          onConnectionChange(true, result);
-        }
-      }
-    } catch (error) {
-      console.error('Error handling callback:', error);
-      setConnectionState(prev => ({
-        ...prev,
-        error: 'Failed to complete Spotify connection'
-      }));
-    } finally {
       setIsConnecting(false);
     }
   };
