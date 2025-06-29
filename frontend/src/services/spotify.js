@@ -373,27 +373,24 @@ export class SpotifyService {
     // Get detailed listening session with mood analysis
     async getDetailedListeningSession() {
         try {
-            // Ensure connection before making API calls
             const isConnected = await this.ensureConnection();
             if (!isConnected) {
                 console.log('❌ Spotify not connected, cannot fetch listening session');
                 return null;
             }
 
-            // Return cached data if recent (within 2 minutes)
             const now = Date.now()
             if (this.cachedSession && (now - this.lastSessionUpdate) < 120000) {
                 console.log("Returning cached Spotify session data")
                 return this.cachedSession
             }
 
-            const [currentTrack, recentTracks] = await Promise.all([this.getCurrentTrack(), this.getRecentTracks(5)]) // Reduced from 10 to 5
+            const [currentTrack, recentTracks] = await Promise.all([this.getCurrentTrack(), this.getRecentlyPlayed(5)]) // Use getRecentlyPlayed for consistency
 
             if (!recentTracks || recentTracks.length === 0) {
                 return null
             }
 
-            // Limit audio features request to max 5 tracks to reduce API calls
             const trackIds = recentTracks.slice(0, 5).map((track) => track.id).filter(Boolean)
             
             let moodMetrics = { overallMood: 0.5, energy: 0.5, valence: 0.5, danceability: 0.5 }
@@ -403,11 +400,9 @@ export class SpotifyService {
                 moodMetrics = this.calculateMoodMetrics(audioFeatures.audio_features, recentTracks)
             } catch (error) {
                 console.warn("Could not fetch audio features, using text-based mood analysis:", error.message)
-                // Use text-based mood analysis as fallback
                 moodMetrics = this.calculateMoodMetrics(null, recentTracks)
             }
 
-            // Calculate listening time in the last hour
             const oneHourAgo = Date.now() - 60 * 60 * 1000
             const recentListening = recentTracks.filter((track) => new Date(track.played_at).getTime() > oneHourAgo)
 
@@ -415,7 +410,7 @@ export class SpotifyService {
                 isCurrentlyPlaying: !!currentTrack,
                 currentTrack,
                 recentTracks: recentTracks.slice(0, 5),
-                minutesListened: recentListening.length * 3, // Approximate
+                minutesListened: recentListening.length * 3,
                 moodScore: moodMetrics.overallMood,
                 energyLevel: moodMetrics.energy,
                 valence: moodMetrics.valence,
@@ -424,7 +419,6 @@ export class SpotifyService {
                 lastUpdated: new Date().toISOString(),
             }
 
-            // Cache the session data
             this.cachedSession = sessionData
             this.lastSessionUpdate = now
 
@@ -432,37 +426,12 @@ export class SpotifyService {
         } catch (error) {
             console.error("Error getting detailed listening session:", error)
             
-            // Return cached data if available, even if stale
             if (this.cachedSession) {
                 console.log("Returning stale cached data due to API error")
                 return this.cachedSession
             }
             
             throw error
-        }
-    }
-
-    // Get recent tracks (Ensure this uses musicAPI.getRecentlyPlayed directly)
-    async getRecentTracks(limit = 5) {
-        try {
-            // Call musicAPI directly, avoid this.apiRequest
-            const response = await musicAPI.getRecentlyPlayed(limit);
-
-            if (!response || !response.items) {
-                return []
-            }
-
-            return response.items.map((item) => ({
-                id: item.track.id,
-                name: item.track.name,
-                artists: item.track.artists.map((artist) => artist.name).join(", "),
-                album: item.track.album.name,
-                albumArt: item.track.album.images[0]?.url,
-                played_at: item.played_at,
-            }))
-        } catch (error) {
-            console.error("Error getting recent tracks:", error)
-            return []
         }
     }
 
