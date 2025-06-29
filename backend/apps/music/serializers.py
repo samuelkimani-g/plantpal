@@ -44,7 +44,7 @@ class TrackSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'spotify_id', 'uri', 'name', 'artists', 'album_name',
             'album_image_url', 'duration_ms', 'popularity', 'preview_url',
-            'valence', 'energy', 'danceability', 'tempo', 'loudness',
+            'external_url', 'valence', 'energy', 'danceability', 'tempo', 'loudness',
             'speechiness', 'acousticness', 'instrumentalness', 'liveness',
             'computed_mood_score', 'mood_label', 'genres', 
             'audio_features_fetched', 'last_analyzed', 'created_at'

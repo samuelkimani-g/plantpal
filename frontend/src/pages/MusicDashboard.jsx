@@ -185,11 +185,11 @@ const MusicDashboard = () => {
 
   const loadCurrentTrack = async () => {
     try {
-      const track = await musicAPI.getCurrentTrack();
-      setCurrentTrack(track);
+      const response = await musicAPI.getCurrentTrack();
+      setCurrentTrack(response.track); // Access the track field from the response
+      console.log("Refreshed Current Track:", response.track); // Log periodic refresh
     } catch (err) {
       console.error('Error loading current track:', err);
-      // Don't set a global error for individual failures that might recover
       setCurrentTrack(null);
     }
   };
@@ -286,9 +286,9 @@ const MusicDashboard = () => {
                 {Array.isArray(currentTrack.artists) ? currentTrack.artists.join(', ') : currentTrack.artists}
               </p>
               <p className="text-sm text-gray-500 truncate">{currentTrack.album_name}</p>
-              {currentTrack.external_urls?.spotify && (
+              {currentTrack.external_url && (
                 <a 
-                  href={currentTrack.external_urls.spotify} 
+                  href={currentTrack.external_url} 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="text-green-600 hover:underline text-sm flex items-center mt-1"
