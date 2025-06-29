@@ -1,7 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
-from django.db import models
 import logging
 from apps.journal.models import JournalEntry # To listen for journal entry saves
 from .models import Plant, PlantLog # Your Plant and PlantLog models
@@ -92,10 +91,6 @@ def update_plant_mood_from_music(sender, instance, created, **kwargs):
     This runs whenever a MusicMoodProfile is saved (created or updated).
     """
     try:
-        # Import here to avoid circular imports
-        from .models import Plant
-        from apps.music.models import MusicMoodProfile
-        
         user = instance.user
         current_mood_score = instance.current_mood_score
         
@@ -109,10 +104,13 @@ def update_plant_mood_from_music(sender, instance, created, **kwargs):
                 mood_effect = (current_mood_score - 0.5) * 2  # Transforms 0-1 to -1 to 1
                 health_change = mood_effect * 5  # Max change of 5 health points
 
+                # Update both health and health_score fields
+                plant.health = max(0, min(100, plant.health + health_change))
                 plant.health_score = max(0, min(100, plant.health_score + health_change))
-                plant.last_watered = timezone.now()  # Optionally, mark activity
+                plant.spotify_mood_score = current_mood_score
+                plant.last_mood_update = timezone.now()
                 plant.save()
-                logger.info(f"Plant {plant.name} health updated to {plant.health_score} based on music mood.")
+                logger.info(f"Plant {plant.name} health updated to {plant.health} based on music mood.")
         except Plant.DoesNotExist:
             logger.warning(f"No plant found for user {user.username} to update with music mood.")
         except Exception as e:
