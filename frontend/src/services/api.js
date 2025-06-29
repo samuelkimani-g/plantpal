@@ -8,7 +8,7 @@ console.log("🌐 API Service: Base URL configured as:", baseURL)
 
 const api = axios.create({
   baseURL: baseURL,
-  timeout: 15000, // 15 second timeout
+  timeout: 30000, // 30 second timeout (increased from 15s to handle cold starts)
   headers: {
     "Content-Type": "application/json",
     "ngrok-skip-browser-warning": "true", // Skip ngrok browser warning
