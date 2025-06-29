@@ -529,9 +529,12 @@ class MoodSummaryView(APIView):
             # Check connection
             if not spotify_service.is_connected():
                 return Response({
-                    'is_connected': False,
-                    'music_mood_score': 0.5,
-                    'message': 'Spotify not connected'
+                    'current_mood_score': 0.5,
+                    'current_mood_label': 'neutral',
+                    'mood_trend': 'stable',
+                    'growth_multiplier': 1.0,
+                    'last_updated': timezone.now(),
+                    'confidence_level': 0.0
                 }, status=status.HTTP_200_OK)
             
             # Get recent listening sessions
@@ -543,10 +546,12 @@ class MoodSummaryView(APIView):
             
             if not recent_sessions.exists():
                 return Response({
-                    'is_connected': True,
-                    'music_mood_score': 0.5,
-                    'days_analyzed': 0,
-                    'message': 'No recent listening data'
+                    'current_mood_score': 0.5,
+                    'current_mood_label': 'neutral',
+                    'mood_trend': 'stable',
+                    'growth_multiplier': 1.0,
+                    'last_updated': timezone.now(),
+                    'confidence_level': 0.0
                 }, status=status.HTTP_200_OK)
             
             # Calculate mood metrics
