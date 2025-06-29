@@ -585,18 +585,12 @@ class MoodSummaryView(APIView):
             
             # Prepare response data
             mood_summary = {
-                'is_connected': True,
-                'music_mood_score': avg_mood_score,
-                'days_analyzed': days,
-                'total_listening_minutes': total_minutes,
-                'session_count': len(recent_sessions),
+                'current_mood_score': avg_mood_score,
+                'current_mood_label': mood_profile.current_mood_label,
                 'mood_trend': self._calculate_mood_trend(recent_sessions),
-                'top_mood_influences': self._get_top_mood_influences(recent_sessions),
-                'plant_integration': {
-                    'plant_updated': hasattr(request.user, 'plant'),
-                    'mood_contribution': avg_mood_score,
-                    'growth_bonus': self._calculate_growth_bonus(avg_mood_score)
-                }
+                'growth_multiplier': self._calculate_growth_bonus(avg_mood_score) / 100.0,  # Convert to multiplier
+                'last_updated': timezone.now(),
+                'confidence_level': min(1.0, len(recent_sessions) / 10.0)  # Higher confidence with more sessions
             }
             
             serializer = MoodSummarySerializer(mood_summary)
@@ -696,8 +690,20 @@ class ListeningStatsView(APIView):
             
             if not track_history:
                 return Response(
-                    {'error': 'No listening data found'}, 
-                    status=status.HTTP_404_NOT_FOUND
+                    {
+                        'total_tracks_played': 0,
+                        'total_listening_time_minutes': 0,
+                        'average_session_length_minutes': 0,
+                        'most_played_artist': 'No data',
+                        'most_played_track': 'No data',
+                        'mood_distribution': {},
+                        'listening_patterns': {
+                            'analysis_period_days': days,
+                            'tracks_per_day': 0,
+                            'minutes_per_day': 0
+                        }
+                    }, 
+                    status=status.HTTP_200_OK
                 )
             
             # Compute statistics
