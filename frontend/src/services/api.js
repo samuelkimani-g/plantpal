@@ -1,10 +1,9 @@
 import axios from "axios"
 
 // Create axios instance with base configuration
-// IMPORTANT: VITE_API_URL should NOT include /api at the end
-// It should be something like "https://plantpal-4hx7.onrender.com"
-const API_BASE_ROOT_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
-const baseURL = `${API_BASE_ROOT_URL}/api`
+// VITE_API_URL should include /api at the end
+// It should be something like "https://plantpal-4hx7.onrender.com/api"
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000/api"
 console.log("🌐 API Service: Base URL configured as:", baseURL)
 
 const api = axios.create({
