@@ -628,3 +628,146 @@ class SpotifyAPIService:
         except Exception as e:
             logger.error(f"Error disconnecting Spotify: {str(e)}")
             return False
+
+    def is_connected(self):
+        """Check if user is connected to Spotify and has valid tokens"""
+        if not self.user:
+            return False
+        
+        try:
+            profile = SpotifyProfile.objects.get(user=self.user)
+            return not profile.is_token_expired()
+        except SpotifyProfile.DoesNotExist:
+            return False
+        except Exception as e:
+            logger.error(f"Error checking Spotify connection: {str(e)}")
+            return False
+
+    def calculate_mood_score_from_track_info(self, track_data):
+        """Calculate a simple mood score from track information"""
+        try:
+            # Simple mood calculation based on popularity and duration
+            popularity = track_data.get('popularity', 50)
+            duration_ms = track_data.get('duration_ms', 180000)  # Default 3 minutes
+            
+            # Convert popularity (0-100) to mood score (0-1)
+            popularity_score = popularity / 100.0
+            
+            # Duration factor (shorter songs might be more energetic)
+            duration_factor = min(1.0, duration_ms / 300000)  # Normalize to 5 minutes
+            
+            # Simple weighted average
+            mood_score = (popularity_score * 0.7) + (duration_factor * 0.3)
+            
+            return max(0.0, min(1.0, mood_score))
+        except Exception as e:
+            logger.error(f"Error calculating mood score: {str(e)}")
+            return 0.5  # Default neutral mood
+
+    def get_mood_description(self, mood_score):
+        """Convert mood score to descriptive label"""
+        if mood_score >= 0.8:
+            return 'happy'
+        elif mood_score >= 0.6:
+            return 'upbeat'
+        elif mood_score >= 0.4:
+            return 'neutral'
+        elif mood_score >= 0.2:
+            return 'melancholic'
+        else:
+            return 'sad'
+
+    def get_spotify_user_profile(self):
+        """Get current user's Spotify profile"""
+        try:
+            response = self.make_api_request('me')
+            if response and response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(f"Failed to get user profile: {response.status_code if response else 'No response'}")
+                return None
+        except Exception as e:
+            logger.error(f"Error getting user profile: {str(e)}")
+            return None
+
+    def get_currently_playing(self):
+        """Get currently playing track"""
+        try:
+            response = self.make_api_request('me/player/currently-playing')
+            if response and response.status_code == 200:
+                return response.json()
+            elif response and response.status_code == 204:
+                # No content - nothing playing
+                return None
+            else:
+                logger.error(f"Failed to get currently playing: {response.status_code if response else 'No response'}")
+                return None
+        except Exception as e:
+            logger.error(f"Error getting currently playing: {str(e)}")
+            return None
+
+    def get_recently_played_tracks(self, limit=50):
+        """Get recently played tracks"""
+        try:
+            params = {'limit': limit}
+            response = self.make_api_request('me/player/recently-played', params=params)
+            if response and response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(f"Failed to get recently played: {response.status_code if response else 'No response'}")
+                return None
+        except Exception as e:
+            logger.error(f"Error getting recently played: {str(e)}")
+            return None
+
+    def get_users_top_tracks(self, time_range='medium_term', limit=50):
+        """Get user's top tracks"""
+        try:
+            params = {'time_range': time_range, 'limit': limit}
+            response = self.make_api_request('me/top/tracks', params=params)
+            if response and response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(f"Failed to get top tracks: {response.status_code if response else 'No response'}")
+                return None
+        except Exception as e:
+            logger.error(f"Error getting top tracks: {str(e)}")
+            return None
+
+    def save_spotify_profile_and_mood(self, user_profile_data, token_data):
+        """Save or update Spotify profile and create mood profile"""
+        try:
+            # Save Spotify profile
+            profile, created = SpotifyProfile.objects.update_or_create(
+                user=self.user,
+                defaults={
+                    'spotify_user_id': user_profile_data['id'],
+                    'display_name': user_profile_data.get('display_name', ''),
+                    'email': user_profile_data.get('email', ''),
+                    'profile_image_url': user_profile_data.get('images', [{}])[0].get('url', '') if user_profile_data.get('images') else '',
+                    'country': user_profile_data.get('country', ''),
+                    'product': user_profile_data.get('product', ''),
+                    'access_token': token_data['access_token'],
+                    'refresh_token': token_data.get('refresh_token', ''),
+                    'token_expires_at': token_data['expires_at'],
+                    'token_type': token_data.get('token_type', 'Bearer'),
+                    'scope': token_data.get('scope', '')
+                }
+            )
+            
+            # Create or update mood profile
+            mood_profile, mood_created = MusicMoodProfile.objects.get_or_create(
+                user=self.user,
+                defaults={
+                    'current_mood_score': 0.5,
+                    'current_mood_label': 'neutral',
+                    'total_music_minutes': 0
+                }
+            )
+            
+            logger.info(f"Spotify profile {'created' if created else 'updated'} for user: {self.user.username}")
+            return profile
+            
+        except Exception as e:
+            logger.error(f"Error saving Spotify profile: {str(e)}")
+            return None

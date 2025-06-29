@@ -67,6 +67,11 @@ class MusicMoodProfile(models.Model):
     current_mood_score = models.FloatField(default=0.5)  # 0.0-1.0 scale
     current_mood_label = models.CharField(max_length=50, default='neutral')
     last_mood_update = models.DateTimeField(auto_now=True)
+    last_updated = models.DateTimeField(auto_now=True)  # Alias for compatibility
+    
+    # Mood breakdown and statistics
+    mood_breakdown = models.JSONField(default=dict, blank=True)  # Detailed mood analysis
+    total_music_minutes = models.FloatField(default=0.0)  # Total listening time in minutes
     
     # Listening patterns
     average_listening_hours_per_day = models.FloatField(default=0.0)
@@ -134,11 +139,14 @@ class Track(models.Model):
     # Basic track info
     name = models.CharField(max_length=500)
     artists = models.JSONField(default=list)  # List of artist names
+    artist = models.CharField(max_length=500, blank=True)  # Single artist string for compatibility
     album_name = models.CharField(max_length=500, blank=True)
+    album = models.CharField(max_length=500, blank=True)  # Single album string for compatibility
     album_image_url = models.URLField(blank=True)
     duration_ms = models.IntegerField()
     popularity = models.IntegerField(default=0)
     preview_url = models.URLField(blank=True, null=True)
+    external_url = models.URLField(blank=True)  # Spotify external URL
     
     # Audio features (from Spotify Audio Features API)
     valence = models.FloatField(null=True, blank=True)  # 0.0-1.0 (sad to happy)
