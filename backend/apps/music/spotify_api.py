@@ -283,13 +283,21 @@ class SpotifyAPIService:
             return None
         
         try:
-            # Get user profile from Spotify
-            self.user.temp_token = token_data['access_token']  # Temporary for API call
-            user_profile = self.get_user_profile()
+            # Get user profile from Spotify using the access token from token_data
+            access_token = token_data['access_token']
             
-            if not user_profile:
-                logger.error("Failed to get user profile from Spotify")
+            # Make a direct API call to get user profile
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json'
+            }
+            
+            response = requests.get(f"{self.api_base}/me", headers=headers)
+            if response.status_code != 200:
+                logger.error(f"Failed to get user profile from Spotify: {response.status_code} - {response.text}")
                 return None
+            
+            user_profile = response.json()
             
             # Create or update SpotifyProfile
             profile, created = SpotifyProfile.objects.update_or_create(
