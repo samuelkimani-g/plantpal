@@ -1,8 +1,12 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
+from django.db import models
+import logging
 from apps.journal.models import JournalEntry # To listen for journal entry saves
 from .models import Plant, PlantLog # Your Plant and PlantLog models
+
+logger = logging.getLogger(__name__)
 
 # --- Configuration for Plant Growth Logic ---
 # These values can be adjusted to fine-tune growth and health
@@ -80,3 +84,39 @@ def update_plant_from_plant_log(sender, instance, created, **kwargs):
     plant.save()
 
     print(f"Plant {plant.name} health updated to {plant.health} due to {instance.activity_type}")
+
+@receiver(post_save, sender='music.MusicMoodProfile')
+def update_plant_mood_from_music(sender, instance, created, **kwargs):
+    """
+    Signal receiver to update plant health based on music mood changes.
+    This runs whenever a MusicMoodProfile is saved (created or updated).
+    """
+    try:
+        # Import here to avoid circular imports
+        from .models import Plant
+        from apps.music.models import MusicMoodProfile
+        
+        user = instance.user
+        current_mood_score = instance.current_mood_score
+        
+        try:
+            plant = Plant.objects.get(owner=user)
+            logger.info(f"Updating plant {plant.name} for user {user.username} with mood score: {current_mood_score}")
+
+            # Example logic: Adjust plant health based on mood score
+            if current_mood_score is not None:
+                # Scale mood score (e.g., 0-1) to an effect on health (-1 to 1 for health change)
+                mood_effect = (current_mood_score - 0.5) * 2  # Transforms 0-1 to -1 to 1
+                health_change = mood_effect * 5  # Max change of 5 health points
+
+                plant.health_score = max(0, min(100, plant.health_score + health_change))
+                plant.last_watered = timezone.now()  # Optionally, mark activity
+                plant.save()
+                logger.info(f"Plant {plant.name} health updated to {plant.health_score} based on music mood.")
+        except Plant.DoesNotExist:
+            logger.warning(f"No plant found for user {user.username} to update with music mood.")
+        except Exception as e:
+            logger.exception(f"Error updating plant mood from music for user {user.username}: {e}")
+            
+    except Exception as e:
+        logger.exception(f"Error in update_plant_mood_from_music signal: {e}")

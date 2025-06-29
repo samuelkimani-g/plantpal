@@ -178,7 +178,7 @@ class SpotifyAPIService:
             return None
     
     def make_api_request(self, endpoint, method='GET', params=None, data=None):
-        """Make authenticated request to Spotify API"""
+        """Make authenticated request to Spotify API with improved error handling"""
         access_token = self.get_valid_access_token()
         if not access_token:
             logger.error("No valid access token available")
@@ -193,77 +193,152 @@ class SpotifyAPIService:
         
         try:
             if method == 'GET':
-                response = requests.get(url, headers=headers, params=params)
+                response = requests.get(url, headers=headers, params=params, timeout=10)
             elif method == 'POST':
-                response = requests.post(url, headers=headers, json=data)
+                response = requests.post(url, headers=headers, json=data, timeout=10)
             elif method == 'PUT':
-                response = requests.put(url, headers=headers, json=data)
-            elif method == 'DELETE':
-                response = requests.delete(url, headers=headers)
+                response = requests.put(url, headers=headers, json=data, timeout=10)
             else:
                 logger.error(f"Unsupported HTTP method: {method}")
                 return None
             
+            # Handle different response status codes
             if response.status_code == 200:
-                return response.json()
+                return response
             elif response.status_code == 204:
-                return {'success': True}
+                # No content - this is normal for some endpoints
+                return response
+            elif response.status_code == 401:
+                logger.warning(f"Token expired for user {self.user.username if self.user else 'Unknown'}, attempting refresh")
+                # Try to refresh token and retry once
+                if self._refresh_and_retry(endpoint, method, params, data):
+                    return self.make_api_request(endpoint, method, params, data)
+                else:
+                    logger.error("Failed to refresh token, user needs to re-authenticate")
+                    return None
+            elif response.status_code == 403:
+                logger.error(f"403 Forbidden for endpoint {endpoint} - insufficient permissions or invalid token")
+                # Check if it's a token issue or scope issue
+                if self._is_token_related_403(response):
+                    if self._refresh_and_retry(endpoint, method, params, data):
+                        return self.make_api_request(endpoint, method, params, data)
+                return None
             else:
-                logger.error(f"API request failed: {response.status_code} - {response.text}")
+                logger.error(f"Spotify API error: {response.status_code} - {response.text}")
                 return None
                 
-        except Exception as e:
-            logger.error(f"Error making API request to {endpoint}: {str(e)}")
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout making request to {endpoint}")
             return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request error for {endpoint}: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error making request to {endpoint}: {str(e)}")
+            return None
+
+    def _refresh_and_retry(self, endpoint, method, params, data):
+        """Attempt to refresh token and retry the request"""
+        try:
+            if not self.user:
+                return False
+                
+            profile = SpotifyProfile.objects.get(user=self.user)
+            token_data = self.refresh_access_token(profile.refresh_token)
+            
+            if token_data:
+                # Update profile with new token data
+                profile.access_token = token_data['access_token']
+                profile.token_expires_at = token_data['expires_at']
+                profile.scope = token_data['scope']
+                
+                if 'refresh_token' in token_data:
+                    profile.refresh_token = token_data['refresh_token']
+                
+                profile.save()
+                logger.info(f"Token refreshed successfully for user {self.user.username}")
+                return True
+            else:
+                logger.error(f"Failed to refresh token for user {self.user.username}")
+                return False
+                
+        except SpotifyProfile.DoesNotExist:
+            logger.error(f"No Spotify profile found for user {self.user.username}")
+            return False
+        except Exception as e:
+            logger.error(f"Error during token refresh: {str(e)}")
+            return False
+
+    def _is_token_related_403(self, response):
+        """Check if 403 error is related to token issues"""
+        try:
+            error_data = response.json()
+            error_message = error_data.get('error', {}).get('message', '').lower()
+            
+            # Check for token-related error messages
+            token_related_keywords = ['token', 'expired', 'invalid', 'unauthorized', 'access denied']
+            return any(keyword in error_message for keyword in token_related_keywords)
+        except:
+            return False
     
     def get_user_profile(self):
-        """Get Spotify user profile information"""
-        return self.make_api_request('/me')
+        """Get current user's Spotify profile"""
+        response = self.make_api_request('me')
+        if response and response.status_code == 200:
+            return response.json()
+        return None
     
-    def get_top_tracks(self, time_range='medium_term', limit=50):
-        """Get user's top tracks
-        time_range: short_term (~4 weeks), medium_term (~6 months), long_term (~several years)
-        """
+    def get_top_tracks(self, time_range='medium_term', limit=20):
+        """Get user's top tracks"""
         params = {
             'time_range': time_range,
-            'limit': min(limit, 50)  # Spotify limit is 50
+            'limit': limit
         }
-        return self.make_api_request('/me/top/tracks', params=params)
+        response = self.make_api_request('me/top/tracks', params=params)
+        if response and response.status_code == 200:
+            return response.json()
+        return None
     
-    def get_top_artists(self, time_range='medium_term', limit=50):
+    def get_top_artists(self, time_range='medium_term', limit=20):
         """Get user's top artists"""
         params = {
             'time_range': time_range,
-            'limit': min(limit, 50)
+            'limit': limit
         }
-        return self.make_api_request('/me/top/artists', params=params)
+        response = self.make_api_request('me/top/artists', params=params)
+        if response and response.status_code == 200:
+            return response.json()
+        return None
     
-    def get_recently_played(self, limit=50, after=None, before=None):
+    def get_recently_played(self, limit=20):
         """Get recently played tracks"""
-        params = {'limit': min(limit, 50)}
-        
-        if after:
-            params['after'] = int(after.timestamp() * 1000)  # Convert to Unix timestamp in milliseconds
-        if before:
-            params['before'] = int(before.timestamp() * 1000)
-            
-        return self.make_api_request('/me/player/recently-played', params=params)
+        params = {'limit': limit}
+        response = self.make_api_request('me/player/recently-played', params=params)
+        if response and response.status_code == 200:
+            return response.json()
+        return None
     
     def get_current_track(self):
         """Get currently playing track"""
-        return self.make_api_request('/me/player/currently-playing')
+        response = self.make_api_request('me/player/currently-playing')
+        if response and response.status_code == 200:
+            return response.json()
+        return None
     
     def get_audio_features(self, track_ids):
         """Get audio features for multiple tracks"""
-        if isinstance(track_ids, str):
-            track_ids = [track_ids]
+        if not track_ids:
+            return None
         
-        # Spotify allows max 100 tracks per request
+        # Spotify API accepts up to 100 track IDs at once
         if len(track_ids) > 100:
             track_ids = track_ids[:100]
         
         params = {'ids': ','.join(track_ids)}
-        return self.make_api_request('/audio-features', params=params)
+        response = self.make_api_request('audio-features', params=params)
+        if response and response.status_code == 200:
+            return response.json()
+        return None
     
     def get_track_info(self, track_ids):
         """Get track information for multiple tracks"""
@@ -771,3 +846,26 @@ class SpotifyAPIService:
         except Exception as e:
             logger.error(f"Error saving Spotify profile: {str(e)}")
             return None
+
+    def get_playlists(self, limit=50):
+        """Get user's playlists"""
+        params = {'limit': limit}
+        response = self.make_api_request('me/playlists', params=params)
+        if response and response.status_code == 200:
+            return response.json()
+        return None
+
+    def get_playlist_tracks(self, playlist_id, limit=100):
+        """Get tracks from a specific playlist"""
+        params = {'limit': limit}
+        response = self.make_api_request(f'playlists/{playlist_id}/tracks', params=params)
+        if response and response.status_code == 200:
+            return response.json()
+        return None
+
+    def get_audio_analysis(self, track_id):
+        """Get detailed audio analysis for a track"""
+        response = self.make_api_request(f'audio-analysis/{track_id}')
+        if response and response.status_code == 200:
+            return response.json()
+        return None
