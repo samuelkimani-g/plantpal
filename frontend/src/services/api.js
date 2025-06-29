@@ -160,6 +160,45 @@ export const musicAPI = {
   
   // Data Management
   syncListeningData: () => api.post("/api/music/sync/"),
+  disconnectSpotify: () => api.delete("/api/music/disconnect/"),
+  
+  // Helper functions for frontend
+  formatDuration: (ms) => {
+    if (!ms) return "0:00";
+    const minutes = Math.floor(ms / 60000);
+    const seconds = ((ms % 60000) / 1000).toFixed(0);
+    return minutes + ":" + (seconds < 10 ? '0' : '') + seconds;
+  },
+  
+  formatMoodScore: (score) => {
+    if (score === null || score === undefined) return 'neutral';
+    if (score >= 0.75) return 'happy';
+    if (score >= 0.55) return 'energetic';
+    if (score >= 0.45) return 'neutral';
+    if (score >= 0.25) return 'calm';
+    return 'sad';
+  },
+  
+  getMoodEmoji: (moodLabel) => {
+    if (!moodLabel) return '❓';
+    switch (moodLabel.toLowerCase()) {
+      case 'happy': return '😊';
+      case 'energetic': return '⚡';
+      case 'calm': return '😌';
+      case 'sad': return '😢';
+      case 'neutral': return '😐';
+      default: return '❓';
+    }
+  },
+  
+  calculatePlantGrowthBonus: (moodScore) => {
+    if (!moodScore || moodScore === null || moodScore === undefined) return 0;
+    // Example: Positive mood (score > 0.5) gives a bonus, negative (score < 0.5) gives less or none
+    if (moodScore > 0.5) {
+      return (moodScore - 0.5) * 2; // Scales 0-0.5 to 0-1 (0% to 100% bonus for max positive mood)
+    }
+    return 0; // No bonus for neutral or negative moods
+  }
 }
 
 export default api
