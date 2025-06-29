@@ -4,6 +4,7 @@ from django.utils import timezone
 import logging
 from apps.journal.models import JournalEntry # To listen for journal entry saves
 from .models import Plant, PlantLog # Your Plant and PlantLog models
+from apps.music.models import MusicMoodProfile # Import the MusicMoodProfile model
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ def update_plant_from_plant_log(sender, instance, created, **kwargs):
 
     print(f"Plant {plant.name} health updated to {plant.health} due to {instance.activity_type}")
 
-@receiver(post_save, sender='music.MusicMoodProfile')
+@receiver(post_save, sender=MusicMoodProfile)
 def update_plant_mood_from_music(sender, instance, created, **kwargs):
     """
     Signal receiver to update plant health based on music mood changes.
