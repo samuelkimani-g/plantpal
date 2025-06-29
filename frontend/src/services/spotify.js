@@ -2,7 +2,7 @@ console.log("SPOTIFY_CLIENT_ID:", import.meta.env.VITE_SPOTIFY_CLIENT_ID);
 console.log("ALL ENV VARS:", import.meta.env);
 
 // Import API service for backend calls
-import { authAPI } from './api.js';
+import { authAPI, musicAPI } from './api.js';
 
 const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
 // Use the current window location for the redirect URI if not specified
@@ -73,22 +73,9 @@ export class SpotifyService {
   // Check Spotify connection status via backend
   async getConnectionStatus() {
     try {
-      // Use the correct API base URL construction
-      const API_BASE_ROOT_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      const response = await fetch(`${API_BASE_ROOT_URL}/api/music/status/`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        return data;
-      } else {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      // Use the centralized API service instead of manual fetch
+      const response = await musicAPI.getConnectionStatus();
+      return response.data;
     } catch (error) {
       console.error('Failed to get Spotify status:', error);
       return { connected: false, is_expired: true };
@@ -116,14 +103,7 @@ export class SpotifyService {
       console.log('🔄 Starting complete Spotify disconnect...');
       
       // Step 1: Disconnect via backend (removes server-side data)
-      const API_BASE_ROOT_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      const response = await fetch(`${API_BASE_ROOT_URL}/api/music/disconnect/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json',
-        }
-      });
+      const response = await musicAPI.disconnect();
       console.log('✅ Spotify disconnected via backend:', response);
       
       // Step 2: Clear all local storage data
@@ -256,31 +236,16 @@ export class SpotifyService {
         throw new Error(`Unsupported Spotify endpoint: ${endpoint}`);
       }
 
-      const queryString = new URLSearchParams(params).toString();
-      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${backendEndpoint}${queryString ? '?' + queryString : ''}`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json',
+      // Use the centralized API service instead of manual fetch
+      if (method === 'GET') {
+        if (backendEndpoint === '/music/top-tracks/') {
+          return await musicAPI.getTopTracks(params.time_range, params.limit);
+        } else if (backendEndpoint === '/music/recently-played/') {
+          return await musicAPI.getRecentlyPlayed(params.limit);
         }
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Token might be invalid - suggest reconnection
-          throw new Error("Spotify token expired - please reconnect")
-        } else if (response.status === 403) {
-          throw new Error('Spotify API access restricted. Please check app permissions.')
-        } else if (response.status === 429) {
-          throw new Error('Too many requests. Please wait before trying again.')
-        }
-        throw new Error(`Spotify API error: ${response.status}`)
       }
-
-      const data = await response.json();
-      return data;
+      
+      throw new Error(`Unsupported method: ${method}`);
     } catch (error) {
       console.error('Spotify API request failed:', error);
       throw error;
@@ -290,25 +255,8 @@ export class SpotifyService {
   // Get currently playing track
   async getCurrentTrack() {
     try {
-      const API_BASE_ROOT_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      const response = await fetch(`${API_BASE_ROOT_URL}/api/music/current-track/`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (response.status === 204) {
-        return null; // No track playing
-      }
-
-      if (!response.ok) {
-        throw new Error(`Spotify API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
+      const response = await musicAPI.getCurrentTrack();
+      return response.data;
     } catch (error) {
       console.error('Error getting current track:', error);
       throw error;
@@ -318,21 +266,8 @@ export class SpotifyService {
   // Get recently played tracks
   async getRecentlyPlayed(limit = 20) {
     try {
-      const API_BASE_ROOT_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      const response = await fetch(`${API_BASE_ROOT_URL}/api/music/recently-played/?limit=${limit}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Spotify API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
+      const response = await musicAPI.getRecentlyPlayed(limit);
+      return response.data;
     } catch (error) {
       console.error('Error getting recently played:', error);
       throw error;
