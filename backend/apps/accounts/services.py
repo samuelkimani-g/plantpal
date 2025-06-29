@@ -125,18 +125,19 @@ class SpotifyService:
                 return []
             
             # Get audio features for tracks
-            features_url = f"https://api.spotify.com/v1/audio-features?ids={','.join(track_ids)}"
-            features_response = requests.get(features_url, headers=headers)
-            features_response.raise_for_status()
-            features_data = features_response.json()
+            # features_url = f"https://api.spotify.com/v1/audio-features?ids={','.join(track_ids)}"
+            # features_response = requests.get(features_url, headers=headers)
+            # features_response.raise_for_status()
+            # features_data = features_response.json()
+            # 
+            # # Extract valence scores
+            # valence_scores = []
+            # for feature in features_data.get('audio_features', []):
+            #     if feature and feature.get('valence') is not None:
+            #         valence_scores.append(feature['valence'])
             
-            # Extract valence scores
-            valence_scores = []
-            for feature in features_data.get('audio_features', []):
-                if feature and feature.get('valence') is not None:
-                    valence_scores.append(feature['valence'])
-            
-            return valence_scores
+            # For now, return empty list since we're using text-based mood analysis
+            return []
             
         except requests.exceptions.RequestException as e:
             raise Exception(f"Failed to get recent tracks valence: {str(e)}")

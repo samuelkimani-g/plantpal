@@ -559,35 +559,9 @@ class SpotifyService:
             track_ids = track_ids[:5]
             print(f"DEBUG: Processing {len(track_ids)} track IDs for valence")
             
-            # Get audio features for tracks
-            features_url = f"https://api.spotify.com/v1/audio-features?ids={','.join(track_ids)}"
-            print(f"DEBUG: Making Spotify API call to: {features_url}")
-            
-            features_response = requests.get(features_url, headers=headers)
-            print(f"DEBUG: Spotify API response status for {features_url}: {features_response.status_code}")
-            
-            if features_response.status_code == 403:
-                print("Spotify API 403: Development mode restrictions on audio features")
-                return []
-            elif features_response.status_code == 429:
-                print("Spotify API 429: Rate limit exceeded on audio features")
-                return []
-            elif features_response.status_code != 200:
-                print(f"DEBUG: Spotify API error response: {features_response.text}")
-                raise Exception(f"Failed to get audio features: {features_response.text}")
-            
-            features_data = features_response.json()
-            valence_scores = [
-                feature['valence'] for feature in features_data['audio_features'] 
-                if feature and 'valence' in feature
-            ]
-            
-            print(f"DEBUG: Got {len(valence_scores)} valence scores")
-            if valence_scores:
-                avg_valence = sum(valence_scores) / len(valence_scores)
-                print(f"DEBUG: Average valence: {avg_valence}")
-            
-            return valence_scores
+            # For now, return empty list since we're using text-based mood analysis
+            print("DEBUG: Audio features disabled - using text-based mood analysis")
+            return []
             
         except requests.exceptions.RequestException as e:
             print(f"Spotify API request error: {e}")
