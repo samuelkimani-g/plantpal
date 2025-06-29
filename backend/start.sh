@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 
+# Set Django settings module for production
+export DJANGO_SETTINGS_MODULE=core.production_settings
+
 # Run migrations before starting the server
 echo "🚀 Running database migrations..."
-python manage.py migrate --settings=core.production_settings
+python manage.py migrate
 
 # Start the server
 echo "🚀 Starting server..."
-gunicorn core.wsgi:application --settings=core.production_settings 
+gunicorn core.wsgi:application 
