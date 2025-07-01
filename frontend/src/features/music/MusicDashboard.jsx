@@ -99,6 +99,32 @@ const MusicDashboard = () => {
     }
   }, [location.search, navigate]);
 
+  // Check connection status on component mount
+  useEffect(() => {
+    const checkConnectionStatus = async () => {
+      try {
+        console.log('🔍 Checking connection status...');
+        const status = await musicAPI.getConnectionStatus();
+        console.log('📡 Connection status:', status);
+        
+        if (status.is_connected) {
+          console.log('✅ User is connected, setting connection status');
+          setConnectionStatus({
+            isConnected: true,
+            profile: status.profile || null,
+            moodProfile: status.mood_profile || null
+          });
+        } else {
+          console.log('❌ User is not connected');
+        }
+      } catch (err) {
+        console.error('❌ Error checking connection status:', err);
+      }
+    };
+
+    checkConnectionStatus();
+  }, []);
+
   useEffect(() => {
     if (connectionStatus.isConnected) {
       loadDashboardData();
@@ -109,6 +135,7 @@ const MusicDashboard = () => {
   }, [connectionStatus.isConnected]);
 
   const loadDashboardData = async () => {
+    console.log('🚀 Loading dashboard data...');
     setIsLoading(true);
     setError(null);
 
@@ -120,8 +147,9 @@ const MusicDashboard = () => {
         loadListeningStats(),
         loadMoodSummary()
       ]);
+      console.log('✅ Dashboard data loaded successfully');
     } catch (err) {
-      console.error('Error loading dashboard data:', err);
+      console.error('❌ Error loading dashboard data:', err);
       setError('Failed to load music data');
     } finally {
       setIsLoading(false);
@@ -130,10 +158,12 @@ const MusicDashboard = () => {
 
   const loadCurrentTrack = async () => {
     try {
+      console.log('🎵 Loading current track...');
       const track = await musicAPI.getCurrentTrack();
+      console.log('🎵 Current track:', track);
       setCurrentTrack(track);
     } catch (err) {
-      console.error('Error loading current track:', err);
+      console.error('❌ Error loading current track:', err);
       setCurrentTrack(null);
     }
   };
