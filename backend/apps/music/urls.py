@@ -26,4 +26,7 @@ urlpatterns = [
     
     # Data Management
     path('sync/', views.sync_listening_data, name='sync-listening-data'),
+    
+    # Plant Integration
+    path('update-plant/', views.update_plant_from_music, name='update-plant-from-music'),
 ] 

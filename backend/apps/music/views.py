@@ -985,3 +985,99 @@ def weekly_mood_report(request):
             {'error': 'Failed to generate weekly report'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def update_plant_from_music(request):
+    """Update plant growth and mood based on current music"""
+    try:
+        from apps.plants.models import Plant
+        from utils.mood_logic import MoodEngine
+        
+        # Get current track
+        spotify_service = SpotifyAPIService(user=request.user)
+        current_data = spotify_service.get_current_track()
+        
+        if not current_data or not current_data.get('item'):
+            return Response(
+                {'error': 'No track currently playing'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Save track if present
+        track = spotify_service.save_track_with_features(current_data['item'])
+        
+        if not track:
+            return Response(
+                {'error': 'Failed to process current track'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Get or create user's plant
+        try:
+            plant = Plant.objects.get(user=request.user)
+        except Plant.DoesNotExist:
+            return Response(
+                {'error': 'No plant found. Create a plant first.'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Calculate mood impact
+        mood_score = track.computed_mood_score or 0.5
+        mood_label = track.mood_label or 'neutral'
+        
+        # Update plant's music mood score
+        plant.spotify_mood_score = mood_score
+        plant.music_mood_score = mood_score
+        
+        # Calculate combined mood using MoodEngine
+        combined_mood = MoodEngine.get_combined_user_mood(request.user)
+        plant.combined_mood_score = combined_mood.get('mood_score', 0.5)
+        plant.current_mood_influence = combined_mood.get('unified_mood', 'neutral')
+        
+        # Calculate growth impact
+        mood_impact = MoodEngine.calculate_plant_growth_impact(combined_mood, plant.growth_points)
+        
+        # Apply growth points
+        growth_change = mood_impact['growth_change']
+        if growth_change != 0:
+            stage_changed = plant.add_growth_points(
+                growth_change, 
+                source=f"music_mood_{mood_label}"
+            )
+        else:
+            stage_changed = False
+        
+        # Update plant
+        plant.last_mood_update = timezone.now()
+        plant.update_3d_params()
+        plant.save()
+        
+        # Return response with plant update info
+        return Response({
+            'success': True,
+            'track': {
+                'name': track.name,
+                'artists': track.artists,
+                'mood_score': mood_score,
+                'mood_label': mood_label
+            },
+            'plant_update': {
+                'growth_points': plant.growth_points,
+                'stage': plant.stage,
+                'stage_display': plant.stage_display,
+                'health_score': plant.health_score,
+                'combined_mood_score': plant.combined_mood_score,
+                'current_mood_influence': plant.current_mood_influence,
+                'growth_change': growth_change,
+                'stage_changed': stage_changed
+            }
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error updating plant from music: {str(e)}")
+        return Response(
+            {'error': 'Failed to update plant from music'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
