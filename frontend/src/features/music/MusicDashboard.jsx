@@ -184,19 +184,23 @@ const MusicDashboard = () => {
 
   const loadRecentTracks = async () => {
     try {
+      console.log('🎵 Loading recent tracks...');
       const tracks = await musicAPI.getRecentlyPlayed(10);
+      console.log('🎵 Recent tracks response:', tracks);
       setRecentTracks(tracks.items || []);
     } catch (err) {
-      console.error('Error loading recent tracks:', err);
+      console.error('❌ Error loading recent tracks:', err);
     }
   };
 
   const loadTopTracks = async () => {
     try {
+      console.log('🎵 Loading top tracks...');
       const tracks = await musicAPI.getTopTracks('medium_term', 10);
+      console.log('🎵 Top tracks response:', tracks);
       setTopTracks(tracks.items || []);
     } catch (err) {
-      console.error('Error loading top tracks:', err);
+      console.error('❌ Error loading top tracks:', err);
     }
   };
 
@@ -282,9 +286,9 @@ const MusicDashboard = () => {
           <div className="flex items-start space-x-4">
             {/* Album Art */}
             <div className="flex-shrink-0">
-              {currentTrack.album?.images?.[0] ? (
+              {(currentTrack.track?.album?.images?.[0] || currentTrack.album?.images?.[0]) ? (
                 <img
-                  src={currentTrack.album.images[0].url}
+                  src={(currentTrack.track?.album?.images?.[0] || currentTrack.album?.images?.[0]).url}
                   alt="Album cover"
                   className="w-20 h-20 rounded-lg shadow-md"
                 />
@@ -297,18 +301,18 @@ const MusicDashboard = () => {
 
             {/* Track Info */}
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-xl truncate text-gray-900">{currentTrack.name}</h3>
+              <h3 className="font-bold text-xl truncate text-gray-900">{currentTrack.track?.name || currentTrack.name}</h3>
               <p className="text-gray-700 truncate text-lg">
-                {currentTrack.artists?.map(artist => artist.name).join(', ')}
+                {(currentTrack.track?.artists || currentTrack.artists)?.map(artist => artist.name).join(', ')}
               </p>
-              <p className="text-sm text-gray-500 truncate">{currentTrack.album?.name}</p>
+              <p className="text-sm text-gray-500 truncate">{currentTrack.track?.album?.name || currentTrack.album?.name}</p>
               
               {/* Mood Badge */}
-              {currentTrack.mood_score && (
+              {(currentTrack.track?.mood_score || currentTrack.mood_score) && (
                 <div className="flex items-center mt-3">
                   <Badge variant="secondary" className="mr-3">
-                    <span className="mr-1">{musicAPI.getMoodEmoji(musicAPI.formatMoodScore(currentTrack.mood_score))}</span>
-                    {musicAPI.formatMoodScore(currentTrack.mood_score)}
+                    <span className="mr-1">{musicAPI.getMoodEmoji(musicAPI.formatMoodScore(currentTrack.track?.mood_score || currentTrack.mood_score))}</span>
+                    {musicAPI.formatMoodScore(currentTrack.track?.mood_score || currentTrack.mood_score)}
                   </Badge>
                   <div className="flex items-center text-green-600 text-sm">
                     <Leaf className="h-4 w-4 mr-1" />
