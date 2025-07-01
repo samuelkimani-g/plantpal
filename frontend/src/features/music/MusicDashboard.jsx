@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Progress } from '../../components/ui/progress';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+
 import { 
   Music, 
   Heart, 
@@ -40,7 +40,7 @@ const MusicDashboard = () => {
   const [moodSummary, setMoodSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
+
   const [isProcessingCallback, setIsProcessingCallback] = useState(false);
 
   // Handle Spotify OAuth callback
@@ -209,14 +209,12 @@ const MusicDashboard = () => {
   const renderCurrentTrack = () => {
     if (!currentTrack) {
       return (
-        <Card className="col-span-full">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-center text-gray-500">
-              <Music className="h-12 w-12 mr-3" />
-              <div>
-                <p className="text-lg font-medium">No track playing</p>
-                <p className="text-sm">Start playing music on Spotify to see it here</p>
-              </div>
+        <Card className="col-span-full bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200">
+          <CardContent className="p-8">
+            <div className="flex flex-col items-center justify-center text-gray-500 py-8">
+              <Music className="h-16 w-16 mb-4 text-gray-400" />
+              <p className="text-lg font-semibold">No track playing</p>
+              <p className="text-sm text-center mt-2">Start playing music on Spotify to see it here</p>
             </div>
           </CardContent>
         </Card>
@@ -224,52 +222,72 @@ const MusicDashboard = () => {
     }
 
     return (
-      <Card className="col-span-full">
-        <CardHeader>
-          <CardTitle className="flex items-center">
+      <Card className="col-span-full bg-gradient-to-r from-green-50 to-blue-50 border-green-200 shadow-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center text-green-800">
             <Volume2 className="h-5 w-5 mr-2" />
             Currently Playing
+            <div className="ml-2 flex items-center">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1" style={{animationDelay: '0.2s'}}></div>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+            </div>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-4">
-            {currentTrack.album?.images?.[0] && (
-              <img
-                src={currentTrack.album.images[0].url}
-                alt="Album cover"
-                className="w-16 h-16 rounded-lg"
-              />
-            )}
+        <CardContent className="p-6">
+          <div className="flex items-start space-x-4">
+            {/* Album Art */}
+            <div className="flex-shrink-0">
+              {currentTrack.album?.images?.[0] ? (
+                <img
+                  src={currentTrack.album.images[0].url}
+                  alt="Album cover"
+                  className="w-20 h-20 rounded-lg shadow-md"
+                />
+              ) : (
+                <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-blue-100 rounded-lg shadow-md flex items-center justify-center">
+                  <Music className="h-10 w-10 text-green-600" />
+                </div>
+              )}
+            </div>
+
+            {/* Track Info */}
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-lg truncate">{currentTrack.name}</h3>
-              <p className="text-gray-600 truncate">
+              <h3 className="font-bold text-xl truncate text-gray-900">{currentTrack.name}</h3>
+              <p className="text-gray-700 truncate text-lg">
                 {currentTrack.artists?.map(artist => artist.name).join(', ')}
               </p>
               <p className="text-sm text-gray-500 truncate">{currentTrack.album?.name}</p>
-            </div>
-            {currentTrack.mood_score && (
-              <div className="text-center">
-                <div className="text-2xl mb-1">
-                  {musicAPI.getMoodEmoji(musicAPI.formatMoodScore(currentTrack.mood_score))}
+              
+              {/* Mood Badge */}
+              {currentTrack.mood_score && (
+                <div className="flex items-center mt-3">
+                  <Badge variant="secondary" className="mr-3">
+                    <span className="mr-1">{musicAPI.getMoodEmoji(musicAPI.formatMoodScore(currentTrack.mood_score))}</span>
+                    {musicAPI.formatMoodScore(currentTrack.mood_score)}
+                  </Badge>
+                  <div className="flex items-center text-green-600 text-sm">
+                    <Leaf className="h-4 w-4 mr-1" />
+                    <span>Plant Growing</span>
+                  </div>
                 </div>
-                <Badge variant="outline">
-                  {musicAPI.formatMoodScore(currentTrack.mood_score)}
-                </Badge>
+              )}
+            </div>
+
+            {/* Progress Bar */}
+            {currentTrack.progress_ms && currentTrack.duration_ms && (
+              <div className="w-full mt-4">
+                <Progress 
+                  value={(currentTrack.progress_ms / currentTrack.duration_ms) * 100} 
+                  className="w-full h-2 bg-gray-200 rounded-full"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>{musicAPI.formatDuration(currentTrack.progress_ms)}</span>
+                  <span>{musicAPI.formatDuration(currentTrack.duration_ms)}</span>
+                </div>
               </div>
             )}
           </div>
-          {currentTrack.progress_ms && currentTrack.duration_ms && (
-            <div className="mt-4">
-              <Progress 
-                value={(currentTrack.progress_ms / currentTrack.duration_ms) * 100} 
-                className="w-full"
-              />
-              <div className="flex justify-between text-sm text-gray-500 mt-1">
-                <span>{musicAPI.formatDuration(currentTrack.progress_ms)}</span>
-                <span>{musicAPI.formatDuration(currentTrack.duration_ms)}</span>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     );
@@ -280,28 +298,28 @@ const MusicDashboard = () => {
 
     return (
       <>
-        <Card>
+        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Listening Time</CardTitle>
+            <CardTitle className="text-sm font-medium text-blue-800">Listening Time</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{listeningStats.total_listening_time}</div>
-            <p className="text-xs text-gray-600">Last 30 days</p>
+            <div className="text-3xl font-bold text-blue-900">{listeningStats.total_listening_time}</div>
+            <p className="text-xs text-blue-600">Last 30 days</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Current Mood</CardTitle>
+            <CardTitle className="text-sm font-medium text-purple-800">Current Mood</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center space-x-2">
-              <span className="text-2xl">
+            <div className="flex items-center space-x-3">
+              <span className="text-3xl">
                 {musicAPI.getMoodEmoji(moodSummary.current_mood_label)}
               </span>
               <div>
-                <div className="font-bold capitalize">{moodSummary.current_mood_label}</div>
-                <div className="text-xs text-gray-600">
+                <div className="font-bold capitalize text-purple-900 text-lg">{moodSummary.current_mood_label}</div>
+                <div className="text-xs text-purple-600">
                   {Math.round(moodSummary.current_mood_score * 100)}% confidence
                 </div>
               </div>
@@ -309,18 +327,20 @@ const MusicDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Plant Growth Boost</CardTitle>
+            <CardTitle className="text-sm font-medium text-green-800">Plant Growth Boost</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center space-x-2">
-              <Leaf className="h-5 w-5 text-green-500" />
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-green-100 rounded-full">
+                <Leaf className="h-6 w-6 text-green-600" />
+              </div>
               <div>
-                <div className="font-bold text-green-600">
+                <div className="font-bold text-green-700 text-2xl">
                   +{Math.round(musicAPI.calculatePlantGrowthBonus(moodSummary.current_mood_score) * 100)}%
                 </div>
-                <div className="text-xs text-gray-600">Growth bonus</div>
+                <div className="text-xs text-green-600">Growth bonus</div>
               </div>
             </div>
           </CardContent>
@@ -333,37 +353,53 @@ const MusicDashboard = () => {
     if (!tracks.length) return null;
 
     return (
-      <Card>
+      <Card className="bg-gradient-to-br from-slate-50 to-gray-50 border-gray-200">
         <CardHeader>
-          <CardTitle className="flex items-center">
+          <CardTitle className="flex items-center text-gray-800">
             <Music className="h-5 w-5 mr-2" />
             {title}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {tracks.slice(0, 5).map((item, index) => {
               const track = item.track || item;
               return (
-                <div key={track.id || index} className="flex items-center space-x-3">
-                  {track.album?.images?.[0] && (
-                    <img
-                      src={track.album.images[0].url}
-                      alt="Album cover"
-                      className="w-10 h-10 rounded"
-                    />
-                  )}
+                <div key={track.id || index} className="flex items-center space-x-4 p-3 rounded-lg hover:bg-white hover:shadow-sm transition-all duration-200">
+                  {/* Album Art */}
+                  <div className="flex-shrink-0">
+                    {track.album?.images?.[0] ? (
+                      <img
+                        src={track.album.images[0].url}
+                        alt="Album cover"
+                        className="w-12 h-12 rounded-lg shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg shadow-sm flex items-center justify-center">
+                        <Music className="h-6 w-6 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Track Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{track.name}</p>
+                    <p className="font-semibold text-gray-900 truncate">{track.name}</p>
                     <p className="text-sm text-gray-600 truncate">
                       {track.artists?.map(artist => artist.name).join(', ')}
                     </p>
                   </div>
+                  
+                  {/* Mood Indicator */}
                   {track.mood_score && (
-                    <div className="text-right">
-                      <span className="text-lg">
-                        {musicAPI.getMoodEmoji(musicAPI.formatMoodScore(track.mood_score))}
-                      </span>
+                    <div className="flex-shrink-0">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xl">
+                          {musicAPI.getMoodEmoji(musicAPI.formatMoodScore(track.mood_score))}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {musicAPI.formatMoodScore(track.mood_score)}
+                        </Badge>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -439,48 +475,30 @@ const MusicDashboard = () => {
           </Alert>
         )}
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="mood">Mood Analysis</TabsTrigger>
-            <TabsTrigger value="tracks">Music Library</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+        {/* Single Unified View */}
+        <div className="space-y-6">
+          {/* Current Track */}
+          <div className="grid gap-6">
+            {renderCurrentTrack()}
+          </div>
 
-          <TabsContent value="overview" className="space-y-6">
-            {/* Current Track */}
-            <div className="grid gap-6">
-              {renderCurrentTrack()}
-            </div>
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {renderQuickStats()}
+          </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {renderQuickStats()}
-            </div>
+          {/* Mood Analysis */}
+          <MoodAnalysisDashboard />
 
-            {/* Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {renderTrackList(recentTracks, 'Recently Played')}
-              {renderTrackList(topTracks, 'Top Tracks')}
-            </div>
-          </TabsContent>
+          {/* Music Library */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {renderTrackList(topTracks, 'Your Top Tracks')}
+            {renderTrackList(recentTracks, 'Recently Played')}
+          </div>
 
-          <TabsContent value="mood">
-            <MoodAnalysisDashboard />
-          </TabsContent>
-
-          <TabsContent value="tracks" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {renderTrackList(topTracks, 'Your Top Tracks')}
-              {renderTrackList(recentTracks, 'Recently Played')}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="settings">
-            <SpotifyConnect onConnectionChange={handleConnectionChange} />
-          </TabsContent>
-        </Tabs>
+          {/* Settings */}
+          <SpotifyConnect onConnectionChange={handleConnectionChange} />
+        </div>
       </div>
     </div>
   );
