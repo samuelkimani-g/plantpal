@@ -566,7 +566,7 @@ const MusicDashboard = () => {
           </div>
 
           {/* Mood Analysis */}
-          <MoodAnalysisDashboard />
+          <MoodAnalysisDashboard isConnected={connectionStatus.isConnected} />
 
           {/* Music Library */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -587,7 +587,7 @@ const MusicDashboard = () => {
             )}
             
             {/* Debug Info - Remove this later */}
-            {process.env.NODE_ENV === 'development' && (
+            {(
               <div className="col-span-2">
                 <Card className="bg-gray-100 border-gray-300">
                   <CardHeader>
