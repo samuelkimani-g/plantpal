@@ -162,6 +162,9 @@ export const musicAPI = {
   syncListeningData: () => api.post("/api/music/sync/"),
   disconnectSpotify: () => api.delete("/api/music/disconnect/"),
   
+  // Plant Integration
+  updatePlantFromMusic: () => api.post("/api/music/update-plant/"),
+  
   // Helper functions for frontend
   formatDuration: (ms) => {
     if (!ms) return "0:00";

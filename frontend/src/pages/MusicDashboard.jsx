@@ -43,6 +43,7 @@ const MusicDashboard = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isProcessingCallback, setIsProcessingCallback] = useState(false);
+  const [isUpdatingPlant, setIsUpdatingPlant] = useState(false);
   const [audio] = useState(new Audio()); // For playing preview_url
 
   // Handle Spotify OAuth callback
@@ -140,7 +141,7 @@ const MusicDashboard = () => {
         value: r.status === 'fulfilled' ? r.value : r.reason
       })));
 
-      const currentTrackData = results[0].status === 'fulfilled' ? results[0].value.track : null;
+      const currentTrackData = results[0].status === 'fulfilled' ? results[0].value : null;
       const recentTracksData = results[1].status === 'fulfilled' ? (results[1].value.tracks || []) : [];
       const topTracksData = results[2].status === 'fulfilled' ? (results[2].value.tracks || []) : [];
       const listeningStatsData = results[3].status === 'fulfilled' ? results[3].value : null;
@@ -186,8 +187,25 @@ const MusicDashboard = () => {
   const loadCurrentTrack = async () => {
     try {
       const response = await musicAPI.getCurrentTrack();
-      setCurrentTrack(response.track); // Access the track field from the response
-      console.log("Refreshed Current Track:", response.track); // Log periodic refresh
+      setCurrentTrack(response); // Store the full response object
+      console.log("Refreshed Current Track:", response); // Log periodic refresh
+      
+      // If there's a track playing, update plant growth
+      if (response && response.track && response.is_playing) {
+        setIsUpdatingPlant(true);
+        try {
+          const plantUpdate = await musicAPI.updatePlantFromMusic();
+          console.log("🌱 Plant updated from music:", plantUpdate.data);
+          
+          // You can add a notification here if you want to show the user
+          // that their plant is growing from the music
+        } catch (plantErr) {
+          console.error('Error updating plant from music:', plantErr);
+          // Don't fail the current track load if plant update fails
+        } finally {
+          setIsUpdatingPlant(false);
+        }
+      }
     } catch (err) {
       console.error('Error loading current track:', err);
       setCurrentTrack(null);
@@ -239,7 +257,7 @@ const MusicDashboard = () => {
         </Card>
       );
     }
-    if (!currentTrack || Object.keys(currentTrack).length === 0) { // Check if object is empty
+    if (!currentTrack || !currentTrack.track || Object.keys(currentTrack.track).length === 0) { // Check if track exists
       console.log("🎵 No current track data, showing empty state");
       return (
         <Card className="col-span-full">
@@ -260,8 +278,9 @@ const MusicDashboard = () => {
       );
     }
 
-    console.log("🎵 Rendering current track with data:", currentTrack);
-    const isPlayingThisPreview = audio.src === currentTrack.preview_url && !audio.paused;
+    const track = currentTrack.track;
+    console.log("🎵 Rendering current track with data:", track);
+    const isPlayingThisPreview = audio.src === track.preview_url && !audio.paused;
 
     return (
       <Card className="col-span-full shadow-lg border-green-200">
@@ -273,22 +292,22 @@ const MusicDashboard = () => {
         </CardHeader>
         <CardContent className="p-6">
           <div className="flex items-center space-x-4 mb-4">
-            {currentTrack.album_image_url && (
+            {track.album_image_url && (
               <img
-                src={currentTrack.album_image_url}
+                src={track.album_image_url}
                 alt="Album cover"
                 className="w-20 h-20 rounded-lg shadow-md"
               />
             )}
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-xl truncate">{currentTrack.name}</h3>
+              <h3 className="font-bold text-xl truncate">{track.name}</h3>
               <p className="text-gray-700 truncate">
-                {Array.isArray(currentTrack.artists) ? currentTrack.artists.join(', ') : currentTrack.artists}
+                {Array.isArray(track.artists) ? track.artists.join(', ') : track.artists}
               </p>
-              <p className="text-sm text-gray-500 truncate">{currentTrack.album_name}</p>
-              {currentTrack.external_url && (
+              <p className="text-sm text-gray-500 truncate">{track.album_name}</p>
+              {track.external_url && (
                 <a 
-                  href={currentTrack.external_url} 
+                  href={track.external_url} 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="text-green-600 hover:underline text-sm flex items-center mt-1"
@@ -297,37 +316,47 @@ const MusicDashboard = () => {
                 </a>
               )}
             </div>
-            {currentTrack.computed_mood_score !== undefined && (
+            {track.computed_mood_score !== undefined && (
               <div className="text-center">
                 <div className="text-4xl mb-1">
-                  {musicAPI.getMoodEmoji(musicAPI.formatMoodScore(currentTrack.computed_mood_score))}
+                  {musicAPI.getMoodEmoji(musicAPI.formatMoodScore(track.computed_mood_score))}
                 </div>
                 <Badge variant="secondary" className="px-3 py-1 text-base capitalize">
-                  {musicAPI.formatMoodScore(currentTrack.computed_mood_score)}
+                  {musicAPI.formatMoodScore(track.computed_mood_score)}
                 </Badge>
+                <div className="flex items-center justify-center mt-2 text-green-600">
+                  {isUpdatingPlant ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Leaf className="h-4 w-4 mr-1" />
+                  )}
+                  <span className="text-xs">
+                    {isUpdatingPlant ? 'Updating Plant...' : 'Plant Growing'}
+                  </span>
+                </div>
               </div>
             )}
           </div>
           
-          {currentTrack.progress_ms !== undefined && currentTrack.duration_ms !== undefined && (
+          {currentTrack.progress_ms !== undefined && track.duration_ms !== undefined && (
             <div className="mt-4">
               <Progress 
-                value={(currentTrack.progress_ms / currentTrack.duration_ms) * 100} 
+                value={(currentTrack.progress_ms / track.duration_ms) * 100} 
                 className="w-full h-2 bg-gray-200 rounded-full"
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>{musicAPI.formatDuration(currentTrack.progress_ms)}</span>
-                <span>{musicAPI.formatDuration(currentTrack.duration_ms)}</span>
+                <span>{musicAPI.formatDuration(track.duration_ms)}</span>
               </div>
             </div>
           )}
           
-          {currentTrack.preview_url && (
+          {track.preview_url && (
             <div className="mt-4 text-center">
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => togglePlayPreview(currentTrack.preview_url)}
+                onClick={() => togglePlayPreview(track.preview_url)}
                 className="border-green-500 text-green-700 hover:bg-green-50"
               >
                 {isPlayingThisPreview ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
