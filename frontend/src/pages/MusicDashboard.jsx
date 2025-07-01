@@ -5,7 +5,6 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
   Music,
   Heart,
@@ -43,7 +42,6 @@ const MusicDashboard = () => {
   const [moodSummary, setMoodSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
   const [isProcessingCallback, setIsProcessingCallback] = useState(false);
   const [isUpdatingPlant, setIsUpdatingPlant] = useState(false);
   const [audio] = useState(new Audio()); // For playing preview_url
@@ -576,104 +574,85 @@ const MusicDashboard = () => {
         {renderQuickStats()}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex flex-wrap justify-between items-center mb-6">
-                              <TabsList className="grid w-full md:w-auto grid-cols-2 md:grid-cols-4 gap-2">
-                        <TabsTrigger value="overview" className="flex items-center text-md">
-                            <Music className="h-4 w-4 mr-2" /> Overview
-                        </TabsTrigger>
-                        <TabsTrigger value="mood" className="flex items-center text-md">
-                            <Leaf className="h-4 w-4 mr-2" /> Mood Analysis
-                        </TabsTrigger>
-                        <TabsTrigger value="library" className="flex items-center text-md">
-                            <BarChart3 className="h-4 w-4 mr-2" /> Music Library
-                        </TabsTrigger>
-                        <TabsTrigger value="settings" className="flex items-center text-md">
-                            <Settings className="h-4 w-4 mr-2" /> Settings
-                        </TabsTrigger>
-                    </TabsList>
-          <Button 
-            onClick={handleSyncData} 
-            disabled={isLoading}
-            className="mt-4 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            {isLoading ? 'Syncing...' : 'Sync Now'}
-          </Button>
+      <div className="mb-6 flex justify-end">
+        <Button 
+          onClick={handleSyncData} 
+          disabled={isLoading}
+          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center"
+        >
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-2" />
+          )}
+          {isLoading ? 'Syncing...' : 'Sync Data'}
+        </Button>
+      </div>
+
+      {/* Main Content - Single View */}
+      <div className="space-y-6">
+        {/* Current Track Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <NowPlayingWidget />
+          </div>
+          <div className="lg:col-span-1">
+            <OfflineMusicWidget />
+          </div>
         </div>
 
-                        <TabsContent value="overview">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2">
-                            <NowPlayingWidget />
-                        </div>
-                        <div className="lg:col-span-1 flex flex-col gap-6">
-                            <OfflineMusicWidget />
-                            {renderTrackList(topTracks, 'Top Tracks (Medium Term)')}
-                            {renderTrackList(recentTracks, 'Recently Played')}
-                        </div>
-                    </div>
-                </TabsContent>
+        {/* Mood Analysis */}
+        <MoodAnalysisDashboard isLoading={isLoading} moodSummary={moodSummary} />
 
-                        <TabsContent value="mood">
-                    <MoodAnalysisDashboard isLoading={isLoading} moodSummary={moodSummary} />
-                </TabsContent>
+        {/* Music Library */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {renderTrackList(topTracks, 'Top Tracks (Medium Term)')}
+          {renderTrackList(recentTracks, 'Recently Played')}
+        </div>
 
-                <TabsContent value="library">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {renderTrackList(topTracks, 'Top Tracks (Medium Term)')}
-                        {renderTrackList(recentTracks, 'Recently Played')}
-                    </div>
-                </TabsContent>
-
-                <TabsContent value="settings">
-          <Card className="p-6 shadow-lg">
-            <CardTitle className="mb-4 text-green-700">Spotify Account Settings</CardTitle>
-            <CardDescription className="mb-4">
-              Manage your Spotify connection and user profile information.
-            </CardDescription>
-            {connectionStatus.profile && (
-              <div className="space-y-4">
-                <p className="text-gray-700">
-                  <span className="font-semibold">Connected User:</span> {connectionStatus.profile.display_name}
+        {/* Settings Section */}
+        <Card className="p-6 shadow-lg">
+          <CardTitle className="mb-4 text-green-700">Spotify Account Settings</CardTitle>
+          <CardDescription className="mb-4">
+            Manage your Spotify connection and user profile information.
+          </CardDescription>
+          {connectionStatus.profile && (
+            <div className="space-y-4">
+              <p className="text-gray-700">
+                <span className="font-semibold">Connected User:</span> {connectionStatus.profile.display_name}
+              </p>
+              <p className="text-gray-700">
+                <span className="font-semibold">Email:</span> {connectionStatus.profile.email}
+              </p>
+              {connectionStatus.profile.spotify_url && (
+                <p>
+                  <a 
+                    href={connectionStatus.profile.spotify_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-green-600 hover:underline flex items-center"
+                  >
+                    View Spotify Profile <ExternalLink className="h-4 w-4 ml-1" />
+                  </a>
                 </p>
-                <p className="text-gray-700">
-                  <span className="font-semibold">Email:</span> {connectionStatus.profile.email}
-                </p>
-                {connectionStatus.profile.spotify_url && (
-                  <p>
-                    <a 
-                      href={connectionStatus.profile.spotify_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="text-green-600 hover:underline flex items-center"
-                    >
-                      View Spotify Profile <ExternalLink className="h-4 w-4 ml-1" />
-                    </a>
-                  </p>
-                )}
-                <Button 
-                  variant="destructive" 
-                  onClick={() => {
-                    musicAPI.disconnectSpotify();
-                    handleConnectionChange(false, null); // Manually update state
-                  }}
-                  className="flex items-center"
-                >
-                  <AlertCircle className="h-4 w-4 mr-2" /> Disconnect Spotify
-                </Button>
-                <p className="text-sm text-gray-500 mt-2">
-                  Disconnecting will remove all Spotify integration and data from PlantPal.
-                </p>
-              </div>
-            )}
-          </Card>
-        </TabsContent>
-      </Tabs>
+              )}
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  musicAPI.disconnectSpotify();
+                  handleConnectionChange(false, null);
+                }}
+                className="flex items-center"
+              >
+                <AlertCircle className="h-4 w-4 mr-2" /> Disconnect Spotify
+              </Button>
+              <p className="text-sm text-gray-500 mt-2">
+                Disconnecting will remove all Spotify integration and data from PlantPal.
+              </p>
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 };
