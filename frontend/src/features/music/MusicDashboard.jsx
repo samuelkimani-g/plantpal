@@ -127,12 +127,26 @@ const MusicDashboard = () => {
 
   useEffect(() => {
     if (connectionStatus.isConnected) {
+      console.log('🔄 Connection status changed to connected, loading dashboard data...');
       loadDashboardData();
       // Set up periodic refresh for current track
       const interval = setInterval(loadCurrentTrack, 30000); // 30 seconds
       return () => clearInterval(interval);
     }
   }, [connectionStatus.isConnected]);
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('📊 State Update:', {
+      isConnected: connectionStatus.isConnected,
+      currentTrack: currentTrack ? 'Loaded' : 'Not loaded',
+      recentTracks: recentTracks.length,
+      topTracks: topTracks.length,
+      listeningStats: listeningStats ? 'Loaded' : 'Not loaded',
+      moodSummary: moodSummary ? 'Loaded' : 'Not loaded',
+      isLoading
+    });
+  }, [connectionStatus.isConnected, currentTrack, recentTracks, topTracks, listeningStats, moodSummary, isLoading]);
 
   const loadDashboardData = async () => {
     console.log('🚀 Loading dashboard data...');
@@ -324,7 +338,11 @@ const MusicDashboard = () => {
   };
 
   const renderQuickStats = () => {
-    if (!listeningStats || !moodSummary) return null;
+    console.log('🎯 Rendering Quick Stats:', { listeningStats, moodSummary });
+    if (!listeningStats || !moodSummary) {
+      console.log('❌ Quick Stats not rendered - missing data');
+      return null;
+    }
 
     return (
       <>
@@ -380,7 +398,11 @@ const MusicDashboard = () => {
   };
 
   const renderTrackList = (tracks, title) => {
-    if (!tracks.length) return null;
+    console.log('🎵 Rendering Track List:', { title, tracksCount: tracks.length, tracks });
+    if (!tracks.length) {
+      console.log('❌ Track List not rendered - no tracks');
+      return null;
+    }
 
     return (
       <Card className="bg-gradient-to-br from-slate-50 to-gray-50 border-gray-200">
@@ -507,6 +529,15 @@ const MusicDashboard = () => {
 
         {/* Single Unified View */}
         <div className="space-y-6">
+          {/* Loading State */}
+          {isLoading && (
+            <div className="text-center p-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+              <h2 className="text-xl font-semibold mb-2">Loading Music Data...</h2>
+              <p className="text-gray-600">Please wait while we fetch your music information.</p>
+            </div>
+          )}
+
           {/* Current Track */}
           <div className="grid gap-6">
             {renderCurrentTrack()}
@@ -515,6 +546,19 @@ const MusicDashboard = () => {
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {renderQuickStats()}
+            {(!listeningStats || !moodSummary) && !isLoading && (
+              <div className="col-span-3">
+                <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
+                  <CardContent className="p-6 text-center">
+                    <div className="text-yellow-600 mb-2">
+                      <RefreshCw className="h-8 w-8 mx-auto animate-spin" />
+                    </div>
+                    <h3 className="font-semibold text-yellow-800 mb-1">Loading Music Stats</h3>
+                    <p className="text-sm text-yellow-700">Your listening statistics and mood data are being processed...</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
 
           {/* Mood Analysis */}
@@ -524,6 +568,19 @@ const MusicDashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {renderTrackList(topTracks, 'Your Top Tracks')}
             {renderTrackList(recentTracks, 'Recently Played')}
+            {(!topTracks.length || !recentTracks.length) && !isLoading && (
+              <div className="col-span-2">
+                <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+                  <CardContent className="p-6 text-center">
+                    <div className="text-blue-600 mb-2">
+                      <Music className="h-8 w-8 mx-auto" />
+                    </div>
+                    <h3 className="font-semibold text-blue-800 mb-1">Loading Music Library</h3>
+                    <p className="text-sm text-blue-700">Your top tracks and recently played music are being loaded...</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
 
           {/* Settings */}
