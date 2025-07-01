@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import SpotifyConnect from '../components/SpotifyConnect';
 import MoodAnalysisDashboard from '../components/MoodAnalysisDashboard';
+import NowPlayingWidget from '../components/NowPlayingWidget';
+import OfflineMusicWidget from '../components/OfflineMusicWidget';
 import { musicAPI } from '../services/api';
 
 const MusicDashboard = () => {
@@ -576,17 +578,20 @@ const MusicDashboard = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex flex-wrap justify-between items-center mb-6">
-          <TabsList className="grid w-full md:w-auto grid-cols-2 md:grid-cols-3 gap-2">
-            <TabsTrigger value="overview" className="flex items-center text-md">
-              <Music className="h-4 w-4 mr-2" /> Overview
-            </TabsTrigger>
-            <TabsTrigger value="mood" className="flex items-center text-md">
-              <Leaf className="h-4 w-4 mr-2" /> Mood Analysis
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center text-md">
-              <Settings className="h-4 w-4 mr-2" /> Settings
-            </TabsTrigger>
-          </TabsList>
+                              <TabsList className="grid w-full md:w-auto grid-cols-2 md:grid-cols-4 gap-2">
+                        <TabsTrigger value="overview" className="flex items-center text-md">
+                            <Music className="h-4 w-4 mr-2" /> Overview
+                        </TabsTrigger>
+                        <TabsTrigger value="mood" className="flex items-center text-md">
+                            <Leaf className="h-4 w-4 mr-2" /> Mood Analysis
+                        </TabsTrigger>
+                        <TabsTrigger value="library" className="flex items-center text-md">
+                            <BarChart3 className="h-4 w-4 mr-2" /> Music Library
+                        </TabsTrigger>
+                        <TabsTrigger value="settings" className="flex items-center text-md">
+                            <Settings className="h-4 w-4 mr-2" /> Settings
+                        </TabsTrigger>
+                    </TabsList>
           <Button 
             onClick={handleSyncData} 
             disabled={isLoading}
@@ -601,21 +606,31 @@ const MusicDashboard = () => {
           </Button>
         </div>
 
-        <TabsContent value="overview">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {renderCurrentTrack()}
-            <div className="lg:col-span-1 flex flex-col gap-6">
-              {renderTrackList(topTracks, 'Top Tracks (Medium Term)')}
-              {renderTrackList(recentTracks, 'Recently Played')}
-            </div>
-          </div>
-        </TabsContent>
+                        <TabsContent value="overview">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2">
+                            <NowPlayingWidget />
+                        </div>
+                        <div className="lg:col-span-1 flex flex-col gap-6">
+                            <OfflineMusicWidget />
+                            {renderTrackList(topTracks, 'Top Tracks (Medium Term)')}
+                            {renderTrackList(recentTracks, 'Recently Played')}
+                        </div>
+                    </div>
+                </TabsContent>
 
-        <TabsContent value="mood">
-          <MoodAnalysisDashboard isLoading={isLoading} moodSummary={moodSummary} />
-        </TabsContent>
+                        <TabsContent value="mood">
+                    <MoodAnalysisDashboard isLoading={isLoading} moodSummary={moodSummary} />
+                </TabsContent>
 
-        <TabsContent value="settings">
+                <TabsContent value="library">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {renderTrackList(topTracks, 'Top Tracks (Medium Term)')}
+                        {renderTrackList(recentTracks, 'Recently Played')}
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="settings">
           <Card className="p-6 shadow-lg">
             <CardTitle className="mb-4 text-green-700">Spotify Account Settings</CardTitle>
             <CardDescription className="mb-4">
