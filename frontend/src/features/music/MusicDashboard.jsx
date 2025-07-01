@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Progress } from '../../components/ui/progress';
 import { Alert, AlertDescription } from '../../components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 
 import { 
   Music, 
@@ -40,6 +41,7 @@ const MusicDashboard = () => {
   const [moodSummary, setMoodSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   const [isProcessingCallback, setIsProcessingCallback] = useState(false);
 
@@ -531,85 +533,95 @@ const MusicDashboard = () => {
           </Alert>
         )}
 
-        {/* Single Unified View */}
-        <div className="space-y-6">
-          {/* Loading State */}
-          {isLoading && (
-            <div className="text-center p-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-              <h2 className="text-xl font-semibold mb-2">Loading Music Data...</h2>
-              <p className="text-gray-600">Please wait while we fetch your music information.</p>
+        {/* Loading State */}
+        {isLoading && (
+          <div className="text-center p-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+            <h2 className="text-xl font-semibold mb-2">Loading Music Data...</h2>
+            <p className="text-gray-600">Please wait while we fetch your music information.</p>
+          </div>
+        )}
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="mood">Mood Analysis</TabsTrigger>
+            <TabsTrigger value="library">Music Library</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            {/* Current Track */}
+            <div className="grid gap-6">
+              {renderCurrentTrack()}
             </div>
-          )}
 
-          {/* Current Track */}
-          <div className="grid gap-6">
-            {renderCurrentTrack()}
-          </div>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {renderQuickStats()}
+              {(!listeningStats || !moodSummary) && !isLoading && (
+                <div className="col-span-3">
+                  <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-yellow-600 mb-2">
+                        <RefreshCw className="h-8 w-8 mx-auto animate-spin" />
+                      </div>
+                      <h3 className="font-semibold text-yellow-800 mb-1">Loading Music Stats</h3>
+                      <p className="text-sm text-yellow-700">Your listening statistics and mood data are being processed...</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          </TabsContent>
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {renderQuickStats()}
-            {(!listeningStats || !moodSummary) && !isLoading && (
-              <div className="col-span-3">
-                <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-yellow-600 mb-2">
-                      <RefreshCw className="h-8 w-8 mx-auto animate-spin" />
-                    </div>
-                    <h3 className="font-semibold text-yellow-800 mb-1">Loading Music Stats</h3>
-                    <p className="text-sm text-yellow-700">Your listening statistics and mood data are being processed...</p>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </div>
+          <TabsContent value="mood">
+            <MoodAnalysisDashboard isConnected={connectionStatus.isConnected} />
+          </TabsContent>
 
-          {/* Mood Analysis */}
-          <MoodAnalysisDashboard isConnected={connectionStatus.isConnected} />
-
-          {/* Music Library */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {renderTrackList(topTracks, 'Your Top Tracks')}
-            {renderTrackList(recentTracks, 'Recently Played')}
-            {(!topTracks.length && !recentTracks.length) && !isLoading && (
-              <div className="col-span-2">
-                <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-blue-600 mb-2">
-                      <Music className="h-8 w-8 mx-auto" />
-                    </div>
-                    <h3 className="font-semibold text-blue-800 mb-1">Loading Music Library</h3>
-                    <p className="text-sm text-blue-700">Your top tracks and recently played music are being loaded...</p>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+          <TabsContent value="library" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {renderTrackList(topTracks, 'Your Top Tracks')}
+              {renderTrackList(recentTracks, 'Recently Played')}
+              {(!topTracks.length && !recentTracks.length) && !isLoading && (
+                <div className="col-span-2">
+                  <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-blue-600 mb-2">
+                        <Music className="h-8 w-8 mx-auto" />
+                      </div>
+                      <h3 className="font-semibold text-blue-800 mb-1">Loading Music Library</h3>
+                      <p className="text-sm text-blue-700">Your top tracks and recently played music are being loaded...</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
             
             {/* Debug Info - Remove this later */}
-            {(
-              <div className="col-span-2">
-                <Card className="bg-gray-100 border-gray-300">
-                  <CardHeader>
-                    <CardTitle className="text-sm">Debug Info</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xs space-y-1">
-                      <p>Top Tracks: {topTracks.length} items</p>
-                      <p>Recent Tracks: {recentTracks.length} items</p>
-                      <p>Is Loading: {isLoading ? 'Yes' : 'No'}</p>
-                      <p>Top Tracks Sample: {topTracks.length > 0 ? JSON.stringify(topTracks[0]).substring(0, 100) + '...' : 'None'}</p>
-                      <p>Recent Tracks Sample: {recentTracks.length > 0 ? JSON.stringify(recentTracks[0]).substring(0, 100) + '...' : 'None'}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </div>
+            <div className="col-span-2">
+              <Card className="bg-gray-100 border-gray-300">
+                <CardHeader>
+                  <CardTitle className="text-sm">Debug Info</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-xs space-y-1">
+                    <p>Top Tracks: {topTracks.length} items</p>
+                    <p>Recent Tracks: {recentTracks.length} items</p>
+                    <p>Is Loading: {isLoading ? 'Yes' : 'No'}</p>
+                    <p>Top Tracks Sample: {topTracks.length > 0 ? JSON.stringify(topTracks[0]).substring(0, 100) + '...' : 'None'}</p>
+                    <p>Recent Tracks Sample: {recentTracks.length > 0 ? JSON.stringify(recentTracks[0]).substring(0, 100) + '...' : 'None'}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
-          {/* Settings */}
-          <SpotifyConnect onConnectionChange={handleConnectionChange} />
-        </div>
+          <TabsContent value="settings">
+            <SpotifyConnect onConnectionChange={handleConnectionChange} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
