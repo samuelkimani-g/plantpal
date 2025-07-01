@@ -572,7 +572,7 @@ const MusicDashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {renderTrackList(topTracks, 'Your Top Tracks')}
             {renderTrackList(recentTracks, 'Recently Played')}
-            {(!topTracks.length || !recentTracks.length) && !isLoading && (
+            {(!topTracks.length && !recentTracks.length) && !isLoading && (
               <div className="col-span-2">
                 <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
                   <CardContent className="p-6 text-center">
@@ -581,6 +581,26 @@ const MusicDashboard = () => {
                     </div>
                     <h3 className="font-semibold text-blue-800 mb-1">Loading Music Library</h3>
                     <p className="text-sm text-blue-700">Your top tracks and recently played music are being loaded...</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+            
+            {/* Debug Info - Remove this later */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="col-span-2">
+                <Card className="bg-gray-100 border-gray-300">
+                  <CardHeader>
+                    <CardTitle className="text-sm">Debug Info</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xs space-y-1">
+                      <p>Top Tracks: {topTracks.length} items</p>
+                      <p>Recent Tracks: {recentTracks.length} items</p>
+                      <p>Is Loading: {isLoading ? 'Yes' : 'No'}</p>
+                      <p>Top Tracks Sample: {topTracks.length > 0 ? JSON.stringify(topTracks[0]).substring(0, 100) + '...' : 'None'}</p>
+                      <p>Recent Tracks Sample: {recentTracks.length > 0 ? JSON.stringify(recentTracks[0]).substring(0, 100) + '...' : 'None'}</p>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
