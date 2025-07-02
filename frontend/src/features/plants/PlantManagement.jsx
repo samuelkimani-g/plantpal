@@ -273,7 +273,7 @@ const PlantManagement = () => {
               <span className="text-2xl animate-pulse">🔥</span>
               <div className="flex flex-col">
                 <span className="text-xs text-orange-600 font-medium">Daily Streak</span>
-                <span className="text-lg font-bold text-orange-700">{currentPlant.daily_streak || 0} days</span>
+                <span className="text-lg font-bold text-orange-700">{currentPlant.care_streak || 0} days</span>
               </div>
             </div>
           </div>

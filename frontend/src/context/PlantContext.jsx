@@ -240,13 +240,37 @@ export function PlantProvider({ children }) {
       const session = await spotifyService.getListeningSession()
       if (!session) return
       
+      // Check if user wrote a journal entry today
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      let hasJournalToday = false;
+      
+      try {
+        const { journalAPI } = await import("../services/api");
+        const latestEntry = await journalAPI.getLatestEntry();
+        if (latestEntry.data && latestEntry.data.created_at) {
+          const journalDate = new Date(latestEntry.data.created_at).toISOString().split('T')[0];
+          hasJournalToday = journalDate === today;
+          console.log("📝 Latest journal date:", journalDate, "Today:", today, "Has journal today:", hasJournalToday);
+        }
+      } catch (error) {
+        console.warn("Could not check journal date:", error.message);
+        // If we can't check journal, assume no journal today and let music affect mood
+        hasJournalToday = false;
+      }
+      
+      // Music should always affect mood UNLESS journal was written today
+      if (hasJournalToday) {
+        console.log("📝 Journal written today - music mood override disabled");
+        return; // Don't update mood if journal was written today
+      }
+      
       // Calculate mood influence from music
       const moodInfluence = session.moodScore > 0.7 ? "happy" : 
                            session.moodScore > 0.5 ? "energetic" :
                            session.moodScore > 0.3 ? "calm" : "sad"
       
-      // Update plant if currently playing music
-      if (session.isCurrentlyPlaying && state.currentPlant) {
+      // Update plant mood based on music (if no journal today)
+      if (state.currentPlant) {
         const updateData = {
           spotify_mood_score: session.moodScore,
           current_mood_influence: moodInfluence,
@@ -254,6 +278,7 @@ export function PlantProvider({ children }) {
           health_score: Math.min(100, (state.currentPlant.health_score || 50) + 1)
         }
         
+        console.log("🎵 Updating plant mood from music:", moodInfluence, "Score:", session.moodScore);
         await updatePlant(state.currentPlant.id, updateData)
       }
     } catch (error) {
@@ -374,6 +399,29 @@ export function PlantProvider({ children }) {
       const spotifyStatus = await spotifyService.getConnectionStatus();
       if (!spotifyStatus.connected || spotifyStatus.is_expired) {
         return;
+      }
+
+      // Check if user wrote a journal entry today
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      let hasJournalToday = false;
+      
+      try {
+        const { journalAPI } = await import("../services/api");
+        const latestEntry = await journalAPI.getLatestEntry();
+        if (latestEntry.data && latestEntry.data.created_at) {
+          const journalDate = new Date(latestEntry.data.created_at).toISOString().split('T')[0];
+          hasJournalToday = journalDate === today;
+          console.log("📝 Latest journal date:", journalDate, "Today:", today, "Has journal today:", hasJournalToday);
+        }
+      } catch (error) {
+        console.warn("Could not check journal date:", error.message);
+        hasJournalToday = false;
+      }
+      
+      // Music should always affect mood UNLESS journal was written today
+      if (hasJournalToday) {
+        console.log("📝 Journal written today - music mood override disabled");
+        return; // Don't update mood if journal was written today
       }
 
       // Fetch valence data and update plant mood
