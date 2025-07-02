@@ -19,7 +19,6 @@ import { PublicGarden, MindfulnessPage } from "./features/plants"
 import { UserPlantProfile } from "./features/userProfile"
 import ReminderSettings from "./features/reminders/ReminderSettings"
 import BuyLeavesPage from "./pages/BuyLeavesPage"
-import PublicGarden from "./features/plants/PublicGarden"
 
 function App() {
   return (
