@@ -102,9 +102,9 @@ export const plantAPI = {
   fertilizePlant: (plantId) =>
     api.post(`/api/plants/plants/${plantId}/fertilize/`),
   // Public Garden & Social Watering
-  getPublicGarden: () => api.get("/api/plants/public-garden/"),
+  getPublicGarden: (query = "") => paymentsAPI.getGarden(query),
   getPublicPlant: (userId) => api.get(`/api/plants/public/${userId}/`),
-  waterOtherPlant: (userId, amount = 10) => api.post(`/api/plants/public/${userId}/water/`, { amount }),
+  waterOtherPlant: (plantId) => paymentsAPI.waterOtherPlant(plantId),
   // Memory Seeds, Fantasy Plants, Mindfulness
   getMemorySeeds: () => api.get("/api/plants/memory-seeds/"),
   createMemorySeed: (data) => api.post("/api/plants/memory-seeds/", data),
@@ -209,5 +209,17 @@ export const musicAPI = {
     return 0; // No bonus for neutral or negative moods
   }
 }
+
+// Payments API calls (payments app)
+export const paymentsAPI = {
+  getPackages: () => api.get("/api/payments/packages/"),
+  initiatePayment: (packageId, phoneNumber) =>
+    api.post("/api/payments/initiate/", { package_id: packageId, phone_number: phoneNumber }),
+  getLeaves: () => api.get("/api/payments/leaves/"),
+  getTransactions: () => api.get("/api/payments/transactions/"),
+  getGarden: (query = "") => api.get(`/api/payments/garden/${query ? `?query=${encodeURIComponent(query)}` : ""}`),
+  waterOtherPlant: (plantId) => api.post(`/api/payments/water/${plantId}/`),
+  getWateringHistory: () => api.get("/api/payments/watering-history/"),
+};
 
 export default api

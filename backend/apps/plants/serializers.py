@@ -20,11 +20,13 @@ class PlantSerializer(serializers.ModelSerializer):
             'water_level', 'current_mood_influence', 'music_boost_active', 'date_added', 'created_at', 'updated_at',
             'combined_mood_score', 'fantasy_params', 'memory_seeds', 'three_d_model_params',
             'care_streak', 'last_care_date', 'journal_mood_score', 'spotify_mood_score',
-            'age_days', 'total_music_minutes', 'last_watered_formatted'
+            'age_days', 'total_music_minutes', 'last_watered_formatted', 'is_public',
+            'last_mood_update'
         ]
         read_only_fields = [
             'id', 'date_added', 'created_at', 'updated_at', 'health_status', 'combined_mood_score', 
-            'fantasy_params', 'memory_seeds', 'age_days', 'total_music_minutes', 'last_watered_formatted'
+            'fantasy_params', 'memory_seeds', 'age_days', 'total_music_minutes', 'last_watered_formatted',
+            'is_public', 'last_mood_update'
         ]
 
     def get_memory_seeds(self, obj):

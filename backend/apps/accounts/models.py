@@ -13,8 +13,8 @@ class UserProfile(models.Model):
     
     # Profile fields as specified
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
-    bio = models.TextField(blank=True, help_text="User's bio/description")
-    timezone = models.CharField(max_length=100, default='UTC', help_text="User's timezone")
+    bio = models.TextField(max_length=500, blank=True, help_text="User's bio/description")
+    timezone = models.CharField(max_length=50, default='UTC', help_text="User's timezone")
     
     # Additional user preferences
     journal_streak = models.IntegerField(default=0, help_text="Current journaling streak in days")
@@ -26,6 +26,9 @@ class UserProfile(models.Model):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # PlantPal Leaves field
+    plantpal_leaves = models.IntegerField(default=0, help_text="PlantPal Leaves balance for premium features")
 
     class Meta:
         verbose_name = "User Profile"

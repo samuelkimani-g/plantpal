@@ -102,6 +102,14 @@ class PlantViewSet(viewsets.ModelViewSet):
         if not plant:
             return Response({"error": "No plant found."}, status=status.HTTP_404_NOT_FOUND)
 
+        # Check if this is a social watering (watering another user's plant)
+        target_plant_id = request.data.get('target_plant_id')
+        if target_plant_id and target_plant_id != plant.id:
+            # This is a social watering - redirect to the payments app
+            from django.shortcuts import redirect
+            from django.urls import reverse
+            return redirect(reverse('water-other-plant', kwargs={'plant_id': target_plant_id}))
+
         # Cooldown logic: only allow watering if last_watered_at is >1 hour ago
         now = timezone.now()
         if plant.last_watered_at and (now - plant.last_watered_at).total_seconds() < 3600:

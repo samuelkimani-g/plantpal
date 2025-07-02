@@ -25,7 +25,7 @@ import SpotifyConnect from '../components/SpotifyConnect';
 import MoodAnalysisDashboard from '../components/MoodAnalysisDashboard';
 import NowPlayingWidget from '../components/NowPlayingWidget';
 import OfflineMusicWidget from '../components/OfflineMusicWidget';
-import { musicAPI } from '../services/api';
+import { musicAPI, paymentsAPI } from '../services/api';
 
 const MusicDashboard = () => {
   const location = useLocation();
@@ -45,6 +45,7 @@ const MusicDashboard = () => {
   const [isProcessingCallback, setIsProcessingCallback] = useState(false);
   const [isUpdatingPlant, setIsUpdatingPlant] = useState(false);
   const [audio] = useState(new Audio()); // For playing preview_url
+  const [leaves, setLeaves] = useState(0);
 
   // Handle Spotify OAuth callback
   useEffect(() => {
@@ -520,6 +521,10 @@ const MusicDashboard = () => {
     );
   };
 
+  useEffect(() => {
+    paymentsAPI.getLeaves().then((res) => setLeaves(res.data.leaves));
+  }, []);
+
   if (isProcessingCallback) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-green-100 to-blue-100 p-4">
@@ -652,6 +657,15 @@ const MusicDashboard = () => {
             </div>
           )}
         </Card>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-white dark:bg-emerald-950 rounded-lg px-3 py-2 shadow">
+            <Leaf className="h-5 w-5 text-emerald-400" />
+            <span className="font-bold text-emerald-700 dark:text-emerald-100">{leaves} Leaves</span>
+          </div>
+          <Button onClick={() => navigate("/buy-leaves")} className="bg-emerald-500 text-white">Buy Leaves</Button>
+          <Button onClick={() => navigate("/explore-plants")} className="bg-blue-500 text-white">Explore Plants</Button>
+        </div>
       </div>
     </div>
   );

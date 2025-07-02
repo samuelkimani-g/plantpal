@@ -70,7 +70,7 @@ class Plant(models.Model):
     last_fertilized = models.DateTimeField(null=True, blank=True)
     water_level = models.IntegerField(default=50, validators=[MinValueValidator(0), MaxValueValidator(100)])
     care_streak = models.IntegerField(default=0, help_text="Number of consecutive days the plant has been cared for")
-    last_care_date = models.DateField(null=True, blank=True, help_text="Last date any care action was performed")
+    last_care_date = models.DateField(null=True, blank=True, help_text="Last date the plant was cared for")
     
     # Mood integration (as per architecture)
     journal_mood_score = models.FloatField(default=0.5, help_text="Mood score from journal entries (0.0 to 1.0)")
@@ -97,6 +97,9 @@ class Plant(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_mood_update = models.DateTimeField(auto_now=True)
+
+    # Social features
+    is_public = models.BooleanField(default=True, help_text="Whether this plant is visible to other users")
 
     class Meta:
         ordering = ['-created_at']

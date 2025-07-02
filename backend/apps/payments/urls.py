@@ -1,0 +1,24 @@
+from django.urls import path
+from .views import (
+    LeafPackageViewSet, InitiatePaymentView, MpesaCallbackView,
+    TransactionHistoryView, PublicGardenView, WaterOtherPlantView,
+    UserLeavesView, WateringHistoryView
+)
+
+urlpatterns = [
+    # Leaf packages
+    path('packages/', LeafPackageViewSet.as_view(), name='leaf-packages'),
+    
+    # M-Pesa payment
+    path('initiate/', InitiatePaymentView.as_view(), name='initiate-payment'),
+    path('callback/', MpesaCallbackView.as_view(), name='mpesa-callback'),
+    path('transactions/', TransactionHistoryView.as_view(), name='transaction-history'),
+    
+    # User leaves
+    path('leaves/', UserLeavesView.as_view(), name='user-leaves'),
+    
+    # Social features
+    path('garden/', PublicGardenView.as_view(), name='public-garden'),
+    path('water/<int:plant_id>/', WaterOtherPlantView.as_view(), name='water-other-plant'),
+    path('watering-history/', WateringHistoryView.as_view(), name='watering-history'),
+] 

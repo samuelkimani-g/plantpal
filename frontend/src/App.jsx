@@ -18,6 +18,8 @@ import CreatePlantForm from "./features/plantGrowth/CreatePlantForm"
 import { PublicGarden, MindfulnessPage } from "./features/plants"
 import { UserPlantProfile } from "./features/userProfile"
 import ReminderSettings from "./features/reminders/ReminderSettings"
+import BuyLeavesPage from "./pages/BuyLeavesPage"
+import PublicGarden from "./features/plants/PublicGarden"
 
 function App() {
   return (
@@ -126,6 +128,26 @@ function App() {
                   <ProtectedRoute>
                     <Layout>
                       <ReminderSettings />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/buy-leaves"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <BuyLeavesPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/explore-plants"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <PublicGarden />
                     </Layout>
                   </ProtectedRoute>
                 }

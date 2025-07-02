@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { plantAPI } from "@/services/api";
+import { plantAPI, paymentsAPI } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +55,7 @@ function PlantCard({ plant, isOwn, onWater, watering, onProfile, onLeaveNote, re
             disabled={isOwn || watering}
           >
             {watering ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Droplets className="h-4 w-4 mr-2" />}
-            {watering ? "Watering..." : isOwn ? "Your Plant" : "Water & Cheer"}
+            {watering ? "Watering..." : isOwn ? "Your Plant" : "Water (2 Leaves)"}
           </Button>
         </div>
         {/* Recent notes/emojis */}
@@ -86,35 +86,32 @@ export default function PublicGarden() {
   const noteInputRef = useRef();
   const [noteValue, setNoteValue] = useState("");
   const [supportNotes, setSupportNotesState] = useState(getSupportNotes());
+  const [leaves, setLeaves] = useState(0);
 
   useEffect(() => {
     setLoading(true);
-    plantAPI
-      .getPublicGarden()
-      .then((res) => {
-        setPlants(res.data || []);
-        setError("");
-      })
-      .catch((err) => {
-        setError("Failed to load public garden.");
-      })
+    Promise.all([
+      paymentsAPI.getGarden().then((res) => setPlants(res.data.users || [])),
+      paymentsAPI.getLeaves().then((res) => setLeaves(res.data.leaves)),
+    ])
+      .catch(() => setError("Failed to load public garden."))
       .finally(() => setLoading(false));
   }, []);
 
   const handleWater = async (plant) => {
-    setWateringId(plant.userId || plant.user_id);
+    setWateringId(plant.id);
     try {
-      await plantAPI.waterOtherPlant(plant.userId || plant.user_id);
-      // Optionally, refresh plant data
+      await paymentsAPI.waterOtherPlant(plant.id);
+      setLeaves((prev) => prev - 2);
       setPlants((prev) =>
         prev.map((p) =>
-          (p.userId || p.user_id) === (plant.userId || plant.user_id)
+          p.id === plant.id
             ? { ...p, water_level: Math.min(100, (p.water_level || 50) + 10) }
             : p
         )
       );
     } catch (e) {
-      setError("Failed to water plant.");
+      setError(e.response?.data?.error || "Failed to water plant.");
     } finally {
       setWateringId(null);
     }
@@ -128,18 +125,17 @@ export default function PublicGarden() {
 
   const handleSubmitNote = async () => {
     setShowNoteModal(false);
-    setWateringId(notePlant.userId || notePlant.user_id);
+    setWateringId(notePlant.id);
     try {
-      await plantAPI.waterOtherPlant(notePlant.userId || notePlant.user_id);
+      await paymentsAPI.waterOtherPlant(notePlant.id);
       // Save note
-      const id = notePlant.userId || notePlant.user_id;
-      const updated = { ...supportNotes, [id]: [...(supportNotes[id] || []), noteValue || "💧"] };
+      const updated = { ...supportNotes, [notePlant.id]: [...(supportNotes[notePlant.id] || []), noteValue || "💧"] };
       setSupportNotes(updated);
       setSupportNotesState(updated);
       // Optionally, refresh plant data
       setPlants((prev) =>
         prev.map((p) =>
-          (p.userId || p.user_id) === id
+          p.id === notePlant.id
             ? { ...p, water_level: Math.min(100, (p.water_level || 50) + 10) }
             : p
         )
@@ -154,10 +150,10 @@ export default function PublicGarden() {
   };
 
   const filteredPlants = plants.filter(
-    (p) =>
+    (userWithPlants) =>
       (!search ||
-        (p.username && p.username.toLowerCase().includes(search.toLowerCase())) ||
-        (p.species && p.species.toLowerCase().includes(search.toLowerCase())))
+        (userWithPlants.user.username && userWithPlants.user.username.toLowerCase().includes(search.toLowerCase())) ||
+        (userWithPlants.plants && userWithPlants.plants.some(p => p.species && p.species.toLowerCase().includes(search.toLowerCase()))))
   );
 
   return (
@@ -167,15 +163,21 @@ export default function PublicGarden() {
           <h1 className="text-3xl font-extrabold text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
             <Leaf className="h-8 w-8 text-emerald-400 animate-bounce" /> Public Garden
           </h1>
-          <div className="flex items-center gap-2 bg-white dark:bg-emerald-950 rounded-lg px-3 py-2 shadow">
-            <Search className="h-4 w-4 text-emerald-400" />
-            <input
-              type="text"
-              placeholder="Search by user or species..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="bg-transparent outline-none text-emerald-900 dark:text-emerald-100 placeholder:text-emerald-400"
-            />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-white dark:bg-emerald-950 rounded-lg px-3 py-2 shadow">
+              <Leaf className="h-5 w-5 text-emerald-400" />
+              <span className="font-bold text-emerald-700 dark:text-emerald-100">{leaves} Leaves</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white dark:bg-emerald-950 rounded-lg px-3 py-2 shadow">
+              <Search className="h-4 w-4 text-emerald-400" />
+              <input
+                type="text"
+                placeholder="Search by user or species..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="bg-transparent outline-none text-emerald-900 dark:text-emerald-100 placeholder:text-emerald-400"
+              />
+            </div>
           </div>
         </div>
         {loading ? (
@@ -190,18 +192,20 @@ export default function PublicGarden() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredPlants.map((plant) => (
-              <PlantCard
-                key={plant.userId || plant.user_id}
-                plant={plant}
-                isOwn={user && (plant.userId === user.id || plant.user_id === user.id)}
-                watering={wateringId === (plant.userId || plant.user_id)}
-                onWater={() => handleWater(plant)}
-                onProfile={() => navigate(`/profile/${plant.userId || plant.user_id}`)}
-                onLeaveNote={() => handleLeaveNote(plant)}
-                recentNotes={supportNotes[plant.userId || plant.user_id] || []}
-              />
-            ))}
+            {filteredPlants.map((userWithPlants) => 
+              userWithPlants.plants.map((plant) => (
+                <PlantCard
+                  key={plant.id}
+                  plant={{...plant, username: userWithPlants.user.username}}
+                  isOwn={user && userWithPlants.user.id === user.id}
+                  watering={wateringId === plant.id}
+                  onWater={() => handleWater(plant)}
+                  onProfile={() => navigate(`/profile/${userWithPlants.user.id}`)}
+                  onLeaveNote={() => handleLeaveNote(plant)}
+                  recentNotes={supportNotes[plant.id] || []}
+                />
+              ))
+            )}
           </div>
         )}
         {/* Supportive Note Modal */}

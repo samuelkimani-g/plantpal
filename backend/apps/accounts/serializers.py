@@ -13,20 +13,23 @@ class UserProfileSerializer(serializers.ModelSerializer):
     User profile serializer for viewing and editing profile information
     """
     username = serializers.CharField(source='user.username', read_only=True)
-    email = serializers.EmailField(source='user.email')
-    first_name = serializers.CharField(source='user.first_name', allow_blank=True)
-    last_name = serializers.CharField(source='user.last_name', allow_blank=True)
-    display_name = serializers.CharField(read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
     avatar_url = serializers.CharField(read_only=True)
+    spotify_connected = serializers.BooleanField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+    plantpal_leaves = serializers.IntegerField(read_only=True)
     
     class Meta:
         model = UserProfile
         fields = [
-            'username', 'email', 'first_name', 'last_name', 'display_name',
+            'id', 'username', 'email', 'first_name', 'last_name',
             'avatar', 'avatar_url', 'bio', 'timezone', 'journal_streak',
-            'reminder_enabled', 'spotify_connected', 'created_at', 'updated_at'
+            'spotify_connected', 'created_at', 'updated_at', 'plantpal_leaves',
         ]
-        read_only_fields = ['username', 'journal_streak', 'spotify_connected', 'created_at', 'updated_at']
+        read_only_fields = ['username', 'journal_streak', 'spotify_connected', 'created_at', 'updated_at', 'plantpal_leaves']
 
     def update(self, instance, validated_data):
         """Update both User and UserProfile fields"""
@@ -181,3 +184,26 @@ class PasswordChangeSerializer(serializers.Serializer):
         self.instance.set_password(password)
         self.instance.save()
         return self.instance
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ['avatar', 'bio', 'timezone']
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    password_confirm = serializers.CharField(write_only=True)
+    
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name']
+    
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password_confirm']:
+            raise serializers.ValidationError("Passwords don't match")
+        return attrs
+    
+    def create(self, validated_data):
+        validated_data.pop('password_confirm')
+        user = User.objects.create_user(**validated_data)
+        return user
