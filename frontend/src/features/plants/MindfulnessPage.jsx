@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { plantAPI } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Heart, Smile, Sun, Sparkles, Calendar, Award } from "lucide-react";
+import { Loader2, Heart, Smile, Sun, Sparkles, Calendar, Award, Trees } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 // Removed date-fns import - using native Date methods instead
 
 function BreathingExercise({ onComplete }) {
@@ -137,6 +138,7 @@ export default function MindfulnessPage() {
   const [rewarding, setRewarding] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [stats, setStats] = useState(getMindfulStats());
+  const navigate = useNavigate();
   const todayStr = new Date().toISOString().split('T')[0]; // yyyy-MM-dd format
 
   const handleComplete = async () => {
@@ -227,6 +229,30 @@ export default function MindfulnessPage() {
                 <Button className="w-full bg-emerald-400 hover:bg-emerald-500" onClick={() => setExercise("kindness")}>🤝 Kindness Act</Button>
               </div>
             )}
+          </CardContent>
+        </Card>
+        
+        {/* Community Garden Section */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trees className="h-5 w-5" />
+              Community Garden
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                Explore other users' plants and spread mindful energy by watering their gardens
+              </p>
+              <Button 
+                onClick={() => navigate("/explore-plants")} 
+                className="bg-green-500 hover:bg-green-600"
+              >
+                <Trees className="h-4 w-4 mr-2" />
+                Explore Community Plants
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
