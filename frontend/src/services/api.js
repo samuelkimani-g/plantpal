@@ -124,11 +124,17 @@ export const moodAPI = {
 
 // Reminder API calls (reminders app)
 export const reminderAPI = {
-  getReminders: () => api.get("/api/reminders/reminders/"),
-  createReminder: (reminderData) => api.post("/api/reminders/reminders/", reminderData),
-  getReminder: (id) => api.get(`/api/reminders/reminders/${id}/`),
-  updateReminder: (id, reminderData) => api.patch(`/api/reminders/reminders/${id}/`, reminderData),
-  deleteReminder: (id) => api.delete(`/api/reminders/reminders/${id}/`),
+  getReminders: () => api.get("/api/reminders/"),
+  createReminder: (reminderData) => api.post("/api/reminders/", reminderData),
+  getReminder: (id) => api.get(`/api/reminders/api/${id}/`),
+  updateReminder: (id, reminderData) => api.patch(`/api/reminders/api/${id}/`, reminderData),
+  deleteReminder: (id) => api.delete(`/api/reminders/api/${id}/`),
+  // Additional reminder endpoints
+  toggleReminder: () => api.post("/api/reminders/disable/"),
+  getReminderStatus: () => api.get("/api/reminders/status/"),
+  updateReminderTime: (timeData) => api.post("/api/reminders/time/", timeData),
+  getReminderStats: () => api.get("/api/reminders/stats/"),
+  getReminderLogs: () => api.get("/api/reminders/logs/"),
 }
 
 // Music API calls (music app)
