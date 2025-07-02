@@ -78,17 +78,45 @@ export default function BuyLeavesPage() {
                 {packages.map((pkg) => (
                   <Card
                     key={pkg.id}
-                    className={`border-2 ${selected && selected.id === pkg.id ? "border-emerald-500" : "border-gray-200"} cursor-pointer`}
+                    className={`border-2 transition-all hover:shadow-lg ${
+                      selected && selected.id === pkg.id 
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20" 
+                        : "border-gray-200 hover:border-emerald-300"
+                    } cursor-pointer relative`}
                     onClick={() => setSelected(pkg)}
                   >
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Leaf className="h-5 w-5 text-emerald-400" /> {pkg.leaves} Leaves
+                    {/* Best Value Badge */}
+                    {pkg.leaves >= 60 && (
+                      <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                        Best Value
+                      </div>
+                    )}
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Leaf className="h-5 w-5 text-emerald-400" />
+                          <span className="text-emerald-700 dark:text-emerald-300">{pkg.leaves} Leaves</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                            KES {pkg.price}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {(pkg.price / pkg.leaves).toFixed(2)} per leaf
+                          </div>
+                        </div>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-lg font-bold text-emerald-700">KES {pkg.price}</div>
-                      <div className="text-gray-500 text-sm">{pkg.description}</div>
+                      <div className="space-y-2">
+                        <div className="text-sm text-gray-600 dark:text-gray-400">{pkg.description}</div>
+                        <div className="text-xs text-emerald-600 dark:text-emerald-400">
+                          • Water {Math.floor(pkg.leaves / 2)} plants
+                        </div>
+                        <div className="text-xs text-emerald-600 dark:text-emerald-400">
+                          • {pkg.name}
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}

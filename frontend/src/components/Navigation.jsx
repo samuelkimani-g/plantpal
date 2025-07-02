@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
+import { paymentsAPI } from "../services/api"
 import {
   ArrowLeft,
   Home,
@@ -26,6 +27,16 @@ const Navigation = () => {
   const { user, logout } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [leaves, setLeaves] = useState(0)
+
+  // Load leaves count
+  useEffect(() => {
+    if (user) {
+      paymentsAPI.getLeaves()
+        .then((res) => setLeaves(res.data.leaves || 0))
+        .catch(() => setLeaves(0))
+    }
+  }, [user])
 
   const handleBack = () => {
     navigate(-1)
@@ -146,6 +157,14 @@ const Navigation = () => {
                   </Button>
                 )
               })}
+            </div>
+
+            {/* Leaves Counter */}
+            <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900 rounded-lg px-3 py-2 shadow-sm border border-emerald-200 dark:border-emerald-700">
+              <Leaf className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="font-semibold text-emerald-700 dark:text-emerald-300 text-sm">
+                {leaves}
+              </span>
             </div>
 
             {/* User Menu */}

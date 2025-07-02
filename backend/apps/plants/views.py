@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+import logging
 
 from .models import Plant, PlantLog, MemorySeed
 from .serializers import PlantSerializer, PlantLogSerializer, MemorySeedSerializer
@@ -33,26 +34,20 @@ class PlantViewSet(viewsets.ModelViewSet):
         try:
             plant = self.get_object()
             if plant:
-                # Check if plant has all required fields before serializing
-                print(f"Plant object: {plant}")
-                print(f"Plant fields: {[f.name for f in plant._meta.fields]}")
-                
-                # Ensure 3D params are initialized
+                # Ensure 3D params are initialized efficiently
                 if not plant.three_d_model_params:
                     plant.update_3d_params()
                 
                 serializer = self.get_serializer(plant)
-                data = serializer.data
-                print(f"Serialized data: {data}")
                 # Return as array for frontend compatibility
-                return Response([data])
+                return Response([serializer.data])
             return Response([], status=status.HTTP_200_OK)
         except Exception as e:
-            import traceback
-            print(f"Error in PlantViewSet.list: {e}")
-            print(traceback.format_exc())
+            # Log error without exposing internal details
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in PlantViewSet.list for user {request.user.id}: {e}")
             return Response(
-                {"error": f"Internal server error: {str(e)}"}, 
+                {"error": "Unable to load plant data"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -65,21 +60,17 @@ class PlantViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            print(f"Creating plant with data: {request.data}")
             serializer = self.get_serializer(data=request.data)
             if serializer.is_valid():
                 plant = serializer.save(user=request.user)
-                print(f"Plant created successfully: {plant}")
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
-                print(f"Serializer errors: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            import traceback
-            print(f"Error in PlantViewSet.create: {e}")
-            print(traceback.format_exc())
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in PlantViewSet.create for user {request.user.id}: {e}")
             return Response(
-                {"error": f"Internal server error: {str(e)}"}, 
+                {"error": "Unable to create plant"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
