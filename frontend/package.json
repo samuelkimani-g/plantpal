@@ -1,7 +1,8 @@
 {
   "name": "plantpal-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
+  "buildTimestamp": "2025-01-07T12:00:00Z",
   "type": "module",
   "scripts": {
     "dev": "vite",

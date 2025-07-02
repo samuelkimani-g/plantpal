@@ -5,6 +5,9 @@ import { WeatherProvider } from "./context/WeatherContext"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Layout from "./components/Layout"
 
+// Log deployment version
+console.log("PlantPal Frontend - Payment System Version - Build:", new Date().toISOString())
+
 // Import pages
 import LandingPage from "./features/LandingPage/LandingPage"
 import Login from "./features/userProfile/Login"
