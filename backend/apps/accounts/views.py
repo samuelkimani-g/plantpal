@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import timedelta
 from .serializers import UserSerializer, RegisterSerializer, CustomTokenObtainPairSerializer, PasswordChangeSerializer, UserProfileSerializer
+from .models import UserProfile
 # SpotifyProfile moved to apps.music.models - old Spotify views deprecated
 from apps.plants.services import SpotifyService, PlantGrowthService
 from django.conf import settings
