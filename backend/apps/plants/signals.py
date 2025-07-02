@@ -21,41 +21,63 @@ XP_REQUIRED_FOR_LEVEL_UP = 100 # Base XP needed to level up. Can be scaled per l
 @receiver(post_save, sender=JournalEntry)
 def update_plant_from_journal_mood(sender, instance, created, **kwargs):
     """
-    Signal receiver to update the user's *current* plant's health and growth
-    based on the sentiment of a new JournalEntry.
+    Signal receiver to update the user's plant based on journal mood
+    Uses the MoodEngine for proper mood calculation
     """
     if not created: # Only process newly created journal entries for mood impact
         return
 
     # Check if the journal entry has a mood score
     if instance.mood_score is not None:
-        user_plant = Plant.objects.filter(user=instance.user).first() # Get the user's first plant (or current primary)
+        user_plant = Plant.objects.filter(user=instance.user).first()
 
         if user_plant:
-            # Calculate health change based on mood_score (0.0 to 1.0)
-            # A higher mood_score boosts health, lower can reduce it
-            # Neutral (0.5) implies no significant change from mood alone
-            mood_health_change = (instance.mood_score - 0.5) * MOOD_IMPACT_FACTOR
-            
-            # Apply health change, clamping between 0 and 100
-            user_plant.health = max(0, min(100, user_plant.health + mood_health_change))
-            
-            # Update growth level if health is good
-            if user_plant.health >= HEALTH_THRESHOLD_FOR_GROWTH and user_plant.growth_level < MAX_GROWTH_LEVEL:
-                # Simple growth: gain 1 level per threshold achievement.
-                # More complex: could add XP system and accumulate XP for level up.
-                user_plant.growth_level += 1
-                user_plant.health = 70 # Reset health slightly to encourage continued care after growth
+            try:
+                from utils.mood_logic import MoodEngine
                 
-            user_plant.save()
+                # Get combined mood using MoodEngine
+                combined_mood = MoodEngine.get_combined_user_mood(instance.user)
+                
+                # Update plant mood fields
+                user_plant.journal_mood_score = instance.mood_score
+                user_plant.combined_mood_score = combined_mood.get('mood_score', 0.5)
+                user_plant.current_mood_influence = combined_mood.get('unified_mood', 'neutral')
+                
+                # Calculate growth impact
+                mood_impact = MoodEngine.calculate_plant_growth_impact(
+                    combined_mood, 
+                    user_plant.growth_points
+                )
+                
+                # Apply growth points if there's a change
+                if mood_impact['growth_change'] != 0:
+                    user_plant.add_growth_points(
+                        mood_impact['growth_change'], 
+                        source=f"journal_signal_{instance.mood}"
+                    )
+                
+                # Update health based on mood (positive mood improves health)
+                mood_health_change = (combined_mood.get('mood_score', 0.5) - 0.5) * 10
+                user_plant.health_score = max(0, min(100, user_plant.health_score + mood_health_change))
+                
+                user_plant.last_mood_update = timezone.now()
+                user_plant.save()
 
-            # Optional: Log this mood-driven growth update as a PlantLog
-            PlantLog.objects.create(
-                plant=user_plant,
-                activity_type="journal_sentiment",
-                note=f"Mood from journal entry {instance.id}: {instance.mood} ({instance.mood_score:.2f}) affected plant health by {mood_health_change:.2f}.",
-                value=instance.mood_score # Store the mood score for reference
-            )
+                # Log this mood-driven update
+                PlantLog.objects.create(
+                    plant=user_plant,
+                    activity_type="journal_sentiment",
+                    note=f"Journal signal: {instance.mood} ({instance.mood_score:.2f}) → {user_plant.current_mood_influence}",
+                    value=instance.mood_score,
+                    growth_impact=mood_impact['growth_change']
+                )
+                
+                print(f"Plant {user_plant.name} mood updated via signal: {user_plant.current_mood_influence}")
+                
+            except Exception as e:
+                print(f"Error in journal signal mood update: {e}")
+                import traceback
+                print(traceback.format_exc())
         else:
             print(f"User {instance.user.username} has no plants to update for journal entry {instance.id}")
 
@@ -88,8 +110,8 @@ def update_plant_from_plant_log(sender, instance, created, **kwargs):
 @receiver(post_save, sender=MusicMoodProfile)
 def update_plant_mood_from_music(sender, instance, created, **kwargs):
     """
-    Signal receiver to update plant health based on music mood changes.
-    This runs whenever a MusicMoodProfile is saved (created or updated).
+    Signal receiver to update plant mood based on music mood changes.
+    Uses MoodEngine for proper mood calculation.
     """
     try:
         user = instance.user
@@ -97,21 +119,55 @@ def update_plant_mood_from_music(sender, instance, created, **kwargs):
         
         try:
             plant = Plant.objects.get(user=user)
-            logger.info(f"Updating plant {plant.name} for user {user.username} with mood score: {current_mood_score}")
+            logger.info(f"Updating plant {plant.name} for user {user.username} with music mood score: {current_mood_score}")
 
-            # Example logic: Adjust plant health based on mood score
             if current_mood_score is not None:
-                # Scale mood score (e.g., 0-1) to an effect on health (-1 to 1 for health change)
-                mood_effect = (current_mood_score - 0.5) * 2  # Transforms 0-1 to -1 to 1
-                health_change = mood_effect * 5  # Max change of 5 health points
-
-                # Update both health and health_score fields
-                plant.health = max(0, min(100, plant.health + health_change))
-                plant.health_score = max(0, min(100, plant.health_score + health_change))
-                plant.spotify_mood_score = current_mood_score
-                plant.last_mood_update = timezone.now()
-                plant.save()
-                logger.info(f"Plant {plant.name} health updated to {plant.health} based on music mood.")
+                try:
+                    from utils.mood_logic import MoodEngine
+                    
+                    # Update plant's music mood score
+                    plant.spotify_mood_score = current_mood_score
+                    plant.music_mood_score = current_mood_score
+                    
+                    # Get combined mood using MoodEngine
+                    combined_mood = MoodEngine.get_combined_user_mood(user)
+                    
+                    # Update plant mood fields
+                    plant.combined_mood_score = combined_mood.get('mood_score', 0.5)
+                    plant.current_mood_influence = combined_mood.get('unified_mood', 'neutral')
+                    
+                    # Calculate growth impact
+                    mood_impact = MoodEngine.calculate_plant_growth_impact(
+                        combined_mood, 
+                        plant.growth_points
+                    )
+                    
+                    # Apply growth points if there's a change
+                    if mood_impact['growth_change'] != 0:
+                        plant.add_growth_points(
+                            mood_impact['growth_change'], 
+                            source=f"music_signal_{combined_mood.get('unified_mood', 'neutral')}"
+                        )
+                    
+                    # Update health based on mood
+                    mood_health_change = (combined_mood.get('mood_score', 0.5) - 0.5) * 8
+                    plant.health_score = max(0, min(100, plant.health_score + mood_health_change))
+                    
+                    plant.last_mood_update = timezone.now()
+                    plant.save()
+                    
+                    logger.info(f"Plant {plant.name} mood updated from music: {plant.current_mood_influence}")
+                    
+                except Exception as e:
+                    logger.error(f"Error using MoodEngine in music signal: {e}")
+                    # Fallback to simple mood update
+                    mood_effect = (current_mood_score - 0.5) * 2
+                    health_change = mood_effect * 5
+                    plant.health_score = max(0, min(100, plant.health_score + health_change))
+                    plant.spotify_mood_score = current_mood_score
+                    plant.last_mood_update = timezone.now()
+                    plant.save()
+                    
         except Plant.DoesNotExist:
             logger.warning(f"No plant found for user {user.username} to update with music mood.")
         except Exception as e:

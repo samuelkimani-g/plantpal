@@ -103,8 +103,8 @@ class JournalEntry(models.Model):
         """Update user's plant mood based on this journal entry"""
         try:
             if hasattr(self.user, 'plant'):
-                from core.mood_engine import MoodEngine
-                from apps.plants.models import Plant
+                from utils.mood_logic import MoodEngine
+                from apps.plants.models import Plant, PlantLog
                 
                 plant = self.user.plant
                 
@@ -121,22 +121,40 @@ class JournalEntry(models.Model):
                     
                     # Update plant's journal mood score
                     plant.journal_mood_score = avg_mood_score
+                    
+                    # Use MoodEngine to calculate combined mood and update plant
+                    combined_mood = MoodEngine.get_combined_user_mood(self.user)
+                    plant.combined_mood_score = combined_mood.get('mood_score', 0.5)
+                    plant.current_mood_influence = combined_mood.get('unified_mood', 'neutral')
+                    
+                    # Calculate growth impact
+                    mood_impact = MoodEngine.calculate_plant_growth_impact(
+                        combined_mood, 
+                        plant.growth_points
+                    )
+                    
+                    # Apply growth points if there's a change
+                    if mood_impact['growth_change'] != 0:
+                        plant.add_growth_points(
+                            mood_impact['growth_change'], 
+                            source=f"journal_mood_{self.mood}"
+                        )
+                    
+                    plant.last_mood_update = timezone.now()
                     plant.save()
                     
                     # Log the mood update
-                    from apps.plants.models import PlantLog
                     PlantLog.objects.create(
                         plant=plant,
                         activity_type='journal_sentiment',
-                        note=f"Journal mood updated: {self.mood} ({self.mood_score:.2f})",
+                        note=f"Journal mood updated: {self.mood} ({self.mood_score:.2f}) → {plant.current_mood_influence}",
                         value=self.mood_score,
-                        growth_impact=MoodEngine.calculate_plant_growth_impact(
-                            {'mood_score': avg_mood_score}, 
-                            plant.growth_points
-                        )['growth_change']
+                        growth_impact=mood_impact['growth_change']
                     )
         except Exception as e:
             print(f"Error updating plant mood: {e}")
+            import traceback
+            print(traceback.format_exc())
 
     def _update_reminder_activity(self):
         """Update reminder system that user has journaled"""
