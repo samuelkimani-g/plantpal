@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Smile,
   Bell,
+  CreditCard,
 } from "lucide-react"
 import { Button } from "./ui/button"
 
@@ -171,6 +172,16 @@ const Navigation = () => {
                   >
                     <Settings className="h-4 w-4 mr-2" />
                     Profile Settings
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate("/buy-leaves")
+                      setIsUserMenuOpen(false)
+                    }}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600"
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Buy Leaves
                   </button>
                   <button
                     onClick={() => {

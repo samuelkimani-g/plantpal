@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { User, Edit, Save, X, Trash2, Key, Music, AlertCircle, CheckCircle, Loader2 } from "lucide-react"
+import { User, Edit, Save, X, Trash2, Key, Music, AlertCircle, CheckCircle, Loader2, Leaf, Shield, Calendar } from "lucide-react"
 import { authAPI } from "../../services/api"
 import SpotifyIntegration from "../music/SpotifyIntegration"
 
@@ -132,10 +132,47 @@ export default function ProfilePage() {
       <div className="container mx-auto max-w-4xl space-y-8">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-emerald-800 dark:text-emerald-200 mb-2 flex items-center justify-center gap-3">
-            <User className="h-8 w-8" />
-            Profile Settings
-          </h1>
+          <div className="flex flex-col items-center space-y-4 mb-6">
+            {/* Avatar */}
+            <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900 rounded-full flex items-center justify-center border-4 border-emerald-200 dark:border-emerald-700">
+              <User className="h-12 w-12 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            
+            {/* User Name and Stats */}
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold text-emerald-800 dark:text-emerald-200">
+                {user.first_name && user.last_name 
+                  ? `${user.first_name} ${user.last_name}` 
+                  : user.username}
+              </h1>
+              <p className="text-emerald-600 dark:text-emerald-400">@{user.username}</p>
+              
+              {/* Quick Stats */}
+              <div className="flex items-center justify-center gap-6 mt-4">
+                <div className="text-center">
+                  <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
+                    <Leaf className="h-4 w-4" />
+                    <span className="font-semibold">{user.plantpal_leaves || 0}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Leaves</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
+                    <Calendar className="h-4 w-4" />
+                    <span className="font-semibold">{new Date(user.date_joined).getFullYear()}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Joined</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
+                    <Music className="h-4 w-4" />
+                    <span className="font-semibold">{user.spotify_connected ? 'Yes' : 'No'}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Spotify</p>
+                </div>
+              </div>
+            </div>
+          </div>
           <p className="text-emerald-600 dark:text-emerald-400">Manage your account and preferences</p>
         </div>
 
@@ -167,13 +204,13 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    Profile Information
+                    <User className="h-5 w-5 text-emerald-600" />
+                    Personal Information
                   </CardTitle>
-                  <CardDescription>Update your personal details</CardDescription>
+                  <CardDescription>Update your personal details and bio</CardDescription>
                 </div>
                 {!isEditing && (
-                  <Button variant="outline" onClick={() => setIsEditing(true)}>
+                  <Button variant="outline" onClick={() => setIsEditing(true)} className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </Button>
@@ -301,11 +338,11 @@ export default function ProfilePage() {
           </Card>
 
           {/* Account Security */}
-          <Card>
+          <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                Account Security
+                <Shield className="h-5 w-5 text-orange-600" />
+                Security & Privacy
               </CardTitle>
               <CardDescription>Manage your password and account settings</CardDescription>
             </CardHeader>

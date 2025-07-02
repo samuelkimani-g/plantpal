@@ -663,8 +663,6 @@ const MusicDashboard = () => {
             <Leaf className="h-5 w-5 text-emerald-400" />
             <span className="font-bold text-emerald-700 dark:text-emerald-100">{leaves} Leaves</span>
           </div>
-          <Button onClick={() => navigate("/buy-leaves")} className="bg-emerald-500 text-white">Buy Leaves</Button>
-          <Button onClick={() => navigate("/explore-plants")} className="bg-blue-500 text-white">Explore Plants</Button>
         </div>
       </div>
     </div>

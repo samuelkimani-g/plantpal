@@ -29,7 +29,8 @@ import {
   TrendingUp,
   Calendar,
   Award,
-  Gift
+  Gift,
+  Trees
 } from "lucide-react"
 
 const MindfulnessPage = () => {
@@ -751,6 +752,32 @@ const MindfulnessPage = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Explore Plants Section */}
+        <div className="max-w-6xl mx-auto mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trees className="h-5 w-5" />
+                Community Garden
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center space-y-4">
+                <p className="text-muted-foreground">
+                  Explore other users' plants and spread mindful energy by watering their gardens
+                </p>
+                <Button 
+                  onClick={() => navigate("/explore-plants")} 
+                  className="bg-green-500 hover:bg-green-600"
+                >
+                  <Trees className="h-4 w-4 mr-2" />
+                  Explore Community Plants
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
