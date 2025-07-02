@@ -1,0 +1,180 @@
+/* PlantDisplay.css */
+
+.plant-display-container {
+    position: relative;
+    /* Background is already set in JSX with Tailwind classes */
+}
+
+.plant-image {
+    /* Smooth transitions for plant image changes */
+    transition: all 0.5s ease-in-out;
+}
+
+.plant-image:hover {
+    transform: scale(1.05);
+}
+
+/* Falling leaves animation */
+.falling-leaf {
+    top: -30px;
+    animation: fall linear forwards;
+    user-select: none;
+}
+
+@keyframes fall {
+    0% {
+        transform: translateY(-30px) rotate(0deg);
+        opacity: 1;
+    }
+    20% {
+        opacity: 1;
+    }
+    80% {
+        opacity: 0.7;
+    }
+    100% {
+        transform: translateY(500px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* Additional plant states styling */
+.plant-image-wrapper {
+    transition: filter 0.3s ease-in-out;
+}
+
+/* Add a subtle glow for healthy plants */
+.plant-display-container.healthy .plant-image {
+    filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.3));
+}
+
+/* Add red tint for unhealthy plants */
+.plant-display-container.unhealthy .plant-image {
+    filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.3));
+}
+
+/* Health bar animations */
+.health-bar {
+    transition: width 0.5s ease-in-out;
+}
+
+/* Plant info overlay animations */
+.plant-info-overlay {
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease-in-out;
+}
+
+.plant-info-overlay:hover {
+    backdrop-filter: blur(12px);
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .plant-display-container {
+        max-width: 280px;
+    }
+    
+    .plant-info-overlay {
+        bottom: 2px;
+        left: 2px;
+        right: 2px;
+        padding: 8px;
+    }
+    
+    .plant-info-overlay h3 {
+        font-size: 0.9rem;
+    }
+    
+    .plant-info-overlay span {
+        font-size: 0.75rem;
+    }
+}
+
+/* Leaf variations for different seasons/moods */
+.falling-leaf.autumn {
+    filter: hue-rotate(30deg) saturate(1.8);
+}
+
+.falling-leaf.dying {
+    filter: hue-rotate(0deg) saturate(0.8) brightness(0.7);
+}
+
+/* Breathing animation for living plants */
+@keyframes breathe {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.02);
+    }
+}
+
+.plant-image.breathing {
+    animation: breathe 4s ease-in-out infinite;
+}
+
+/* Loading shimmer effect */
+@keyframes shimmer {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+.plant-image-loading {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 37%, #f0f0f0 63%);
+    background-size: 400px 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Growth animation when plant levels up */
+@keyframes grow {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.plant-image.growing {
+    animation: grow 0.6s ease-in-out;
+}
+
+/* Special effects for revived plants */
+@keyframes sparkle {
+    0%, 100% {
+        opacity: 0;
+        transform: scale(0.5) rotate(0deg);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1) rotate(180deg);
+    }
+}
+
+.plant-display-container.revived::before {
+    content: "✨";
+    position: absolute;
+    top: 10%;
+    right: 15%;
+    font-size: 1.5rem;
+    animation: sparkle 2s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.plant-display-container.revived::after {
+    content: "⭐";
+    position: absolute;
+    top: 20%;
+    left: 10%;
+    font-size: 1.2rem;
+    animation: sparkle 2s ease-in-out infinite 1s;
+    pointer-events: none;
+} 

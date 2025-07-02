@@ -6,7 +6,7 @@ import { usePlant } from "../../context/PlantContext"
 import { useAuth } from "../../context/AuthContext"
 import { plantAPI } from "../../services/api"
 import { spotifyService } from "../../services/spotify"
-import Plant3DView from "../../components/Plant3DView"
+import PlantDisplay from "../../components/PlantDisplay"
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
@@ -281,14 +281,10 @@ const PlantManagement = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Leaf className="h-4 w-4" />
               Overview
-            </TabsTrigger>
-            <TabsTrigger value="3d-studio" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              3D Studio
             </TabsTrigger>
             <TabsTrigger value="customize" className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
@@ -307,24 +303,37 @@ const PlantManagement = () => {
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 3D Plant View */}
+              {/* Plant Display */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span className="flex items-center gap-2">
                       <Sparkles className="h-5 w-5" />
-                      3D Plant View
+                      Your Plant
                     </span>
                     <Badge variant="outline">Level {currentPlant.level || 1}</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Plant3DView
-                    plantData={currentPlant}
-                    isOwner={true}
-                    onWaterPlant={handleWaterPlant}
-                    onFertilizePlant={handleFertilizePlant}
-                  />
+                  <PlantDisplay plantData={currentPlant} />
+                  
+                  {/* Plant Care Actions */}
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    <Button
+                      onClick={handleWaterPlant}
+                      className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600"
+                    >
+                      <Droplets className="h-4 w-4" />
+                      Water (+20)
+                    </Button>
+                    <Button
+                      onClick={handleFertilizePlant}
+                      className="flex items-center gap-2 bg-green-500 hover:bg-green-600"
+                    >
+                      <Leaf className="h-4 w-4" />
+                      Fertilize
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -459,186 +468,7 @@ const PlantManagement = () => {
             </div>
           </TabsContent>
 
-          {/* 3D Studio Tab */}
-          <TabsContent value="3d-studio" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Large 3D Plant View */}
-              <div className="lg:col-span-2">
-                <Card className="h-full">
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <Sparkles className="h-5 w-5" />
-                        Interactive 3D Plant
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">Level {currentPlant.level || 1}</Badge>
-                        <Badge variant={currentPlant.health_score > 70 ? "default" : currentPlant.health_score > 40 ? "secondary" : "destructive"}>
-                          {currentPlant.health_score > 70 ? "Thriving" : currentPlant.health_score > 40 ? "Growing" : "Needs Care"}
-                        </Badge>
-                      </div>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-96">
-                    <Plant3DView
-                      plantData={currentPlant}
-                      isOwner={true}
-                      onWaterPlant={handleWaterPlant}
-                      onFertilizePlant={handleFertilizePlant}
-                      style={{ height: '100%' }}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
 
-              {/* 3D Controls & Fantasy Features */}
-              <div className="space-y-6">
-                {/* Magical Effects */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Wand2 className="h-5 w-5" />
-                      Magical Effects
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button 
-                        variant="outline" 
-                        className="h-16 flex-col gap-1 border-purple-200 hover:border-purple-400"
-                        onClick={() => {
-                          // Add sparkle effect
-                          const sparkles = document.createElement('div')
-                          sparkles.innerHTML = '✨'
-                          sparkles.className = 'absolute text-2xl animate-bounce'
-                          document.body.appendChild(sparkles)
-                          setTimeout(() => sparkles.remove(), 2000)
-                        }}
-                      >
-                        <Sparkles className="h-6 w-6 text-purple-500" />
-                        <span className="text-xs">Sparkle</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="h-16 flex-col gap-1 border-blue-200 hover:border-blue-400"
-                        onClick={() => {
-                          // Add rainbow effect
-                          alert("🌈 Rainbow magic activated!")
-                        }}
-                      >
-                        <Rainbow className="h-6 w-6 text-blue-500" />
-                        <span className="text-xs">Rainbow</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="h-16 flex-col gap-1 border-green-200 hover:border-green-400"
-                        onClick={handleSunshine}
-                      >
-                        <Sun className="h-6 w-6 text-yellow-500" />
-                        <span className="text-xs">Sunshine</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="h-16 flex-col gap-1 border-pink-200 hover:border-pink-400"
-                        onClick={() => {
-                          // Add heart effect
-                          alert("💖 Love boost activated!")
-                        }}
-                      >
-                        <Heart className="h-6 w-6 text-pink-500" />
-                        <span className="text-xs">Love</span>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Plant Companions */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Bug className="h-5 w-5" />
-                      Plant Companions
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { emoji: "🦋", name: "Butterfly", active: customization.accessory === "butterfly" },
-                        { emoji: "🐞", name: "Ladybug", active: customization.accessory === "ladybug" },
-                        { emoji: "🧚", name: "Fairy", active: customization.accessory === "fairy" },
-                        { emoji: "🐛", name: "Caterpillar", active: false },
-                        { emoji: "🕷️", name: "Spider", active: false },
-                        { emoji: "🐝", name: "Bee", active: false },
-                      ].map((companion) => (
-                        <button
-                          key={companion.name}
-                          onClick={() => setCustomization({ ...customization, accessory: companion.name.toLowerCase() })}
-                          className={`p-3 border-2 rounded-lg text-center transition-all hover:scale-105 ${
-                            companion.active
-                              ? "border-emerald-500 bg-emerald-50 shadow-lg"
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
-                        >
-                          <div className="text-2xl mb-1">{companion.emoji}</div>
-                          <div className="text-xs">{companion.name}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Plant Mood Visualizer */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Smile className="h-5 w-5" />
-                      Mood Visualizer
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center space-y-4">
-                      <div className="text-6xl animate-pulse">
-                        {currentPlant.current_mood_influence === 'happy' ? '😊' :
-                         currentPlant.current_mood_influence === 'sad' ? '😔' :
-                         currentPlant.current_mood_influence === 'energetic' ? '⚡' :
-                         currentPlant.current_mood_influence === 'calm' ? '😌' : '😐'}
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Happiness</span>
-                          <span>{((currentPlant.combined_mood_score || 0.5) * 100).toFixed(0)}%</span>
-                        </div>
-                        <Progress value={(currentPlant.combined_mood_score || 0.5) * 100} className="h-2" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-blue-50 p-2 rounded">
-                          <div className="font-medium">Journal</div>
-                          <div>{((currentPlant.journal_mood_score || 0.5) * 100).toFixed(0)}%</div>
-                        </div>
-                        <div className="bg-purple-50 p-2 rounded">
-                          <div className="font-medium">Music</div>
-                          <div>{((currentPlant.spotify_mood_score || 0.5) * 100).toFixed(0)}%</div>
-                        </div>
-                      </div>
-                      <Button 
-                        onClick={handleSyncMusicMood} 
-                        disabled={isSyncingMusic}
-                        variant="outline" 
-                        className="w-full border-purple-500 text-purple-600"
-                      >
-                        {isSyncingMusic ? (
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Music className="h-4 w-4 mr-2" />
-                        )}
-                        {isSyncingMusic ? "Syncing..." : "Sync Music Mood"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
 
           {/* Customize Tab */}
           <TabsContent value="customize" className="space-y-6">
@@ -912,6 +742,19 @@ const PlantManagement = () => {
                     <Button variant="outline" className="w-full" onClick={() => navigate('/music')}>
                       <Music className="h-4 w-4 mr-2" />
                       Connect Spotify
+                    </Button>
+                    <Button 
+                      onClick={handleSyncMusicMood} 
+                      disabled={isSyncingMusic}
+                      variant="outline" 
+                      className="w-full border-purple-500 text-purple-600"
+                    >
+                      {isSyncingMusic ? (
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Music className="h-4 w-4 mr-2" />
+                      )}
+                      {isSyncingMusic ? "Syncing..." : "Sync Music Mood"}
                     </Button>
                   </div>
                 </CardContent>
