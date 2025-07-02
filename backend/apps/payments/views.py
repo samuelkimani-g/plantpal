@@ -201,7 +201,12 @@ class WaterOtherPlantView(APIView):
                     }, status=status.HTTP_400_BAD_REQUEST)
                 
                 # Check if user has enough leaves
-                user_profile = request.user.userprofile
+                try:
+                    user_profile = request.user.userprofile
+                except AttributeError:
+                    from apps.accounts.models import UserProfile
+                    user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+                
                 leaves_required = 2  # Cost to water another plant
                 
                 if user_profile.plantpal_leaves < leaves_required:
@@ -242,7 +247,9 @@ class WaterOtherPlantView(APIView):
                 })
                 
         except Exception as e:
-            logger.error(f"Error watering other plant: {e}")
+            logger.error(f"Error watering other plant (plant_id={plant_id}, user={request.user.id}): {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return Response({
                 'success': False,
                 'error': 'Failed to water plant. Please try again.'

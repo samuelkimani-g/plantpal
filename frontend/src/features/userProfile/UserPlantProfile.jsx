@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { plantAPI } from "@/services/api";
+import { plantAPI, paymentsAPI } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +34,7 @@ export default function UserPlantProfile() {
   const handleWater = async () => {
     setWatering(true);
     try {
-      await plantAPI.waterOtherPlant(userId);
+      await paymentsAPI.waterOtherPlant(plant.id);
       setPlant((prev) => ({ ...prev, water_level: Math.min(100, (prev.water_level || 50) + 10) }));
     } catch (e) {
       setError("Failed to water plant.");
@@ -81,7 +81,7 @@ export default function UserPlantProfile() {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-emerald-800 dark:text-emerald-200">Owner:</span>
-                  <span className="text-emerald-700 dark:text-emerald-100">{plant.username || "User"}</span>
+                  <span className="text-emerald-700 dark:text-emerald-100">{plant.user?.display_name || plant.user?.username || plant.username || "User"}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-emerald-800 dark:text-emerald-200">Mood:</span>
@@ -97,10 +97,10 @@ export default function UserPlantProfile() {
                   size="sm"
                   className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
                   onClick={handleWater}
-                  disabled={user && (user.id === plant.userId || user.id === plant.user_id) || watering}
+                  disabled={user && (user.id === plant.user?.id) || watering}
                 >
                   {watering ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Droplets className="h-4 w-4 mr-2" />}
-                  {watering ? "Watering..." : user && (user.id === plant.userId || user.id === plant.user_id) ? "Your Plant" : "Water Plant"}
+                  {watering ? "Watering..." : user && (user.id === plant.user?.id) ? "Your Plant" : "Water Plant (2 Leaves)"}
                 </Button>
               </div>
             </CardContent>

@@ -334,8 +334,8 @@ const MindfulnessPage = () => {
                   {/* Breathing Pattern Selector */}
                   <div>
                     <label className="text-sm font-medium mb-2 block">Breathing Pattern</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {["4-4-4", "4-7-8", "6-6-6"].map((pattern) => (
+                    <div className="grid grid-cols-2 gap-2">
+                      {["4-4-4", "4-7-8"].map((pattern) => (
                         <button
                           key={pattern}
                           onClick={() => setBreathingPattern(pattern)}

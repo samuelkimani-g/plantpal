@@ -240,18 +240,41 @@ class PublicPlantView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, user_id):
-        """Get another user's plant data from Firestore"""
+        """Get another user's plant data from Django database"""
         try:
-            firestore_service = FirestoreService()
-            plant_data = firestore_service.get_plant_data(user_id)
+            # Get the user's plant from Django database
+            target_plant = Plant.objects.filter(user__id=user_id, is_public=True).first()
             
-            if plant_data:
-                return Response(plant_data)
-            else:
+            if not target_plant:
                 return Response(
                     {"error": "Plant not found or not public"}, 
                     status=status.HTTP_404_NOT_FOUND
                 )
+            
+            # Serialize the plant data with user info
+            plant_data = {
+                'id': target_plant.id,
+                'name': target_plant.name,
+                'species': target_plant.species,
+                'health_score': target_plant.health_score,
+                'water_level': getattr(target_plant, 'water_level', 50),
+                'current_mood_influence': target_plant.current_mood_influence,
+                'level': getattr(target_plant, 'level', 1),
+                'care_streak': getattr(target_plant, 'care_streak', 0),
+                'growth_stage': getattr(target_plant, 'growth_stage', 1),
+                'created_at': target_plant.created_at,
+                'last_care_date': target_plant.last_care_date,
+                'user': {
+                    'id': target_plant.user.id,
+                    'username': target_plant.user.username,
+                    'first_name': target_plant.user.first_name,
+                    'last_name': target_plant.user.last_name,
+                    'display_name': f"{target_plant.user.first_name} {target_plant.user.last_name}".strip() or target_plant.user.username
+                }
+            }
+            
+            return Response(plant_data)
+            
         except Exception as e:
             return Response(
                 {"error": str(e)}, 
@@ -303,10 +326,56 @@ class PublicGardenView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        """Get list of public plants with search functionality"""
         try:
-            firestore_service = FirestoreService()
-            plants = firestore_service.list_all_public_plants()
-            return Response(plants)
+            query = request.GET.get('query', '').strip()
+            
+            # Get public plants with related user data
+            plants = Plant.objects.filter(is_public=True).select_related('user').order_by('-created_at')
+            
+            # Apply search filter
+            if query:
+                plants = plants.filter(
+                    user__username__icontains=query
+                ) | plants.filter(
+                    name__icontains=query
+                ) | plants.filter(
+                    species__icontains=query
+                )
+            
+            # Exclude user's own plants (optional - you can remove this if you want to show all)
+            plants = plants.exclude(user=request.user)
+            
+            # Serialize plant data with user info
+            plants_data = []
+            for plant in plants:
+                plants_data.append({
+                    'id': plant.id,
+                    'name': plant.name,
+                    'species': plant.species,
+                    'health_score': plant.health_score,
+                    'water_level': getattr(plant, 'water_level', 50),
+                    'current_mood_influence': plant.current_mood_influence,
+                    'level': getattr(plant, 'level', 1),
+                    'care_streak': getattr(plant, 'care_streak', 0),
+                    'growth_stage': getattr(plant, 'growth_stage', 1),
+                    'created_at': plant.created_at,
+                    'last_care_date': plant.last_care_date,
+                    'user': {
+                        'id': plant.user.id,
+                        'username': plant.user.username,
+                        'first_name': plant.user.first_name,
+                        'last_name': plant.user.last_name,
+                        'display_name': f"{plant.user.first_name} {plant.user.last_name}".strip() or plant.user.username
+                    }
+                })
+            
+            return Response({
+                'plants': plants_data,
+                'total_plants': len(plants_data),
+                'message': f'Found {len(plants_data)} public plants'
+            })
+            
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
