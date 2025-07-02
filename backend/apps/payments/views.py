@@ -136,8 +136,8 @@ class PublicGardenView(APIView):
         """Get list of public plants with search functionality"""
         query = request.GET.get('query', '').strip()
         
-        # Get public plants
-        plants = Plant.objects.filter(is_public=True).select_related('user', 'user__userprofile')
+        # Get public plants with related user data
+        plants = Plant.objects.filter(is_public=True).select_related('user').order_by('-created_at')
         
         # Apply search filter
         if query:
@@ -145,37 +145,41 @@ class PublicGardenView(APIView):
                 user__username__icontains=query
             ) | plants.filter(
                 name__icontains=query
+            ) | plants.filter(
+                species__icontains=query
             )
         
-        # Exclude user's own plants
+        # Exclude user's own plants (optional - you can remove this if you want to show all)
         plants = plants.exclude(user=request.user)
         
-        # Get unique users with their plants
-        users_with_plants = []
-        seen_users = set()
-        
+        # Serialize plant data with user info
+        plants_data = []
         for plant in plants:
-            if plant.user.id not in seen_users:
-                seen_users.add(plant.user.id)
-                user_plants = Plant.objects.filter(user=plant.user, is_public=True)
-                
-                users_with_plants.append({
-                    'user': PublicUserSerializer(plant.user).data,
-                    'plants': [{
-                        'id': p.id,
-                        'name': p.name,
-                        'species': p.species,
-                        'health_score': p.health_score,
-                        'current_mood_influence': p.current_mood_influence,
-                        'level': p.level,
-                        'care_streak': p.care_streak,
-                        'created_at': p.created_at
-                    } for p in user_plants]
-                })
+            plants_data.append({
+                'id': plant.id,
+                'name': plant.name,
+                'species': plant.species,
+                'health_score': plant.health_score,
+                'water_level': getattr(plant, 'water_level', 50),
+                'current_mood_influence': plant.current_mood_influence,
+                'level': getattr(plant, 'level', 1),
+                'care_streak': getattr(plant, 'care_streak', 0),
+                'growth_stage': getattr(plant, 'growth_stage', 1),
+                'created_at': plant.created_at,
+                'last_care_date': plant.last_care_date,
+                'user': {
+                    'id': plant.user.id,
+                    'username': plant.user.username,
+                    'first_name': plant.user.first_name,
+                    'last_name': plant.user.last_name,
+                    'display_name': f"{plant.user.first_name} {plant.user.last_name}".strip() or plant.user.username
+                }
+            })
         
         return Response({
-            'users': users_with_plants,
-            'total_users': len(users_with_plants)
+            'plants': plants_data,
+            'total_plants': len(plants_data),
+            'message': f'Found {len(plants_data)} public plants'
         })
 
 class WaterOtherPlantView(APIView):
@@ -250,10 +254,27 @@ class UserLeavesView(APIView):
     
     def get(self, request):
         """Get user's current leaves balance"""
-        leaves = request.user.userprofile.plantpal_leaves
-        return Response({
-            'leaves': leaves
-        })
+        try:
+            # Try to get userprofile, create if doesn't exist
+            if hasattr(request.user, 'userprofile'):
+                profile = request.user.userprofile
+                created = False
+            else:
+                from apps.accounts.models import UserProfile
+                profile, created = UserProfile.objects.get_or_create(user=request.user)
+                
+            leaves = profile.plantpal_leaves
+            return Response({
+                'leaves': leaves,
+                'profile_created': created
+            })
+        except Exception as e:
+            logger.error(f"Error getting user leaves: {e}")
+            # Return default leaves if there's an error
+            return Response({
+                'leaves': 0,
+                'error': 'Could not fetch leaves balance'
+            })
 
 class WateringHistoryView(APIView):
     """View for watering transaction history"""

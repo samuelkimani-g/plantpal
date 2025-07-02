@@ -29,21 +29,23 @@ function PlantCard({ plant, isOwn, onWater, watering, onProfile, onLeaveNote, re
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <User className="h-5 w-5 text-emerald-600" />
-          <span className="font-semibold text-emerald-800 dark:text-emerald-200">{plant.username || "User"}</span>
+          <span className="font-semibold text-emerald-800 dark:text-emerald-200">
+            {plant.user?.display_name || plant.user?.username || "User"}
+          </span>
         </div>
         <Badge className="capitalize bg-emerald-500 text-white">{plant.species}</Badge>
       </CardHeader>
       <CardContent className="space-y-2">
         <div className="flex items-center gap-2">
           <span className="font-bold text-lg text-emerald-700 dark:text-emerald-100">{plant.name}</span>
-          <span className="text-xs text-gray-500">Lv. {plant.growth_level || plant.growth_stage || 1}</span>
+          <span className="text-xs text-gray-500">Lv. {plant.growth_stage || plant.level || 1}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className="bg-blue-500">Health: {plant.health_score || plant.health || 80}%</Badge>
+          <Badge className="bg-blue-500">Health: {plant.health_score || 80}%</Badge>
           <Badge className="bg-cyan-600">Water: {plant.water_level || 50}%</Badge>
           <Badge className="bg-purple-600 capitalize">{plant.current_mood_influence || "neutral"}</Badge>
         </div>
-        <Progress value={plant.health_score || plant.health || 80} className="h-2 mt-2" />
+        <Progress value={plant.health_score || 80} className="h-2 mt-2" />
         <div className="flex gap-2 mt-3">
           <Button size="sm" variant="outline" className="flex-1" onClick={onProfile}>
             View Profile
@@ -91,10 +93,13 @@ export default function PublicGarden() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      paymentsAPI.getGarden().then((res) => setPlants(res.data.users || [])),
+      paymentsAPI.getGarden().then((res) => setPlants(res.data.plants || [])),
       paymentsAPI.getLeaves().then((res) => setLeaves(res.data.leaves)),
     ])
-      .catch(() => setError("Failed to load public garden."))
+      .catch((err) => {
+        console.error("Error loading garden:", err);
+        setError("Failed to load public garden.");
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -150,10 +155,12 @@ export default function PublicGarden() {
   };
 
   const filteredPlants = plants.filter(
-    (userWithPlants) =>
+    (plant) =>
       (!search ||
-        (userWithPlants.user.username && userWithPlants.user.username.toLowerCase().includes(search.toLowerCase())) ||
-        (userWithPlants.plants && userWithPlants.plants.some(p => p.species && p.species.toLowerCase().includes(search.toLowerCase()))))
+        (plant.user?.username && plant.user.username.toLowerCase().includes(search.toLowerCase())) ||
+        (plant.user?.display_name && plant.user.display_name.toLowerCase().includes(search.toLowerCase())) ||
+        (plant.species && plant.species.toLowerCase().includes(search.toLowerCase())) ||
+        (plant.name && plant.name.toLowerCase().includes(search.toLowerCase())))
   );
 
   return (
@@ -161,7 +168,7 @@ export default function PublicGarden() {
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <h1 className="text-3xl font-extrabold text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
-            <Leaf className="h-8 w-8 text-emerald-400 animate-bounce" /> Public Garden
+            <Leaf className="h-8 w-8 text-emerald-400 animate-bounce" /> Community Garden
           </h1>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 bg-white dark:bg-emerald-950 rounded-lg px-3 py-2 shadow">
@@ -188,24 +195,22 @@ export default function PublicGarden() {
           <div className="text-center text-red-500 font-semibold py-8">{error}</div>
         ) : filteredPlants.length === 0 ? (
           <div className="text-center text-emerald-700 dark:text-emerald-200 py-8">
-            No plants found. Try a different search!
+            {plants.length === 0 ? "No public plants found. Be the first to make your plant public!" : "No plants found. Try a different search!"}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredPlants.map((userWithPlants) => 
-              userWithPlants.plants.map((plant) => (
-                <PlantCard
-                  key={plant.id}
-                  plant={{...plant, username: userWithPlants.user.username}}
-                  isOwn={user && userWithPlants.user.id === user.id}
-                  watering={wateringId === plant.id}
-                  onWater={() => handleWater(plant)}
-                  onProfile={() => navigate(`/profile/${userWithPlants.user.id}`)}
-                  onLeaveNote={() => handleLeaveNote(plant)}
-                  recentNotes={supportNotes[plant.id] || []}
-                />
-              ))
-            )}
+            {filteredPlants.map((plant) => (
+              <PlantCard
+                key={plant.id}
+                plant={plant}
+                isOwn={user && plant.user?.id === user.id}
+                watering={wateringId === plant.id}
+                onWater={() => handleWater(plant)}
+                onProfile={() => navigate(`/profile/${plant.user?.id}`)}
+                onLeaveNote={() => handleLeaveNote(plant)}
+                recentNotes={supportNotes[plant.id]}
+              />
+            ))}
           </div>
         )}
         {/* Supportive Note Modal */}
