@@ -5,6 +5,7 @@ Using TextBlob and VADER for comprehensive mood analysis
 
 from typing import Dict, Union
 import re
+import os
 
 
 def analyze_sentiment(text: str) -> Dict[str, Union[float, str]]:
@@ -19,6 +20,36 @@ def analyze_sentiment(text: str) -> Dict[str, Union[float, str]]:
             'confidence': 0.0,
             'method': 'empty_text'
         }
+    
+    # Attempt Gemini sentiment first if key available
+    gemini_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+    if gemini_key:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=gemini_key)
+
+            model = genai.GenerativeModel('gemini-pro')
+            prompt = (
+                "You are a sentiment analyzer. Rate the emotional valence of the given text on a scale 0 (extremely sad) to 1 (extremely happy).\n"
+                "Respond ONLY in JSON with keys 'score' and 'label'.\n"
+                "Label should be one of: euphoric,happy,upbeat,calm,neutral,melancholy,sad,low,very_low.\n"
+                f"Text: \"{text}\""
+            )
+            response = model.generate_content(prompt, safety_settings={'harassment':'block_none','hate':'block_none','sexual':'block_none','self_harm':'block_none'})
+            import json
+            data = json.loads(response.text.strip()) if hasattr(response, 'text') else json.loads(response)
+            score = float(data['score'])
+            label = str(data['label'])
+
+            return {
+                'mood_score': max(0.0, min(1.0, score)),
+                'mood_type': label,
+                'confidence': 0.9,
+                'method': 'gemini'
+            }
+        except Exception as g_err:
+            # Fall back to existing logic
+            print(f"Gemini sentiment failed: {g_err}")
     
     # Clean text
     cleaned_text = clean_text(text)
