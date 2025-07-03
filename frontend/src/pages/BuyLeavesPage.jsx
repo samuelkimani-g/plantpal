@@ -18,13 +18,43 @@ export default function BuyLeavesPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      paymentsAPI.getPackages().then((res) => setPackages(res.data)),
-      paymentsAPI.getLeaves().then((res) => setLeaves(res.data.leaves)),
-      paymentsAPI.getTransactions().then((res) => setTransactions(res.data)),
-    ])
-      .catch(() => setError("Failed to load payment info."))
-      .finally(() => setLoading(false));
+    console.log("🔍 Debug: Starting to load payment data...");
+    
+    // Load packages first (should work without auth)
+    paymentsAPI.getPackages()
+      .then((res) => {
+        console.log("✅ Packages loaded:", res.data);
+        setPackages(res.data);
+      })
+      .catch((err) => {
+        console.error("❌ Failed to load packages:", err);
+        setError("Failed to load packages. Please refresh the page.");
+      });
+
+    // Try to load user-specific data (requires auth)
+    paymentsAPI.getLeaves()
+      .then((res) => {
+        console.log("✅ Leaves loaded:", res.data);
+        setLeaves(res.data.leaves);
+      })
+      .catch((err) => {
+        console.error("❌ Failed to load leaves:", err);
+        // Don't set error for this, just keep leaves at 0
+      });
+
+    paymentsAPI.getTransactions()
+      .then((res) => {
+        console.log("✅ Transactions loaded:", res.data);
+        setTransactions(res.data);
+      })
+      .catch((err) => {
+        console.error("❌ Failed to load transactions:", err);
+        // Don't set error for this, keep transactions empty
+      })
+      .finally(() => {
+        console.log("🏁 Finished loading payment data");
+        setLoading(false);
+      });
   }, []);
 
   const handleBuy = async () => {
