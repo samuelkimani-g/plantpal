@@ -58,6 +58,7 @@ urlpatterns = [
     path('api/reminders/', include('apps.reminders.urls')),
     path('api/music/', include('apps.music.urls')),
     path('api/payments/', include('apps.payments.urls')),
+    path('api/', include('apps.memory.urls')),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]

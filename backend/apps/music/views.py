@@ -614,12 +614,16 @@ class MoodSummaryView(APIView):
             except Exception as e:
                 logger.error(f"Error updating plant mood from music: {str(e)}")
             
+            # Determine mood label from the calculated score before saving and responding
+            mood_profile.current_mood_label = self._get_mood_label_from_score(avg_mood_score)
+            mood_profile.save()
+            
             # Prepare response data
             mood_summary = {
                 'current_mood_score': avg_mood_score,
                 'current_mood_label': mood_profile.current_mood_label,
                 'mood_trend': self._calculate_mood_trend(recent_sessions),
-                'growth_multiplier': self._calculate_growth_bonus(avg_mood_score) / 100.0,  # Convert to multiplier
+                'growth_multiplier': self._calculate_growth_bonus(avg_mood_score),
                 'last_updated': timezone.now(),
                 'confidence_level': min(1.0, len(recent_sessions) / 10.0)  # Higher confidence with more sessions
             }

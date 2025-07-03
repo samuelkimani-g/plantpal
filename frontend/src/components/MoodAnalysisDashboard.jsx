@@ -94,12 +94,17 @@ const MoodAnalysisDashboard = ({ isLoading, moodSummary }) => {
 
 // Helper function for mood emojis
 const getMoodEmoji = (moodLabel) => {
+    if (!moodLabel) return '❓';
     switch (moodLabel.toLowerCase()) {
-        case 'happy': return '😊';
-        case 'energetic': return '⚡';
+        case 'euphoric': return '🤩';
+        case 'happy': return '��';
+        case 'upbeat': return '😎';
         case 'calm': return '😌';
-        case 'sad': return '😢';
         case 'neutral': return '😐';
+        case 'melancholy': return '😔';
+        case 'sad': return '😢';
+        case 'low': return '😞';
+        case 'very_low': return '😭';
         default: return '❓';
     }
 };

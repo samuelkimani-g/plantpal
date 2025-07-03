@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'apps.reminders',
     'apps.music',
     'apps.payments',
+    'apps.memory',
 ]
 
 MIDDLEWARE = [

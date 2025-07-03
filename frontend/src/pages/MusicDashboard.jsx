@@ -25,7 +25,7 @@ import SpotifyConnect from '../components/SpotifyConnect';
 import MoodAnalysisDashboard from '../components/MoodAnalysisDashboard';
 import NowPlayingWidget from '../components/NowPlayingWidget';
 import OfflineMusicWidget from '../components/OfflineMusicWidget';
-import { musicAPI, paymentsAPI } from '../services/api';
+import { musicAPI, paymentsAPI, getMoodAnalysis, getMoodSummary } from '../services/api';
 
 const MusicDashboard = () => {
   const location = useLocation();
@@ -39,7 +39,8 @@ const MusicDashboard = () => {
   const [recentTracks, setRecentTracks] = useState([]);
   const [topTracks, setTopTracks] = useState([]);
   const [listeningStats, setListeningStats] = useState(null);
-  const [moodSummary, setMoodSummary] = useState(null);
+  const [moodAnalysis, setMoodAnalysis] = useState(null);
+  const [isLoadingMood, setIsLoadingMood] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isProcessingCallback, setIsProcessingCallback] = useState(false);
@@ -116,7 +117,7 @@ const MusicDashboard = () => {
       setRecentTracks([]);
       setTopTracks([]);
       setListeningStats(null);
-      setMoodSummary(null);
+      setMoodAnalysis(null);
     }
   }, []);
 
@@ -133,7 +134,7 @@ const MusicDashboard = () => {
         musicAPI.getRecentlyPlayed(10),
         musicAPI.getTopTracks('medium_term', 10),
         musicAPI.getListeningStats(30),
-        musicAPI.getMoodSummary()
+        getMoodAnalysis()
       ]);
 
       console.log("📊 API Results:", results.map((r, i) => ({
@@ -146,19 +147,19 @@ const MusicDashboard = () => {
       const recentTracksData = results[1].status === 'fulfilled' ? (results[1].value.tracks || []) : [];
       const topTracksData = results[2].status === 'fulfilled' ? (results[2].value.tracks || []) : [];
       const listeningStatsData = results[3].status === 'fulfilled' ? results[3].value : null;
-      const moodSummaryData = results[4].status === 'fulfilled' ? results[4].value : null;
+      const moodAnalysisData = results[4].status === 'fulfilled' ? results[4].value : null;
 
       console.log("🎵 Current Track Data:", currentTrackData);
       console.log("📻 Recent Tracks Data:", recentTracksData);
       console.log("🏆 Top Tracks Data:", topTracksData);
       console.log("📈 Listening Stats Data:", listeningStatsData);
-      console.log("😊 Mood Summary Data:", moodSummaryData);
+      console.log("😊 Mood Analysis Data:", moodAnalysisData);
 
       setCurrentTrack(currentTrackData);
       setRecentTracks(recentTracksData);
       setTopTracks(topTracksData);
       setListeningStats(listeningStatsData);
-      setMoodSummary(moodSummaryData);
+      setMoodAnalysis(moodAnalysisData);
 
       // Log any individual errors from Promise.allSettled
       results.forEach((result, index) => {
@@ -371,7 +372,7 @@ const MusicDashboard = () => {
   };
 
   const renderQuickStats = () => {
-    if (isLoading && (!listeningStats || !moodSummary)) {
+    if (isLoading && (!listeningStats || !moodAnalysis)) {
       return (
         <Card className="col-span-full md:col-span-3">
           <CardContent className="p-6 text-center">
@@ -381,7 +382,7 @@ const MusicDashboard = () => {
         </Card>
       );
     }
-    if (!listeningStats || !moodSummary) return null; // Render nothing if data is not available
+    if (!listeningStats || !moodAnalysis) return null; // Render nothing if data is not available
 
     return (
       <>
@@ -402,12 +403,12 @@ const MusicDashboard = () => {
           <CardContent>
             <div className="flex items-center space-x-2">
               <span className="text-3xl">
-                {musicAPI.getMoodEmoji(moodSummary.current_mood_label)}
+                {musicAPI.getMoodEmoji(moodAnalysis.current_mood_label)}
               </span>
               <div>
-                <div className="font-bold capitalize text-gray-800">{moodSummary.current_mood_label}</div>
+                <div className="font-bold capitalize text-gray-800">{moodAnalysis.current_mood_label}</div>
                 <div className="text-xs text-gray-600">
-                  {Math.round(moodSummary.current_mood_score * 100)}% confidence
+                  {Math.round(moodAnalysis.current_mood_score * 100)}% confidence
                 </div>
               </div>
             </div>
@@ -423,7 +424,7 @@ const MusicDashboard = () => {
               <Leaf className="h-6 w-6 text-green-600" />
               <div>
                 <div className="font-bold text-green-700 text-2xl">
-                  +{Math.round(musicAPI.calculatePlantGrowthBonus(moodSummary.current_mood_score) * 100)}%
+                  +{Math.round(musicAPI.calculatePlantGrowthBonus(moodAnalysis.current_mood_score) * 100)}%
                 </div>
                 <div className="text-xs text-gray-600">Growth bonus</div>
               </div>
@@ -607,7 +608,7 @@ const MusicDashboard = () => {
         </div>
 
         {/* Mood Analysis */}
-        <MoodAnalysisDashboard isLoading={isLoading} moodSummary={moodSummary} />
+        <MoodAnalysisDashboard isLoading={isLoadingMood} moodSummary={moodAnalysis} />
 
         {/* Music Library */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
