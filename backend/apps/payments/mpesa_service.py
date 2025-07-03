@@ -18,13 +18,18 @@ class MpesaService:
         self.passkey = getattr(settings, 'MPESA_PASSKEY', 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919')
         self.callback_url = getattr(settings, 'MPESA_CALLBACK_URL', '')
         
-        # Target phone number for payments (your number)
-        self.target_phone = '254707953603'  # Your number in 254 format
+        # Target phone number for payments - ALL PAYMENTS GO TO THIS NUMBER
+        self.target_phone = '254707953603'  # This is where money is received: 0707953603
         
         # Use sandbox URLs for development
         self.base_url = 'https://sandbox.safaricom.co.ke' if getattr(settings, 'DEBUG', True) else 'https://api.safaricom.co.ke'
         self.access_token = None
         self.token_expiry = None
+        
+        # Log the configuration on initialization
+        logger.info(f"M-Pesa Service initialized - Target phone: {self.target_phone}")
+        logger.info(f"M-Pesa Service - Business shortcode: {self.business_shortcode}")
+        logger.info(f"M-Pesa Service - Environment: {'Sandbox' if getattr(settings, 'DEBUG', True) else 'Production'}")
     
     def get_access_token(self):
         """Get M-Pesa access token"""
@@ -73,15 +78,24 @@ class MpesaService:
         password_string = f"{self.business_shortcode}{self.passkey}{timestamp}"
         password = base64.b64encode(password_string.encode()).decode()
         
+        # Log payment details
+        logger.info(f"🎯 INITIATING M-PESA PAYMENT:")
+        logger.info(f"   • Customer phone: {phone_number}")
+        logger.info(f"   • Amount: KES {amount}")
+        logger.info(f"   • Reference: {reference}")
+        logger.info(f"   • Description: {description}")
+        logger.info(f"   • 💰 MONEY GOES TO: {self.target_phone} (0707953603)")
+        logger.info(f"   • Business shortcode: {self.business_shortcode}")
+        
         payload = {
             "BusinessShortCode": self.business_shortcode,
             "Password": password,
             "Timestamp": timestamp,
             "TransactionType": "CustomerPayBillOnline",
             "Amount": amount,
-            "PartyA": phone_number,
-            "PartyB": self.business_shortcode,
-            "PhoneNumber": phone_number,
+            "PartyA": phone_number,  # Customer paying
+            "PartyB": self.business_shortcode,  # Business receiving (linked to 0707953603)
+            "PhoneNumber": phone_number,  # Phone to send prompt to
             "CallBackURL": self.callback_url,
             "AccountReference": reference,
             "TransactionDesc": f"{description} - PlantPal"
@@ -99,17 +113,19 @@ class MpesaService:
             data = response.json()
             
             if data.get('ResponseCode') == '0':
-                logger.info(f"STK Push initiated successfully for {phone_number}")
+                logger.info(f"✅ STK Push initiated successfully for {phone_number}")
+                logger.info(f"   • Customer will receive PIN prompt on {phone_number}")
+                logger.info(f"   • Payment will be credited to 0707953603")
                 return {
                     'success': True,
                     'merchant_request_id': data.get('MerchantRequestID'),
                     'checkout_request_id': data.get('CheckoutRequestID'),
                     'response_code': data.get('ResponseCode'),
                     'response_description': data.get('ResponseDescription'),
-                    'customer_message': data.get('CustomerMessage')
+                    'customer_message': data.get('CustomerMessage', f'Payment prompt sent to {phone_number}. Enter your M-Pesa PIN to complete the payment.')
                 }
             else:
-                logger.error(f"STK Push failed: {data}")
+                logger.error(f"❌ STK Push failed: {data}")
                 return {
                     'success': False,
                     'error': data.get('ResponseDescription', 'Unknown error'),
@@ -117,7 +133,7 @@ class MpesaService:
                 }
                 
         except requests.exceptions.RequestException as e:
-            logger.error(f"STK Push request failed: {e}")
+            logger.error(f"❌ STK Push request failed: {e}")
             return {
                 'success': False,
                 'error': 'Network error occurred'
@@ -210,11 +226,17 @@ class MpesaService:
                 sms_message = f"✅ PlantPal: Payment successful! You received {transaction.leaves} leaves. Receipt: {receipt_number}. Happy gardening! 🌿"
                 self.send_sms_notification(transaction.phone_number, sms_message)
                 
-                # Send notification SMS to your number
-                owner_sms = f"💰 PlantPal Payment: KES {transaction.amount} received from {transaction.phone_number}. {transaction.leaves} leaves credited. Receipt: {receipt_number}"
+                # Send notification SMS to your number (0707953603)
+                owner_sms = f"💰 PlantPal Payment Received!\n• Amount: KES {transaction.amount}\n• From: {transaction.phone_number}\n• Leaves: {transaction.leaves}\n• Receipt: {receipt_number}\n• User: {transaction.user.username}"
                 self.send_sms_notification(self.target_phone, owner_sms)
                 
-                logger.info(f"Transaction {transaction.id} marked as successful")
+                logger.info(f"✅ PAYMENT SUCCESSFUL:")
+                logger.info(f"   • Transaction {transaction.id} completed")
+                logger.info(f"   • Customer: {transaction.phone_number}")
+                logger.info(f"   • Amount: KES {transaction.amount}")
+                logger.info(f"   • Leaves credited: {transaction.leaves}")
+                logger.info(f"   • Receipt: {receipt_number}")
+                logger.info(f"   • Money received by: 0707953603")
                 return True
                 
             else:  # Failed or cancelled

@@ -165,6 +165,13 @@ const Navigation = () => {
               <span className="font-semibold text-emerald-700 dark:text-emerald-300 text-sm">
                 {leaves}
               </span>
+              <button
+                onClick={() => navigate("/buy-leaves")}
+                className="ml-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded transition-colors"
+                title="Buy more leaves"
+              >
+                +
+              </button>
             </div>
 
             {/* User Menu */}

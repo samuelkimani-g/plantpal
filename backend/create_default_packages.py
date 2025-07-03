@@ -15,51 +15,69 @@ from apps.payments.models import LeafPackage
 def create_default_packages():
     """Create default leaf packages if they don't exist"""
     
-    packages = [
+    print("🌱 Creating default leaf packages...")
+    
+    default_packages = [
         {
             'name': 'Starter Pack',
             'leaves': 10,
-            'price': 50.00,
-            'description': 'Perfect for beginners - get started with watering plants!',
+            'price': 20,
+            'description': 'Perfect for beginners! Water 5 plants and try premium features.',
             'is_active': True
         },
         {
-            'name': 'Garden Lover',
+            'name': 'Growth Pack',
             'leaves': 25,
-            'price': 100.00,
-            'description': 'Great value for regular plant carers',
+            'price': 45,
+            'description': 'Great value! Water 12 plants and unlock more features.',
             'is_active': True
         },
         {
-            'name': 'PlantPal Pro',
-            'leaves': 60,
-            'price': 200.00,
-            'description': 'Best value! Perfect for active community members',
+            'name': 'Garden Pack',
+            'leaves': 50,
+            'price': 80,
+            'description': 'Popular choice! Water 25 plants with bonus features.',
             'is_active': True
         },
         {
-            'name': 'Ultimate Green',
-            'leaves': 150,
-            'price': 500.00,
-            'description': 'Maximum leaves for the ultimate plant enthusiast!',
+            'name': 'Premium Pack',
+            'leaves': 100,
+            'price': 150,
+            'description': 'Best value! Water 50 plants and get full premium access.',
             'is_active': True
-        }
+        },
+        {
+            'name': 'Super Pack',
+            'leaves': 200,
+            'price': 280,
+            'description': 'Ultimate pack! Water 100 plants and enjoy all features.',
+            'is_active': True
+        },
     ]
     
     created_count = 0
-    for package_data in packages:
+    updated_count = 0
+    for package_data in default_packages:
         package, created = LeafPackage.objects.get_or_create(
             name=package_data['name'],
             defaults=package_data
         )
         if created:
             created_count += 1
-            print(f"✅ Created package: {package.name} - {package.leaves} leaves for KES {package.price}")
+            print(f"✅ Created: {package.name} - {package.leaves} leaves for KES {package.price}")
         else:
-            print(f"📦 Package already exists: {package.name}")
+            # Update existing package
+            for key, value in package_data.items():
+                setattr(package, key, value)
+            package.save()
+            updated_count += 1
+            print(f"🔄 Updated: {package.name} - {package.leaves} leaves for KES {package.price}")
     
-    print(f"\n🎉 Created {created_count} new packages!")
-    print(f"📊 Total active packages: {LeafPackage.objects.filter(is_active=True).count()}")
+    print(f"\n📊 Summary:")
+    print(f"   • Created: {created_count} packages")
+    print(f"   • Updated: {updated_count} packages")
+    print(f"   • Total active packages: {LeafPackage.objects.filter(is_active=True).count()}")
+    print("✅ Default packages setup complete!")
 
 if __name__ == "__main__":
     create_default_packages() 
