@@ -5,8 +5,8 @@ Following the architecture specification for unified mood determination
 """
 
 from typing import Dict, Optional, Union
-from datetime import datetime, timedelta
 from django.utils import timezone
+from django.db import models  # Needed for aggregation functions
 
 
 class MoodEngine:
