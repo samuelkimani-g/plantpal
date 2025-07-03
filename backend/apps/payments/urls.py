@@ -2,12 +2,14 @@ from django.urls import path
 from .views import (
     LeafPackageViewSet, InitiatePaymentView, MpesaCallbackView,
     TransactionHistoryView, PublicGardenView, WaterOtherPlantView,
-    UserLeavesView, WateringHistoryView, SetupPackagesView, DebugMpesaConfigView
+    UserLeavesView, WateringHistoryView, SetupPackagesView, DebugMpesaConfigView,
+    ManualCompleteTransactionView
 )
 
 urlpatterns = [
-    # Debug endpoint
+    # Debug endpoints
     path('debug-config/', DebugMpesaConfigView.as_view(), name='debug-mpesa-config'),
+    path('manual-complete/', ManualCompleteTransactionView.as_view(), name='manual-complete-transaction'),
     
     # Leaf packages
     path('packages/', LeafPackageViewSet.as_view(), name='leaf-packages'),

@@ -45,6 +45,68 @@ class DebugMpesaConfigView(APIView):
             'message': 'M-Pesa configuration debug info'
         })
 
+class ManualCompleteTransactionView(APIView):
+    """Manually complete a stuck pending transaction (for testing/debugging)"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Manually complete a pending transaction"""
+        try:
+            transaction_id = request.data.get('transaction_id')
+            
+            if not transaction_id:
+                return Response({
+                    'success': False,
+                    'error': 'transaction_id is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Find the pending transaction for this user
+            transaction = MpesaTransaction.objects.filter(
+                id=transaction_id,
+                user=request.user,
+                status='PENDING'
+            ).first()
+            
+            if not transaction:
+                return Response({
+                    'success': False,
+                    'error': 'Pending transaction not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Manually mark as successful (simulating successful callback)
+            fake_receipt = f"MANUAL{transaction.id}{timezone.now().strftime('%Y%m%d%H%M%S')}"
+            transaction.mark_successful(
+                receipt_number=fake_receipt,
+                result_code="0",
+                result_desc="Manually completed - money was deducted"
+            )
+            
+            logger.info(f"✅ MANUALLY COMPLETED TRANSACTION:")
+            logger.info(f"   • Transaction {transaction.id}")
+            logger.info(f"   • User: {transaction.user.username}")
+            logger.info(f"   • Amount: KES {transaction.amount}")
+            logger.info(f"   • Leaves credited: {transaction.leaves}")
+            logger.info(f"   • Receipt: {fake_receipt}")
+            
+            return Response({
+                'success': True,
+                'message': f'Transaction completed! {transaction.leaves} leaves have been credited to your account.',
+                'transaction': {
+                    'id': transaction.id,
+                    'status': transaction.status,
+                    'leaves': transaction.leaves,
+                    'amount': transaction.amount,
+                    'receipt_number': transaction.mpesa_receipt_number
+                }
+            })
+            
+        except Exception as e:
+            logger.error(f"Error manually completing transaction: {e}")
+            return Response({
+                'success': False,
+                'error': 'Failed to complete transaction'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class LeafPackageViewSet(APIView):
     """View for listing available leaf packages"""
     permission_classes = [AllowAny]  # Allow unauthenticated access to view packages
