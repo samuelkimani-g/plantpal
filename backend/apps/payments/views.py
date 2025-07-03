@@ -296,4 +296,108 @@ class WateringHistoryView(APIView):
         return Response({
             'sent': WateringTransactionSerializer(sent_waterings, many=True).data,
             'received': WateringTransactionSerializer(received_waterings, many=True).data
-        }) 
+        })
+
+class SetupPackagesView(APIView):
+    """Setup default packages - can be called via browser"""
+    permission_classes = [AllowAny]  # Allow anyone to set up packages
+    
+    def post(self, request):
+        """Create default packages via API call"""
+        try:
+            # Define the packages
+            packages_data = [
+                {
+                    'name': 'Starter Pack',
+                    'leaves': 10,
+                    'price': 20,
+                    'description': 'Perfect for beginners! Water 5 plants and try premium features.'
+                },
+                {
+                    'name': 'Growth Pack', 
+                    'leaves': 25,
+                    'price': 45,
+                    'description': 'Great value! Water 12 plants and unlock more features.'
+                },
+                {
+                    'name': 'Garden Pack',
+                    'leaves': 50, 
+                    'price': 80,
+                    'description': 'Popular choice! Water 25 plants with bonus features.'
+                },
+                {
+                    'name': 'Premium Pack',
+                    'leaves': 100,
+                    'price': 150, 
+                    'description': 'Best value! Water 50 plants and get full premium access.'
+                },
+                {
+                    'name': 'Super Pack',
+                    'leaves': 200,
+                    'price': 280,
+                    'description': 'Ultimate pack! Water 100 plants and enjoy all features.'
+                }
+            ]
+            
+            created_count = 0
+            updated_count = 0
+            
+            for pkg_data in packages_data:
+                package, created = LeafPackage.objects.get_or_create(
+                    name=pkg_data['name'],
+                    defaults={
+                        'leaves': pkg_data['leaves'],
+                        'price': pkg_data['price'],
+                        'description': pkg_data['description'],
+                        'is_active': True
+                    }
+                )
+                
+                if created:
+                    created_count += 1
+                else:
+                    # Update existing package
+                    package.leaves = pkg_data['leaves']
+                    package.price = pkg_data['price'] 
+                    package.description = pkg_data['description']
+                    package.is_active = True
+                    package.save()
+                    updated_count += 1
+            
+            # Deactivate any old packages that aren't in our list
+            current_names = [pkg['name'] for pkg in packages_data]
+            old_packages = LeafPackage.objects.exclude(name__in=current_names)
+            deactivated_count = 0
+            if old_packages.exists():
+                deactivated_count = old_packages.count()
+                old_packages.update(is_active=False)
+            
+            # Get current packages
+            total_active = LeafPackage.objects.filter(is_active=True).count()
+            packages = LeafPackage.objects.filter(is_active=True).order_by('price')
+            
+            return Response({
+                'success': True,
+                'message': 'Packages setup completed successfully!',
+                'summary': {
+                    'created': created_count,
+                    'updated': updated_count,
+                    'deactivated': deactivated_count,
+                    'total_active': total_active
+                },
+                'packages': [
+                    {
+                        'id': pkg.id,
+                        'name': pkg.name,
+                        'leaves': pkg.leaves,
+                        'price': pkg.price,
+                        'description': pkg.description
+                    } for pkg in packages
+                ]
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': f'Failed to setup packages: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
