@@ -18,18 +18,42 @@ class MpesaService:
         self.passkey = getattr(settings, 'MPESA_PASSKEY', 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919')
         self.callback_url = getattr(settings, 'MPESA_CALLBACK_URL', '')
         
+        # Get M-Pesa environment (sandbox or production)
+        self.mpesa_env = getattr(settings, 'MPESA_ENV', 'sandbox').lower()
+        
         # Target phone number for payments - ALL PAYMENTS GO TO THIS NUMBER
         self.target_phone = '254707953603'  # This is where money is received: 0707953603
         
-        # Use sandbox URLs for development
-        self.base_url = 'https://sandbox.safaricom.co.ke' if getattr(settings, 'DEBUG', True) else 'https://api.safaricom.co.ke'
+        # Use explicit M-Pesa environment setting
+        if self.mpesa_env == 'production':
+            self.base_url = 'https://api.safaricom.co.ke'
+            logger.info("🔴 M-Pesa Environment: PRODUCTION")
+        else:
+            self.base_url = 'https://sandbox.safaricom.co.ke'
+            logger.info("🟡 M-Pesa Environment: SANDBOX")
+        
         self.access_token = None
         self.token_expiry = None
         
         # Log the configuration on initialization
-        logger.info(f"M-Pesa Service initialized - Target phone: {self.target_phone}")
-        logger.info(f"M-Pesa Service - Business shortcode: {self.business_shortcode}")
-        logger.info(f"M-Pesa Service - Environment: {'Sandbox' if getattr(settings, 'DEBUG', True) else 'Production'}")
+        logger.info(f"M-Pesa Service initialized:")
+        logger.info(f"   • Target phone: {self.target_phone}")
+        logger.info(f"   • Business shortcode: {self.business_shortcode}")
+        logger.info(f"   • Environment: {self.mpesa_env.upper()}")
+        logger.info(f"   • Base URL: {self.base_url}")
+        logger.info(f"   • Callback URL: {self.callback_url}")
+        
+        # Validate required settings
+        if not self.consumer_key:
+            logger.error("❌ MPESA_CONSUMER_KEY is not set!")
+        if not self.consumer_secret:
+            logger.error("❌ MPESA_CONSUMER_SECRET is not set!")
+        if not self.business_shortcode:
+            logger.error("❌ MPESA_BUSINESS_SHORTCODE is not set!")
+        if not self.passkey:
+            logger.error("❌ MPESA_PASSKEY is not set!")
+        if not self.callback_url:
+            logger.error("❌ MPESA_CALLBACK_URL is not set!")
     
     def get_access_token(self):
         """Get M-Pesa access token"""
@@ -37,6 +61,7 @@ class MpesaService:
             return self.access_token
         
         url = f"{self.base_url}/oauth/v1/generate?grant_type=client_credentials"
+        logger.info(f"🔑 Requesting M-Pesa access token from: {url}")
         
         # Create base64 encoded credentials
         credentials = f"{self.consumer_key}:{self.consumer_secret}"
@@ -60,11 +85,17 @@ class MpesaService:
             expires_in = int(expires_in)
             self.token_expiry = timezone.now() + timezone.timedelta(seconds=expires_in - 300)
             
-            logger.info("M-Pesa access token obtained successfully")
+            logger.info("✅ M-Pesa access token obtained successfully")
             return self.access_token
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to get M-Pesa access token: {e}")
+            logger.error(f"❌ Failed to get M-Pesa access token: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    error_data = e.response.json()
+                    logger.error(f"❌ M-Pesa API Error Response: {error_data}")
+                except:
+                    logger.error(f"❌ M-Pesa API Error Response (raw): {e.response.text}")
             raise Exception("Failed to authenticate with M-Pesa")
     
     def initiate_stk_push(self, phone_number, amount, reference, description="PlantPal Leaves Purchase"):
@@ -88,6 +119,8 @@ class MpesaService:
         logger.info(f"   • Description: {description}")
         logger.info(f"   • 💰 MONEY GOES TO: {self.target_phone} (0707953603)")
         logger.info(f"   • Business shortcode: {self.business_shortcode}")
+        logger.info(f"   • Environment: {self.mpesa_env.upper()}")
+        logger.info(f"   • STK Push URL: {url}")
         
         payload = {
             "BusinessShortCode": self.business_shortcode,
@@ -109,10 +142,17 @@ class MpesaService:
         }
         
         try:
+            logger.info(f"🚀 Sending STK Push request to: {url}")
             response = requests.post(url, json=payload, headers=headers)
+            
+            # Log response details for debugging
+            logger.info(f"📥 M-Pesa API Response Status: {response.status_code}")
+            logger.info(f"📥 M-Pesa API Response Headers: {dict(response.headers)}")
+            
             response.raise_for_status()
             
             data = response.json()
+            logger.info(f"📥 M-Pesa API Response Data: {data}")
             
             if data.get('ResponseCode') == '0':
                 logger.info(f"✅ STK Push initiated successfully for {phone_number}")
@@ -136,6 +176,12 @@ class MpesaService:
                 
         except requests.exceptions.RequestException as e:
             logger.error(f"❌ STK Push request failed: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    error_data = e.response.json()
+                    logger.error(f"❌ M-Pesa API Error Response: {error_data}")
+                except:
+                    logger.error(f"❌ M-Pesa API Error Response (raw): {e.response.text}")
             return {
                 'success': False,
                 'error': 'Network error occurred'

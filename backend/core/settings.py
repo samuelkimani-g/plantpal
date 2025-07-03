@@ -283,9 +283,10 @@ LOGGING = {
 # === M-PESA CONFIGURATION ===
 MPESA_CONSUMER_KEY = os.getenv('MPESA_CONSUMER_KEY', '')
 MPESA_CONSUMER_SECRET = os.getenv('MPESA_CONSUMER_SECRET', '')
-MPESA_BUSINESS_SHORTCODE = os.getenv('MPESA_BUSINESS_SHORTCODE', '')
+MPESA_BUSINESS_SHORTCODE = os.getenv('MPESA_BUSINESS_SHORTCODE', '174379')  # Default to sandbox
 MPESA_PASSKEY = os.getenv('MPESA_PASSKEY', '')
 MPESA_CALLBACK_URL = os.getenv('MPESA_CALLBACK_URL', 'https://plantpal-4hx7.onrender.com/api/payments/callback/')
+MPESA_ENV = os.getenv('MPESA_ENV', 'sandbox')  # 'sandbox' or 'production'
 
 # Target phone number for payments (0707953603)
 MPESA_TARGET_PHONE = '254707953603'  # Converted to 254 format
