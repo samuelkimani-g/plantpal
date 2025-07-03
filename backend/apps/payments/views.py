@@ -1,6 +1,6 @@
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
@@ -20,10 +20,11 @@ logger = logging.getLogger(__name__)
 
 class LeafPackageViewSet(APIView):
     """View for listing available leaf packages"""
+    permission_classes = [AllowAny]  # Allow unauthenticated access to view packages
     
     def get(self, request):
         """Get all active leaf packages"""
-        packages = LeafPackage.objects.filter(is_active=True)
+        packages = LeafPackage.objects.filter(is_active=True).order_by('price')
         serializer = LeafPackageSerializer(packages, many=True)
         return Response(serializer.data)
 
