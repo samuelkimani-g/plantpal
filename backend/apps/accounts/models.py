@@ -9,7 +9,7 @@ class UserProfile(models.Model):
     Extended user profile as specified in architecture:
     avatar, bio, timezone, and other user settings
     """
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='userprofile')
     
     # Profile fields as specified
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
@@ -66,5 +66,5 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
         UserProfile.objects.create(user=instance)
     
     # Save the profile if it exists
-    if hasattr(instance, 'profile'):
-        instance.profile.save()
+    if hasattr(instance, 'userprofile'):
+        instance.userprofile.save()

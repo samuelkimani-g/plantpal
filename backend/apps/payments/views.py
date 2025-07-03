@@ -34,16 +34,20 @@ class InitiatePaymentView(APIView):
     
     def post(self, request):
         """Initiate STK Push payment"""
-        serializer = InitiatePaymentSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        package_id = serializer.validated_data['package_id']
-        phone_number = serializer.validated_data['phone_number']
-        
         try:
+            serializer = InitiatePaymentSerializer(data=request.data)
+            if not serializer.is_valid():
+                logger.error(f"Serializer validation failed: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            package_id = serializer.validated_data['package_id']
+            phone_number = serializer.validated_data['phone_number']
+            
+            logger.info(f"Payment request - Package ID: {package_id} ({type(package_id)}), Phone: {phone_number} ({type(phone_number)})")
+            
             # Get the package
             package = get_object_or_404(LeafPackage, id=package_id, is_active=True)
+            logger.info(f"Package found - Price: {package.price} ({type(package.price)}), Leaves: {package.leaves} ({type(package.leaves)})")
             
             # Create transaction record
             transaction_record = MpesaTransaction.objects.create(
@@ -54,11 +58,13 @@ class InitiatePaymentView(APIView):
                 phone_number=phone_number,
                 status='PENDING'
             )
+            logger.info(f"Transaction created - ID: {transaction_record.id}")
             
             # Initiate STK Push
             mpesa_service = MpesaService()
             reference = f"PLANT{transaction_record.id}"
             
+            logger.info(f"Calling STK Push with amount: {package.price} ({type(package.price)})")
             result = mpesa_service.initiate_stk_push(
                 phone_number=phone_number,
                 amount=package.price,
@@ -91,6 +97,9 @@ class InitiatePaymentView(APIView):
                 
         except Exception as e:
             logger.error(f"Error initiating payment: {e}")
+            logger.error(f"Error type: {type(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return Response({
                 'success': False,
                 'error': 'Failed to initiate payment. Please try again.'

@@ -605,9 +605,9 @@ class MoodSummaryView(APIView):
                     plant.apply_mood_update(mood_data)
                     
                     # Update accounts profile if exists
-                    if hasattr(request.user, 'profile'):
-                        request.user.profile.spotify_connected = True
-                        request.user.profile.save(update_fields=['spotify_connected'])
+                    if hasattr(request.user, 'userprofile'):
+                        request.user.userprofile.spotify_connected = True
+                        request.user.userprofile.save(update_fields=['spotify_connected'])
                         
             except ImportError:
                 logger.warning("MoodEngine not available for music integration")
