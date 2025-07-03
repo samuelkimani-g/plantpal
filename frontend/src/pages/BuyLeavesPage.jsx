@@ -15,6 +15,7 @@ export default function BuyLeavesPage() {
   const [transactions, setTransactions] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [showPaymentInfo, setShowPaymentInfo] = useState(false);
+  const [businessShortcode, setBusinessShortcode] = useState("0707953603"); // Default display, will be updated from backend
 
   useEffect(() => {
     setLoading(true);
@@ -66,10 +67,16 @@ export default function BuyLeavesPage() {
     
     try {
       const res = await paymentsAPI.initiatePayment(selected.id, phone);
+      
+      // Update business shortcode from backend response
+      if (res.data.business_shortcode) {
+        setBusinessShortcode(res.data.business_shortcode);
+      }
+      
       setStatus({ 
         success: true, 
         message: res.data.customer_message || res.data.message,
-        details: `Please check your phone (${phone}) for the M-Pesa PIN prompt. The payment will go to 0707953603.`
+        details: `Please check your phone (${phone}) for the M-Pesa PIN prompt. The payment will go to ${res.data.business_shortcode || businessShortcode}.`
       });
       
       // Refresh data after payment initiation
@@ -96,6 +103,13 @@ export default function BuyLeavesPage() {
     // Format phone number display (e.g., 0707953603 → 0707 953 603)
     if (!phoneNumber) return "";
     const cleaned = phoneNumber.replace(/\D/g, "");
+    
+    // Handle business shortcodes (like 174379) - don't format them
+    if (cleaned.length <= 6) {
+      return cleaned;
+    }
+    
+    // Format regular phone numbers
     if (cleaned.length === 10 && cleaned.startsWith("0")) {
       return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7)}`;
     }
@@ -134,7 +148,7 @@ export default function BuyLeavesPage() {
                   <p>• Select a leaf package below</p>
                   <p>• Enter your M-Pesa phone number</p>
                   <p>• You'll receive a PIN prompt on your phone</p>
-                  <p>• Payment goes to <strong>0707953603</strong></p>
+                  <p>• Payment goes to <strong>{formatPhoneNumber(businessShortcode)}</strong></p>
                   <p>• Leaves are added to your wallet automatically</p>
                 </div>
               </div>
@@ -284,7 +298,7 @@ export default function BuyLeavesPage() {
                       </div>
                       <div className="flex justify-between">
                         <span>Payment to:</span>
-                        <span className="font-medium">{formatPhoneNumber("0707953603")}</span>
+                        <span className="font-medium">{formatPhoneNumber(businessShortcode)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Your number:</span>

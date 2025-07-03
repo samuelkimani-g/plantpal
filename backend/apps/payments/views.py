@@ -82,7 +82,8 @@ class InitiatePaymentView(APIView):
                     'success': True,
                     'message': 'Payment initiated successfully. Please check your phone for M-Pesa prompt.',
                     'transaction_id': transaction_record.id,
-                    'customer_message': result['customer_message']
+                    'customer_message': result['customer_message'],
+                    'business_shortcode': mpesa_service.business_shortcode  # Include the actual shortcode used
                 })
             else:
                 # Mark transaction as failed
