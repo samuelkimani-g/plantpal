@@ -225,16 +225,25 @@ class MoodEngine:
     @classmethod
     def score_to_mood_type(cls, score: float) -> str:
         """Convert mood score (0.0-1.0) to mood type string"""
-        if score >= 0.8:
+        # Finer-grained mapping (10 % bands) for higher sensitivity
+        if score >= 0.9:
+            return 'euphoric'
+        elif score >= 0.75:
             return 'happy'
         elif score >= 0.6:
             return 'upbeat'
+        elif score >= 0.5:
+            return 'calm'
         elif score >= 0.4:
             return 'neutral'
+        elif score >= 0.3:
+            return 'melancholy'
         elif score >= 0.2:
             return 'sad'
-        else:
+        elif score >= 0.1:
             return 'low'
+        else:
+            return 'very_low'
 
     @classmethod
     def get_plant_stage_from_points(cls, growth_points: int) -> Dict[str, str]:

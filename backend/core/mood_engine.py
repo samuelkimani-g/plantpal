@@ -259,9 +259,11 @@ class MoodEngine:
         mood_type = unified_mood.get('mood_type', 'neutral')
         
         # Growth point changes based on mood
-        if mood_score >= 0.8:  # euphoric/happy
+        if mood_score >= 0.9:
+            growth_change = 4
+        elif mood_score >= 0.8:
             growth_change = 3
-        elif mood_score >= 0.6:  # upbeat/good
+        elif mood_score >= 0.6:
             growth_change = 2
         elif mood_score >= 0.4:  # neutral/calm
             growth_change = 1
@@ -288,21 +290,24 @@ class MoodEngine:
     @classmethod
     def score_to_mood_type(cls, score: float) -> str:
         """Convert mood score (0.0-1.0) to mood type string"""
-        for mood_type, data in cls.MOOD_TYPES.items():
-            if abs(score - data['score']) < 0.1:
-                return mood_type
-        
-        # Fallback based on ranges
-        if score >= 0.8:
+        if score >= 0.9:
+            return 'euphoric'
+        elif score >= 0.75:
             return 'happy'
         elif score >= 0.6:
             return 'upbeat'
+        elif score >= 0.5:
+            return 'calm'
         elif score >= 0.4:
             return 'neutral'
+        elif score >= 0.3:
+            return 'melancholy'
         elif score >= 0.2:
             return 'sad'
-        else:
+        elif score >= 0.1:
             return 'low'
+        else:
+            return 'very_low'
 
     @classmethod
     def get_plant_stage(cls, growth_points: int) -> Dict[str, str]:
