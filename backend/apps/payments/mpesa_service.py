@@ -56,6 +56,8 @@ class MpesaService:
             
             # Set token expiry (subtract 5 minutes for safety)
             expires_in = data.get('expires_in', 3600)
+            # Convert to int in case it comes as string from API
+            expires_in = int(expires_in)
             self.token_expiry = timezone.now() + timezone.timedelta(seconds=expires_in - 300)
             
             logger.info("M-Pesa access token obtained successfully")
