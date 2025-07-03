@@ -160,6 +160,38 @@ export default function BuyLeavesPage() {
                 {/* Package Selection */}
                 <div className="mb-6">
                   <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Choose a Package</h4>
+                  
+                  {/* Debug Info */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <div className="mb-4 p-3 bg-yellow-100 rounded-lg text-sm">
+                      <div><strong>Debug Info:</strong></div>
+                      <div>Packages count: {packages.length}</div>
+                      <div>Loading: {loading.toString()}</div>
+                      <div>Error: {error || 'none'}</div>
+                      <div>API Base URL: {import.meta.env.VITE_API_URL || 'http://localhost:8000'}</div>
+                    </div>
+                  )}
+                  
+                  {error && (
+                    <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg">
+                      <div className="text-red-800 font-semibold">Error Loading Packages</div>
+                      <div className="text-red-600 text-sm">{error}</div>
+                      <button 
+                        onClick={() => window.location.reload()} 
+                        className="mt-2 px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
+                  
+                  {packages.length === 0 && !loading && !error && (
+                    <div className="mb-4 p-3 bg-gray-100 border border-gray-300 rounded-lg">
+                      <div className="text-gray-800 font-semibold">No packages available</div>
+                      <div className="text-gray-600 text-sm">Please try refreshing the page or contact support.</div>
+                    </div>
+                  )}
+                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {packages.map((pkg) => (
                       <Card
