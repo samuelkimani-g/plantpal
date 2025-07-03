@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.conf import settings
 from .models import LeafPackage, MpesaTransaction, WateringTransaction
 from .serializers import (
     LeafPackageSerializer, MpesaTransactionSerializer, InitiatePaymentSerializer,
@@ -17,6 +18,32 @@ from apps.plants.models import Plant
 import logging
 
 logger = logging.getLogger(__name__)
+
+class DebugMpesaConfigView(APIView):
+    """Debug endpoint to check M-Pesa configuration"""
+    permission_classes = [AllowAny]  # Temporarily allow anyone to access this
+    
+    def get(self, request):
+        """Get current M-Pesa configuration (without sensitive data)"""
+        mpesa_service = MpesaService()
+        
+        config = {
+            'mpesa_env': mpesa_service.mpesa_env,
+            'base_url': mpesa_service.base_url,
+            'business_shortcode': mpesa_service.business_shortcode,
+            'callback_url': mpesa_service.callback_url,
+            'target_phone': mpesa_service.target_phone,
+            'has_consumer_key': bool(mpesa_service.consumer_key),
+            'has_consumer_secret': bool(mpesa_service.consumer_secret),
+            'has_passkey': bool(mpesa_service.passkey),
+            'django_debug': getattr(settings, 'DEBUG', None),
+        }
+        
+        return Response({
+            'success': True,
+            'config': config,
+            'message': 'M-Pesa configuration debug info'
+        })
 
 class LeafPackageViewSet(APIView):
     """View for listing available leaf packages"""
