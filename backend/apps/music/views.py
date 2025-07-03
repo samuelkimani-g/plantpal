@@ -580,9 +580,17 @@ class MoodSummaryView(APIView):
                     'confidence_level': 0.0
                 }, status=status.HTTP_200_OK)
             
+            # Filter sessions to only include those with a mood score to prevent errors
+            sessions_with_scores = [s for s in recent_sessions if s.computed_mood_score is not None]
+
+            if not sessions_with_scores:
+                return Response({
+                    'error': 'No listening sessions with mood data found in the selected period.'
+                }, status=status.HTTP_404_NOT_FOUND)
+
             # Calculate mood metrics
-            total_minutes = sum(session.total_minutes for session in recent_sessions)
-            avg_mood_score = sum(session.computed_mood_score for session in recent_sessions) / len(recent_sessions)
+            total_minutes = sum(session.total_minutes for session in sessions_with_scores)
+            avg_mood_score = sum(session.computed_mood_score for session in sessions_with_scores) / len(sessions_with_scores)
             
             # Get or create mood profile
             mood_profile, _ = MusicMoodProfile.objects.get_or_create(user=request.user)
@@ -622,10 +630,10 @@ class MoodSummaryView(APIView):
             mood_summary = {
                 'current_mood_score': avg_mood_score,
                 'current_mood_label': mood_profile.current_mood_label,
-                'mood_trend': self._calculate_mood_trend(recent_sessions),
+                'mood_trend': self._calculate_mood_trend(sessions_with_scores),
                 'growth_multiplier': self._calculate_growth_bonus(avg_mood_score),
                 'last_updated': timezone.now(),
-                'confidence_level': min(1.0, len(recent_sessions) / 10.0)  # Higher confidence with more sessions
+                'confidence_level': min(1.0, len(sessions_with_scores) / 10.0)  # Higher confidence with more sessions
             }
             
             serializer = MoodSummarySerializer(mood_summary)
