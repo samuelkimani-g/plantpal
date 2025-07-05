@@ -23,6 +23,7 @@ import MindfulnessPage from "./features/mindfulness/MindfulnessPage"
 import { UserPlantProfile } from "./features/userProfile"
 import ReminderSettings from "./features/reminders/ReminderSettings"
 import BuyLeavesPage from "./pages/BuyLeavesPage"
+import PremiumChatbot from "./pages/PremiumChatbot"
 
 function App() {
   return (
@@ -146,11 +147,31 @@ function App() {
                 }
               />
               <Route
+                path="/premium-chatbot"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <PremiumChatbot />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/explore-plants"
                 element={
                   <ProtectedRoute>
                     <Layout>
                       <PublicGarden />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/premium-chatbot"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <PremiumChatbot />
                     </Layout>
                   </ProtectedRoute>
                 }

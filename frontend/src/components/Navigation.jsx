@@ -18,6 +18,8 @@ import {
   Smile,
   Bell,
   CreditCard,
+  MessageCircle,
+  Crown,
 } from "lucide-react"
 import { Button } from "./ui/button"
 
@@ -81,6 +83,7 @@ const Navigation = () => {
     { name: "Journal", path: "/journal", icon: BookOpen },
     { name: "Mindfulness", path: "/mindfulness", icon: Smile },
     { name: "Music", path: "/music", icon: Settings },
+    { name: "AI Chat", path: "/premium-chatbot", icon: MessageCircle, premiumRequired: true },
   ]
 
   const breadcrumbs = getBreadcrumbs()
@@ -214,6 +217,18 @@ const Navigation = () => {
                     <CreditCard className="h-4 w-4 mr-2" />
                     Buy Leaves
                   </button>
+                  {!user?.userprofile?.is_premium && (
+                    <button
+                      onClick={() => {
+                        navigate("/profile")
+                        setIsUserMenuOpen(false)
+                      }}
+                      className="flex items-center w-full px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                    >
+                      <Crown className="h-4 w-4 mr-2" />
+                      Upgrade to Premium
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       navigate("/reminders")

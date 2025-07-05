@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,11 +10,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { User, Edit, Save, X, Trash2, Key, Music, AlertCircle, CheckCircle, Loader2, Leaf, Shield, Calendar } from "lucide-react"
+import { User, Edit, Save, X, Trash2, Key, Music, AlertCircle, CheckCircle, Loader2, Leaf, Shield, Calendar, Crown, Star, Sparkles } from "lucide-react"
 import { authAPI } from "../../services/api"
 import SpotifyIntegration from "../music/SpotifyIntegration"
 
 export default function ProfilePage() {
+  const navigate = useNavigate()
   const { user, updateProfile, logout } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
@@ -35,6 +37,8 @@ export default function ProfilePage() {
     new_password: "",
     confirm_password: "",
   })
+
+  const [premiumLoading, setPremiumLoading] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -117,6 +121,29 @@ export default function ProfilePage() {
   const clearMessages = () => {
     setMessage(null)
     setError(null)
+  }
+
+  const handlePremiumUpgrade = async (days) => {
+    setPremiumLoading(true)
+    setError(null)
+    
+    try {
+      const response = await authAPI.post('/accounts/profile/activate-premium/', {
+        duration_days: days
+      })
+      
+      if (response.data.success) {
+        setMessage(`Premium activated for ${days} days! Welcome to PlantPal Premium! 🌟`)
+        // Refresh user data to show premium status
+        window.location.reload()
+      } else {
+        setError(response.data.error || 'Failed to activate premium')
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to activate premium')
+    } finally {
+      setPremiumLoading(false)
+    }
   }
 
   if (!user) {
@@ -331,6 +358,126 @@ export default function ProfilePage() {
                   <div>
                     <Label className="text-sm text-muted-foreground">Member Since</Label>
                     <p className="font-medium">{new Date(user.date_joined).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Premium Membership */}
+          <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Crown className="h-5 w-5 text-amber-600" />
+                Premium Membership
+              </CardTitle>
+              <CardDescription>
+                {user?.userprofile?.is_premium 
+                  ? "You're a premium member! Enjoy exclusive features." 
+                  : "Upgrade to premium for AI chat and exclusive features"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {user?.userprofile?.is_premium ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                      <Star className="h-3 w-3 mr-1" />
+                      Premium Active
+                    </Badge>
+                    {user?.userprofile?.premium_expiry_date && (
+                      <span className="text-sm text-muted-foreground">
+                        Expires: {new Date(user.userprofile.premium_expiry_date).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-amber-600" />
+                      Premium Features
+                    </h4>
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>• AI-powered chatbot for reflection and guidance</li>
+                      <li>• Advanced mood analytics</li>
+                      <li>• Priority support</li>
+                      <li>• Exclusive plant varieties</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Upgrade to Premium</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Unlock exclusive features with PlantPal Premium using your earned leaves.
+                    </p>
+                  </div>
+                  
+                  <div className="grid gap-3">
+                    <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-amber-50 transition-colors">
+                      <div>
+                        <p className="font-medium">30 Days</p>
+                        <p className="text-sm text-muted-foreground">Perfect for trying premium</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-amber-600">150 PPL</p>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handlePremiumUpgrade(30)}
+                          disabled={premiumLoading || (user?.plantpal_leaves || 0) < 150}
+                          className="mt-1"
+                        >
+                          {premiumLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Upgrade"}
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-amber-50 transition-colors">
+                      <div>
+                        <p className="font-medium">90 Days</p>
+                        <p className="text-sm text-muted-foreground">Most popular choice</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-amber-600">400 PPL</p>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handlePremiumUpgrade(90)}
+                          disabled={premiumLoading || (user?.plantpal_leaves || 0) < 400}
+                          className="mt-1"
+                        >
+                          {premiumLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Upgrade"}
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-amber-50 transition-colors">
+                      <div>
+                        <p className="font-medium">365 Days</p>
+                        <p className="text-sm text-muted-foreground">Best value for power users</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-amber-600">1500 PPL</p>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handlePremiumUpgrade(365)}
+                          disabled={premiumLoading || (user?.plantpal_leaves || 0) < 1500}
+                          className="mt-1"
+                        >
+                          {premiumLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Upgrade"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Current balance: <span className="font-semibold text-emerald-600">{user?.plantpal_leaves || 0} PPL</span>
+                    </p>
+                    {(user?.plantpal_leaves || 0) < 150 && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        You need more leaves to upgrade. <button onClick={() => navigate('/buy-leaves')} className="underline">Buy leaves</button>
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
