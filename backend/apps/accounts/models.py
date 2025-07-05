@@ -30,6 +30,10 @@ class UserProfile(models.Model):
     # PlantPal Leaves field
     plantpal_leaves = models.IntegerField(default=0, help_text="PlantPal Leaves balance for premium features")
 
+    # New fields for Premium Membership
+    is_premium = models.BooleanField(default=False, help_text="Indicates if the user has an active premium membership.")
+    premium_expiry_date = models.DateTimeField(null=True, blank=True, help_text="Date and time when premium membership expires.")
+
     class Meta:
         verbose_name = "User Profile"
         verbose_name_plural = "User Profiles"

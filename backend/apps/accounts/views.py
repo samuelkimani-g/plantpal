@@ -303,6 +303,53 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    @action(detail=False, methods=['post'], url_path='activate-premium')
+    def activate_premium(self, request):
+        """
+        Activates or extends premium membership by spending PlantPal Leaves.
+        """
+        duration_days = request.data.get('duration_days')
+        if not duration_days or not isinstance(duration_days, int) or duration_days <= 0:
+            return Response(
+                {"error": "A valid 'duration_days' (positive integer) is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        PREMIUM_COSTS = {
+            30: 150,  # 1 Month
+            90: 400,  # 3 Months
+            365: 1500, # 1 Year
+        }
+
+        cost = PREMIUM_COSTS.get(duration_days)
+        if cost is None:
+            return Response(
+                {"error": f"Invalid duration. Valid options: {list(PREMIUM_COSTS.keys())} days."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        profile = request.user.userprofile
+        if profile.plantpal_leaves < cost:
+            return Response(
+                {"error": f"Not enough Leaves. You need {cost}, but you only have {profile.plantpal_leaves}."},
+                status=status.HTTP_402_PAYMENT_REQUIRED
+            )
+
+        # Deduct leaves and update premium status
+        profile.plantpal_leaves -= cost
+        
+        if profile.is_premium and profile.premium_expiry_date > timezone.now():
+            # If already premium, extend the existing subscription
+            profile.premium_expiry_date += timedelta(days=duration_days)
+        else:
+            # Otherwise, start a new subscription from today
+            profile.is_premium = True
+            profile.premium_expiry_date = timezone.now() + timedelta(days=duration_days)
+            
+        profile.save()
+        serializer = self.get_serializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 class SpotifyCallbackView(APIView):
     """Handle Spotify OAuth callback"""
     permission_classes = [permissions.AllowAny]  # Allow unauthenticated access for direct Spotify redirect

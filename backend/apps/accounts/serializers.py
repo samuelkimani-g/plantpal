@@ -9,27 +9,20 @@ from .models import UserProfile
 User = get_user_model()
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    """
-    User profile serializer for viewing and editing profile information
-    """
-    username = serializers.CharField(source='user.username', read_only=True)
-    email = serializers.CharField(source='user.email', read_only=True)
-    first_name = serializers.CharField(source='user.first_name', read_only=True)
-    last_name = serializers.CharField(source='user.last_name', read_only=True)
-    avatar_url = serializers.CharField(read_only=True)
-    spotify_connected = serializers.BooleanField(read_only=True)
-    created_at = serializers.DateTimeField(read_only=True)
-    updated_at = serializers.DateTimeField(read_only=True)
-    plantpal_leaves = serializers.IntegerField(read_only=True)
-    
+    """Serializer for the UserProfile model"""
     class Meta:
         model = UserProfile
-        fields = [
-            'id', 'username', 'email', 'first_name', 'last_name',
-            'avatar', 'avatar_url', 'bio', 'timezone', 'journal_streak',
-            'spotify_connected', 'created_at', 'updated_at', 'plantpal_leaves',
-        ]
-        read_only_fields = ['username', 'journal_streak', 'spotify_connected', 'created_at', 'updated_at', 'plantpal_leaves']
+        fields = (
+            'id', 
+            'user', 
+            'bio', 
+            'avatar', 
+            'timezone',
+            'plantpal_leaves',
+            'is_premium',
+            'premium_expiry_date',
+        )
+        read_only_fields = ('user', 'plantpal_leaves', 'is_premium', 'premium_expiry_date')
 
     def update(self, instance, validated_data):
         """Update both User and UserProfile fields"""
