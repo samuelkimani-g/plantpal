@@ -212,9 +212,17 @@ export const musicAPI = {
 
 // Payments API calls (payments app)
 export const paymentsAPI = {
+  // Leaf packages
   getPackages: () => api.get("/api/payments/packages/"),
   initiatePayment: (packageId, phoneNumber) =>
     api.post("/api/payments/initiate/", { package_id: packageId, phone_number: phoneNumber }),
+  
+  // Premium packages
+  getPremiumPackages: () => api.get("/api/payments/premium-packages/"),
+  initiatePremiumPayment: (packageId, phoneNumber) =>
+    api.post("/api/payments/initiate-premium/", { package_id: packageId, phone_number: phoneNumber }),
+  
+  // General
   getLeaves: () => api.get("/api/payments/leaves/"),
   getTransactions: () => api.get("/api/payments/transactions/"),
   getGarden: (query = "") => api.get(`/api/payments/garden/${query ? `?query=${encodeURIComponent(query)}` : ""}`),

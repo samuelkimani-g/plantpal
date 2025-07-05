@@ -8,10 +8,10 @@ from django.db import transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.conf import settings
-from .models import LeafPackage, MpesaTransaction, WateringTransaction
+from .models import LeafPackage, PremiumPackage, MpesaTransaction, WateringTransaction
 from .serializers import (
-    LeafPackageSerializer, MpesaTransactionSerializer, InitiatePaymentSerializer,
-    WateringTransactionSerializer, PublicUserSerializer
+    LeafPackageSerializer, PremiumPackageSerializer, MpesaTransactionSerializer, InitiatePaymentSerializer,
+    InitiatePremiumPaymentSerializer, WateringTransactionSerializer, PublicUserSerializer
 )
 from .mpesa_service import MpesaService
 from apps.plants.models import Plant
@@ -107,6 +107,84 @@ class ManualCompleteTransactionView(APIView):
                 'error': 'Failed to complete transaction'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class InitiatePremiumPaymentView(APIView):
+    """View for initiating M-Pesa payment for premium packages"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Initiate STK Push payment for premium"""
+        try:
+            serializer = InitiatePremiumPaymentSerializer(data=request.data)
+            if not serializer.is_valid():
+                logger.error(f"Serializer validation failed: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            package_id = serializer.validated_data['package_id']
+            phone_number = serializer.validated_data['phone_number']
+            
+            logger.info(f"Premium payment request - Package ID: {package_id}, Phone: {phone_number}")
+            
+            # Get the premium package
+            package = get_object_or_404(PremiumPackage, id=package_id, is_active=True)
+            logger.info(f"Premium package found - Price: {package.price}, Days: {package.duration_days}")
+            
+            # Create transaction record
+            transaction_record = MpesaTransaction.objects.create(
+                user=request.user,
+                premium_package=package,
+                transaction_type='PREMIUM',
+                amount=package.price,
+                premium_days=package.duration_days,
+                phone_number=phone_number,
+                status='PENDING'
+            )
+            logger.info(f"Premium transaction created - ID: {transaction_record.id}")
+            
+            # Initiate STK Push
+            mpesa_service = MpesaService()
+            reference = f"PREMIUM{transaction_record.id}"
+            
+            logger.info(f"Calling STK Push for premium with amount: {package.price}")
+            result = mpesa_service.initiate_stk_push(
+                phone_number=phone_number,
+                amount=package.price,
+                reference=reference,
+                description=f"PlantPal Premium {package.name}"
+            )
+            
+            if result['success']:
+                # Update transaction with M-Pesa details
+                transaction_record.merchant_request_id = result['merchant_request_id']
+                transaction_record.checkout_request_id = result['checkout_request_id']
+                transaction_record.save()
+                
+                return Response({
+                    'success': True,
+                    'message': 'Premium payment initiated successfully. Please check your phone for M-Pesa prompt.',
+                    'transaction_id': transaction_record.id,
+                    'customer_message': result['customer_message'],
+                    'business_shortcode': mpesa_service.business_shortcode
+                })
+            else:
+                # Mark transaction as failed
+                transaction_record.status = 'FAILED'
+                transaction_record.result_desc = result['error']
+                transaction_record.save()
+                
+                return Response({
+                    'success': False,
+                    'error': result['error']
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            logger.error(f"Error initiating premium payment: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return Response({
+                'success': False,
+                'error': 'Failed to initiate premium payment. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class LeafPackageViewSet(APIView):
     """View for listing available leaf packages"""
     permission_classes = [AllowAny]  # Allow unauthenticated access to view packages
@@ -115,6 +193,16 @@ class LeafPackageViewSet(APIView):
         """Get all active leaf packages"""
         packages = LeafPackage.objects.filter(is_active=True).order_by('price')
         serializer = LeafPackageSerializer(packages, many=True)
+        return Response(serializer.data)
+
+class PremiumPackageViewSet(APIView):
+    """View for listing available premium packages"""
+    permission_classes = [AllowAny]  # Allow unauthenticated access to view packages
+    
+    def get(self, request):
+        """Get all active premium packages"""
+        packages = PremiumPackage.objects.filter(is_active=True).order_by('price')
+        serializer = PremiumPackageSerializer(packages, many=True)
         return Response(serializer.data)
 
 class InitiatePaymentView(APIView):
@@ -141,7 +229,8 @@ class InitiatePaymentView(APIView):
             # Create transaction record
             transaction_record = MpesaTransaction.objects.create(
                 user=request.user,
-                package=package,
+                leaf_package=package,
+                transaction_type='LEAVES',
                 amount=package.price,
                 leaves=package.leaves,
                 phone_number=phone_number,

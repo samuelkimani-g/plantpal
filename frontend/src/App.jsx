@@ -24,6 +24,7 @@ import { UserPlantProfile } from "./features/userProfile"
 import ReminderSettings from "./features/reminders/ReminderSettings"
 import BuyLeavesPage from "./pages/BuyLeavesPage"
 import PremiumChatbot from "./pages/PremiumChatbot"
+import PremiumUpgradePage from "./pages/PremiumUpgradePage"
 
 function App() {
   return (
@@ -157,21 +158,21 @@ function App() {
                 }
               />
               <Route
-                path="/explore-plants"
+                path="/premium-upgrade"
                 element={
                   <ProtectedRoute>
                     <Layout>
-                      <PublicGarden />
+                      <PremiumUpgradePage />
                     </Layout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/premium-chatbot"
+                path="/explore-plants"
                 element={
                   <ProtectedRoute>
                     <Layout>
-                      <PremiumChatbot />
+                      <PublicGarden />
                     </Layout>
                   </ProtectedRoute>
                 }

@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    LeafPackageViewSet, InitiatePaymentView, MpesaCallbackView,
+    LeafPackageViewSet, PremiumPackageViewSet, InitiatePaymentView, InitiatePremiumPaymentView, MpesaCallbackView,
     TransactionHistoryView, PublicGardenView, WaterOtherPlantView,
     UserLeavesView, WateringHistoryView, SetupPackagesView, DebugMpesaConfigView,
     ManualCompleteTransactionView
@@ -15,8 +15,12 @@ urlpatterns = [
     path('packages/', LeafPackageViewSet.as_view(), name='leaf-packages'),
     path('setup-packages/', SetupPackagesView.as_view(), name='setup-packages'),
     
+    # Premium packages
+    path('premium-packages/', PremiumPackageViewSet.as_view(), name='premium-packages'),
+    
     # M-Pesa payment
     path('initiate/', InitiatePaymentView.as_view(), name='initiate-payment'),
+    path('initiate-premium/', InitiatePremiumPaymentView.as_view(), name='initiate-premium-payment'),
     path('callback/', MpesaCallbackView.as_view(), name='mpesa-callback'),
     path('transactions/', TransactionHistoryView.as_view(), name='transaction-history'),
     

@@ -473,11 +473,23 @@ export default function ProfilePage() {
                     <p className="text-sm text-muted-foreground">
                       Current balance: <span className="font-semibold text-emerald-600">{user?.plantpal_leaves || 0} PPL</span>
                     </p>
-                    {(user?.plantpal_leaves || 0) < 150 && (
-                      <p className="text-xs text-amber-600 mt-1">
-                        You need more leaves to upgrade. <button onClick={() => navigate('/buy-leaves')} className="underline">Buy leaves</button>
-                      </p>
-                    )}
+                                         {(user?.plantpal_leaves || 0) < 150 && (
+                       <p className="text-xs text-amber-600 mt-1">
+                         You need more leaves to upgrade. <button onClick={() => navigate('/buy-leaves')} className="underline">Buy leaves</button>
+                       </p>
+                     )}
+                     
+                     <div className="mt-4 pt-4 border-t">
+                       <p className="text-sm text-gray-600 mb-2">Or upgrade directly with M-Pesa:</p>
+                       <Button 
+                         onClick={() => navigate('/premium-upgrade')}
+                         variant="outline"
+                         className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+                       >
+                         <Crown className="h-4 w-4 mr-2" />
+                         Buy Premium Directly
+                       </Button>
+                     </div>
                   </div>
                 </div>
               )}
