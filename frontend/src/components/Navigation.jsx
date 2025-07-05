@@ -140,6 +140,11 @@ const Navigation = () => {
               {navigationItems.map((item) => {
                 const Icon = item.icon
                 const isActive = location.pathname === item.path
+                
+                if (item.premiumRequired && !user?.userprofile?.is_premium) {
+                    return null; // Don't show premium links to non-premium users
+                }
+
                 return (
                   <Button
                     key={item.path}
