@@ -662,32 +662,19 @@ class MoodSummaryView(APIView):
             return 'declining'
         else:
             return 'stable'
-    
-    def _get_top_mood_influences(self, sessions):
-        """Get the audio features that most influence current mood"""
-        if not sessions:
-            return []
-        
-        # Get averages
-        avg_valence = sum(s.average_valence for s in sessions) / len(sessions)
-        avg_energy = sum(s.average_energy for s in sessions) / len(sessions)
-        avg_danceability = sum(s.average_danceability for s in sessions) / len(sessions)
-        
-        influences = []
-        if avg_valence > 0.7:
-            influences.append({'factor': 'High Positivity', 'value': avg_valence})
-        elif avg_valence < 0.3:
-            influences.append({'factor': 'Low Positivity', 'value': avg_valence})
-            
-        if avg_energy > 0.7:
-            influences.append({'factor': 'High Energy', 'value': avg_energy})
-        elif avg_energy < 0.3:
-            influences.append({'factor': 'Low Energy', 'value': avg_energy})
-            
-        if avg_danceability > 0.7:
-            influences.append({'factor': 'High Danceability', 'value': avg_danceability})
-        
-        return influences[:3]  # Top 3
+
+    def _get_mood_label_from_score(self, mood_score):
+        """Convert mood score to label"""
+        if mood_score > 0.7:
+            return 'happy'
+        elif mood_score > 0.6:
+            return 'energetic'
+        elif mood_score > 0.4:
+            return 'neutral'
+        elif mood_score > 0.3:
+            return 'calm'
+        else:
+            return 'sad'
     
     def _calculate_growth_bonus(self, mood_score):
         """Calculate plant growth bonus from music mood"""
