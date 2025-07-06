@@ -1,6 +1,22 @@
 from rest_framework import serializers
 from .models import LeafPackage, PremiumPackage, MpesaTransaction, WateringTransaction
 from django.contrib.auth.models import User
+from apps.plants.models import Plant
+
+class PublicPlantUserSerializer(serializers.ModelSerializer):
+    is_premium = serializers.BooleanField(source='userprofile.is_premium', read_only=True)
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'is_premium']
+
+class PublicPlantSerializer(serializers.ModelSerializer):
+    user = PublicPlantUserSerializer(read_only=True)
+    class Meta:
+        model = Plant
+        fields = [
+            'id', 'user', 'name', 'species', 'health_score', 
+            'water_level', 'growth_stage', 'current_mood_influence'
+        ]
 
 class LeafPackageSerializer(serializers.ModelSerializer):
     class Meta:

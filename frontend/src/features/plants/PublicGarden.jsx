@@ -29,8 +29,9 @@ function PlantCard({ plant, isOwn, onWater, watering, onProfile, onLeaveNote, re
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <User className="h-5 w-5 text-emerald-600" />
-          <span className="font-semibold text-emerald-800 dark:text-emerald-200">
-            {plant.user?.display_name || plant.user?.username || "User"}
+          <span className="font-semibold text-emerald-800 dark:text-emerald-200 flex items-center gap-1">
+            {plant.user?.username || "User"}
+            {plant.user?.is_premium && <Leaf className="h-4 w-4 text-amber-500" />}
           </span>
         </div>
         <Badge className="capitalize bg-emerald-500 text-white">{plant.species}</Badge>

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Alert, AlertDescription } from "../components/ui/alert";
-import { Loader2, Crown, CheckCircle2, AlertTriangle, Phone, CreditCard, Info, Star, Sparkles } from "lucide-react";
+import { Loader2, Leaf, CheckCircle2, AlertTriangle, Phone, CreditCard, Info, Star, Sparkles } from "lucide-react";
 
 export default function PremiumUpgradePage() {
   const navigate = useNavigate();
@@ -98,7 +98,7 @@ export default function PremiumUpgradePage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center items-center gap-2 mb-4">
-            <Crown className="h-8 w-8 text-amber-600" />
+            <Leaf className="h-8 w-8 text-amber-600" />
             <h1 className="text-3xl font-bold text-amber-800">PlantPal Premium</h1>
           </div>
           <p className="text-amber-700 max-w-2xl mx-auto">
@@ -264,7 +264,7 @@ export default function PremiumUpgradePage() {
                         </>
                       ) : (
                         <>
-                          <Crown className="h-4 w-4 mr-2" />
+                          <Leaf className="h-4 w-4 mr-2" />
                           Buy Premium for KES {selected.price}
                         </>
                       )}

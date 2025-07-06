@@ -10,31 +10,35 @@ class Command(BaseCommand):
                 'name': 'Premium 30 Days',
                 'duration_days': 30,
                 'price': 100,
-                'description': 'Premium membership for 30 days - AI Chat & exclusive features'
+                'bonus_leaves': 50,
+                'description': 'Premium membership for 30 days + 50 bonus leaves.'
             },
             {
                 'name': 'Premium 90 Days',
                 'duration_days': 90,
                 'price': 250,
-                'description': 'Premium membership for 90 days - AI Chat & exclusive features'
+                'bonus_leaves': 150,
+                'description': 'Premium membership for 90 days + 150 bonus leaves.'
             },
             {
                 'name': 'Premium 365 Days',
                 'duration_days': 365,
                 'price': 800,
-                'description': 'Premium membership for 1 year - AI Chat & exclusive features'
+                'bonus_leaves': 500,
+                'description': 'Premium membership for 1 year + 500 bonus leaves.'
             },
             {
                 'name': 'Test Premium - 7 Days',
                 'duration_days': 7,
                 'price': 20,
-                'description': 'Test premium membership for 7 days'
+                'bonus_leaves': 10,
+                'description': 'Test premium membership for 7 days + 10 bonus leaves.'
             }
         ]
         
         created_count = 0
         for package_data in premium_packages:
-            package, created = PremiumPackage.objects.get_or_create(
+            package, created = PremiumPackage.objects.update_or_create(
                 name=package_data['name'],
                 defaults=package_data
             )
@@ -46,9 +50,9 @@ class Command(BaseCommand):
                 created_count += 1
             else:
                 self.stdout.write(
-                    self.style.WARNING(f"⚠️ Premium package already exists: {package.name}")
+                    self.style.SUCCESS(f"✅ Updated premium package: {package.name}")
                 )
         
         self.stdout.write(
-            self.style.SUCCESS(f"\n🎉 Created {created_count} premium packages!")
+            self.style.SUCCESS(f"\n🎉 Finished setting up premium packages!")
         ) 

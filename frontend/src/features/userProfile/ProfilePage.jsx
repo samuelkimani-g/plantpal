@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { User, Edit, Save, X, Trash2, Key, Music, AlertCircle, CheckCircle, Loader2, Leaf, Shield, Calendar, Crown, Star, Sparkles } from "lucide-react"
+import { User, Edit, Save, X, Trash2, Key, Music, AlertCircle, CheckCircle, Loader2, Leaf, Shield, Calendar, Sparkles } from "lucide-react"
 import { authAPI } from "../../services/api"
 import SpotifyIntegration from "../music/SpotifyIntegration"
 
@@ -167,10 +167,11 @@ export default function ProfilePage() {
             
             {/* User Name and Stats */}
             <div className="space-y-2">
-              <h1 className="text-3xl font-bold text-emerald-800 dark:text-emerald-200">
+              <h1 className="text-3xl font-bold text-emerald-800 dark:text-emerald-200 flex items-center justify-center gap-2">
                 {user.first_name && user.last_name 
                   ? `${user.first_name} ${user.last_name}` 
                   : user.username}
+                {user?.userprofile?.is_premium && <Leaf className="h-6 w-6 text-amber-500" />}
               </h1>
               <p className="text-emerald-600 dark:text-emerald-400">@{user.username}</p>
               
@@ -368,7 +369,7 @@ export default function ProfilePage() {
           <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Crown className="h-5 w-5 text-amber-600" />
+                <Leaf className="h-5 w-5 text-amber-600" />
                 Premium Membership
               </CardTitle>
               <CardDescription>
@@ -407,90 +408,19 @@ export default function ProfilePage() {
               ) : (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <h4 className="font-medium">Upgrade to Premium</h4>
+                    <h4 className="font-medium">Go Premium!</h4>
                     <p className="text-sm text-muted-foreground">
-                      Unlock exclusive features with PlantPal Premium using your earned leaves.
+                      Unlock exclusive features with PlantPal Premium by purchasing directly with M-Pesa.
                     </p>
                   </div>
-                  
-                  <div className="grid gap-3">
-                    <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-amber-50 transition-colors">
-                      <div>
-                        <p className="font-medium">30 Days</p>
-                        <p className="text-sm text-muted-foreground">Perfect for trying premium</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-amber-600">150 PPL</p>
-                        <Button 
-                          size="sm" 
-                          onClick={() => handlePremiumUpgrade(30)}
-                          disabled={premiumLoading || (user?.plantpal_leaves || 0) < 150}
-                          className="mt-1"
-                        >
-                          {premiumLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Upgrade"}
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-amber-50 transition-colors">
-                      <div>
-                        <p className="font-medium">90 Days</p>
-                        <p className="text-sm text-muted-foreground">Most popular choice</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-amber-600">400 PPL</p>
-                        <Button 
-                          size="sm" 
-                          onClick={() => handlePremiumUpgrade(90)}
-                          disabled={premiumLoading || (user?.plantpal_leaves || 0) < 400}
-                          className="mt-1"
-                        >
-                          {premiumLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Upgrade"}
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-amber-50 transition-colors">
-                      <div>
-                        <p className="font-medium">365 Days</p>
-                        <p className="text-sm text-muted-foreground">Best value for power users</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-amber-600">1500 PPL</p>
-                        <Button 
-                          size="sm" 
-                          onClick={() => handlePremiumUpgrade(365)}
-                          disabled={premiumLoading || (user?.plantpal_leaves || 0) < 1500}
-                          className="mt-1"
-                        >
-                          {premiumLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Upgrade"}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">
-                      Current balance: <span className="font-semibold text-emerald-600">{user?.plantpal_leaves || 0} PPL</span>
-                    </p>
-                                         {(user?.plantpal_leaves || 0) < 150 && (
-                       <p className="text-xs text-amber-600 mt-1">
-                         You need more leaves to upgrade. <button onClick={() => navigate('/buy-leaves')} className="underline">Buy leaves</button>
-                       </p>
-                     )}
-                     
-                     <div className="mt-4 pt-4 border-t">
-                       <p className="text-sm text-gray-600 mb-2">Or upgrade directly with M-Pesa:</p>
-                       <Button 
-                         onClick={() => navigate('/premium-upgrade')}
-                         variant="outline"
-                         className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
-                       >
-                         <Crown className="h-4 w-4 mr-2" />
-                         Buy Premium Directly
-                       </Button>
-                     </div>
-                  </div>
+                  <Button 
+                    onClick={() => navigate('/premium-upgrade')}
+                    variant="outline"
+                    className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+                  >
+                    <Leaf className="h-4 w-4 mr-2 text-amber-500" />
+                    View Premium Packages
+                  </Button>
                 </div>
               )}
             </CardContent>

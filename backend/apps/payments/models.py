@@ -23,6 +23,7 @@ class PremiumPackage(models.Model):
     name = models.CharField(max_length=100, help_text="Package name (e.g., '30 Day Premium')")
     duration_days = models.IntegerField(help_text="Number of premium days")
     price = models.IntegerField(help_text="Price in KES")
+    bonus_leaves = models.IntegerField(default=0, help_text="Bonus leaves awarded with this purchase")
     description = models.TextField(blank=True, help_text="Package description")
     is_active = models.BooleanField(default=True, help_text="Whether this package is available for purchase")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -88,14 +89,16 @@ class MpesaTransaction(models.Model):
         self.result_code = result_code
         self.result_desc = result_desc
         self.completed_at = timezone.now()
-        self.save()
         
         profile = self.user.userprofile
         
-        if self.transaction_type == 'LEAVES':
+        if self.transaction_type == 'LEAVES' and self.leaf_package:
             # Credit leaves to user
             profile.plantpal_leaves += self.leaves
-        elif self.transaction_type == 'PREMIUM':
+        elif self.transaction_type == 'PREMIUM' and self.premium_package:
+            # Add bonus leaves
+            profile.plantpal_leaves += self.premium_package.bonus_leaves
+
             # Activate premium membership
             if profile.is_premium and profile.premium_expiry_date > timezone.now():
                 # Extend existing premium
@@ -106,6 +109,7 @@ class MpesaTransaction(models.Model):
                 profile.premium_expiry_date = timezone.now() + timedelta(days=self.premium_days)
         
         profile.save()
+        self.save()
         return True
     
     def mark_failed(self, result_code, result_desc):

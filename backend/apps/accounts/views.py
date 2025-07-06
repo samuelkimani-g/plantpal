@@ -16,6 +16,7 @@ from apps.plants.services import SpotifyService, PlantGrowthService
 from django.conf import settings
 import logging
 import requests
+from rest_framework.permissions import IsAuthenticated
 
 User = get_user_model()
 
@@ -349,6 +350,16 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         profile.save()
         serializer = self.get_serializer(profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class ActivatePremiumView(APIView):
+    """Activates premium membership using PlantPal Leaves."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        return Response({
+            'success': False,
+            'error': 'This method of activation is no longer supported. Please purchase premium directly from the upgrade page.'
+        }, status=status.HTTP_403_FORBIDDEN)
 
 class SpotifyCallbackView(APIView):
     """Handle Spotify OAuth callback"""

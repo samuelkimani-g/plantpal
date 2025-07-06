@@ -1,25 +1,21 @@
+databases:
+  - name: plantpal_db
+    databaseName: plantpal_db
+    user: plantpal_user
+    plan: free
+
 services:
   - type: web
     name: plantpal-backend
-    runtime: python3
-    buildCommand: "./backend/build.sh"
-    startCommand: "./backend/start.sh"
+    runtime: python
     plan: free
-    autoDeploy: false
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn core.wsgi:application"
     envVars:
-      - key: DEBUG
-        value: False
-      - key: SECRET_KEY
-        generateValue: true
-      - key: WEB_CONCURRENCY
-        value: 4
       - key: DATABASE_URL
         fromDatabase:
-          name: plantpal-db
+          name: plantpal_db
           property: connectionString
-  
-  - type: pserv
-    name: plantpal-db
-    databaseName: plantpal
-    databaseUser: plantpal
-    plan: free 
+      - key: WEB_CONCURRENCY
+        value: 4
+      - fromGroup: plantpal-secrets 

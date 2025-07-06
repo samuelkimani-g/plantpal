@@ -11,7 +11,7 @@ from django.conf import settings
 from .models import LeafPackage, PremiumPackage, MpesaTransaction, WateringTransaction
 from .serializers import (
     LeafPackageSerializer, PremiumPackageSerializer, MpesaTransactionSerializer, InitiatePaymentSerializer,
-    InitiatePremiumPaymentSerializer, WateringTransactionSerializer, PublicUserSerializer
+    InitiatePremiumPaymentSerializer, WateringTransactionSerializer, PublicUserSerializer, PublicPlantSerializer
 )
 from .mpesa_service import MpesaService
 from apps.plants.models import Plant
@@ -322,54 +322,14 @@ class PublicGardenView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        """Get list of public plants with search functionality"""
-        query = request.GET.get('query', '').strip()
+        """Get all public plants"""
+        # Get all public plants, excluding the current user's plant
+        public_plants = Plant.objects.filter(is_public=True).exclude(user=request.user).select_related('user', 'user__userprofile')
         
-        # Get public plants with related user data
-        plants = Plant.objects.filter(is_public=True).select_related('user').order_by('-created_at')
+        # Serialize the data
+        serializer = PublicPlantSerializer(public_plants, many=True)
         
-        # Apply search filter
-        if query:
-            plants = plants.filter(
-                user__username__icontains=query
-            ) | plants.filter(
-                name__icontains=query
-            ) | plants.filter(
-                species__icontains=query
-            )
-        
-        # Exclude user's own plants (optional - you can remove this if you want to show all)
-        plants = plants.exclude(user=request.user)
-        
-        # Serialize plant data with user info
-        plants_data = []
-        for plant in plants:
-            plants_data.append({
-                'id': plant.id,
-                'name': plant.name,
-                'species': plant.species,
-                'health_score': plant.health_score,
-                'water_level': getattr(plant, 'water_level', 50),
-                'current_mood_influence': plant.current_mood_influence,
-                'level': getattr(plant, 'level', 1),
-                'care_streak': getattr(plant, 'care_streak', 0),
-                'growth_stage': getattr(plant, 'growth_stage', 1),
-                'created_at': plant.created_at,
-                'last_care_date': plant.last_care_date,
-                'user': {
-                    'id': plant.user.id,
-                    'username': plant.user.username,
-                    'first_name': plant.user.first_name,
-                    'last_name': plant.user.last_name,
-                    'display_name': f"{plant.user.first_name} {plant.user.last_name}".strip() or plant.user.username
-                }
-            })
-        
-        return Response({
-            'plants': plants_data,
-            'total_plants': len(plants_data),
-            'message': f'Found {len(plants_data)} public plants'
-        })
+        return Response({'plants': serializer.data})
 
 class WaterOtherPlantView(APIView):
     """View for watering another user's plant"""

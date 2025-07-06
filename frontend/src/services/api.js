@@ -120,6 +120,7 @@ export const moodAPI = {
   getMood: (id) => api.get(`/api/moods/moods/${id}/`),
   updateMood: (id, moodData) => api.patch(`/api/moods/moods/${id}/`, moodData),
   deleteMood: (id) => api.delete(`/api/moods/moods/${id}/`),
+  getAnalytics: () => api.get("/api/moods/analytics/"),
 }
 
 // Reminder API calls (reminders app)

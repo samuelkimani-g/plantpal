@@ -25,6 +25,7 @@ import ReminderSettings from "./features/reminders/ReminderSettings"
 import BuyLeavesPage from "./pages/BuyLeavesPage"
 import PremiumChatbot from "./pages/PremiumChatbot"
 import PremiumUpgradePage from "./pages/PremiumUpgradePage"
+import MoodAnalysisDashboard from "./features/mood/MoodAnalysisDashboard"
 
 function App() {
   return (
@@ -163,6 +164,16 @@ function App() {
                   <ProtectedRoute>
                     <Layout>
                       <PremiumUpgradePage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/mood-analytics"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <MoodAnalysisDashboard />
                     </Layout>
                   </ProtectedRoute>
                 }

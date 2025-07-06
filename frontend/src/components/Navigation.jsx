@@ -19,7 +19,7 @@ import {
   Bell,
   CreditCard,
   MessageCircle,
-  Crown,
+  TrendingUp,
 } from "lucide-react"
 import { Button } from "./ui/button"
 
@@ -84,6 +84,7 @@ const Navigation = () => {
     { name: "Mindfulness", path: "/mindfulness", icon: Smile },
     { name: "Music", path: "/music", icon: Settings },
     { name: "AI Chat", path: "/premium-chatbot", icon: MessageCircle, premiumRequired: true },
+    { name: "Analytics", path: "/mood-analytics", icon: TrendingUp, premiumRequired: true },
   ]
 
   const breadcrumbs = getBreadcrumbs()
@@ -225,7 +226,7 @@ const Navigation = () => {
                       }}
                       className="flex items-center w-full px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 hover:text-amber-700"
                     >
-                      <Crown className="h-4 w-4 mr-2" />
+                      <Leaf className="h-4 w-4 mr-2 text-amber-500" />
                       Upgrade to Premium
                     </button>
                   )}
