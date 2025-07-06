@@ -60,6 +60,7 @@ urlpatterns = [
     path('api/payments/', include('apps.payments.urls')),
     path('api/memory/', include('apps.memory.urls')),
     path('api/chatbot/', include('apps.chatbot.urls')),
+    path('api/store/', include('apps.store.urls')),
 
     # Swagger/OpenAPI documentation
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),

@@ -20,6 +20,7 @@ import {
   CreditCard,
   MessageCircle,
   TrendingUp,
+  ShoppingCart,
 } from "lucide-react"
 import { Button } from "./ui/button"
 
@@ -81,6 +82,7 @@ const Navigation = () => {
     { name: "Dashboard", path: "/dashboard", icon: Home },
     { name: "My Plant", path: "/plants", icon: Leaf },
     { name: "Journal", path: "/journal", icon: BookOpen },
+    { name: "Shop", path: "/shop", icon: ShoppingCart },
     { name: "Mindfulness", path: "/mindfulness", icon: Smile },
     { name: "Music", path: "/music", icon: Settings },
     { name: "AI Chat", path: "/premium-chatbot", icon: MessageCircle, premiumRequired: true },

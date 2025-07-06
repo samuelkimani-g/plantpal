@@ -216,6 +216,14 @@ export const chatbotAPI = {
   sendMessage: (messages) => api.post("/api/chatbot/chat/", { messages }),
 };
 
+// Store API calls (store app)
+export const storeAPI = {
+  getStoreItems: () => api.get("/api/store/items/"),
+  buyStoreItem: (itemId) => api.post(`/api/store/items/${itemId}/buy/`),
+  getUserInventory: () => api.get("/api/store/inventory/"),
+  equipItem: (inventoryId) => api.post(`/api/store/inventory/${inventoryId}/equip/`),
+};
+
 // Payments API calls (payments app)
 export const paymentsAPI = {
   // Leaf packages

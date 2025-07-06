@@ -26,6 +26,7 @@ import BuyLeavesPage from "./pages/BuyLeavesPage"
 import PremiumChatbot from "./pages/PremiumChatbot"
 import PremiumUpgradePage from "./pages/PremiumUpgradePage"
 import MoodAnalysisDashboard from "./features/mood/MoodAnalysisDashboard"
+import ShopPage from './pages/ShopPage';
 
 function App() {
   return (
