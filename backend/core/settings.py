@@ -78,10 +78,11 @@ INSTALLED_APPS = [
     'apps.journal',
     'apps.plants',
     'apps.moods',
-    'apps.reminders',
     'apps.music',
+    'apps.reminders',
     'apps.payments',
     'apps.memory',
+    'apps.chatbot',
 ]
 
 MIDDLEWARE = [
