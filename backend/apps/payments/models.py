@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
@@ -48,7 +49,7 @@ class MpesaTransaction(models.Model):
         ('PREMIUM', 'Premium Purchase'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mpesa_transactions')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='mpesa_transactions')
     
     # Package references - only one should be set
     leaf_package = models.ForeignKey(LeafPackage, on_delete=models.CASCADE, null=True, blank=True)
@@ -123,8 +124,8 @@ class MpesaTransaction(models.Model):
 
 class WateringTransaction(models.Model):
     """Record of watering other users' plants"""
-    from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_waterings')
-    to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_waterings')
+    from_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_waterings')
+    to_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_waterings')
     plant = models.ForeignKey('plants.Plant', on_delete=models.CASCADE, related_name='watering_transactions')
     leaves_spent = models.IntegerField(default=2, help_text="Number of leaves spent")
     water_amount = models.IntegerField(default=20, help_text="Amount of water given")

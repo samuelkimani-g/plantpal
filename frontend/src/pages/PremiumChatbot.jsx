@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Loader2, Send, Bot, Sparkles } from 'lucide-react';
+import { chatbotAPI } from '../services/api';
 
 const PremiumChatbot = () => {
     const { user } = useAuth();
-    const [messages, setMessages] = useState([{ sender: 'bot', text: 'Welcome to your premium chatbot! How can I help you reflect today?' }]);
+    const [messages, setMessages] = useState([{ sender: 'bot', text: 'Welcome to your premium chatbot! How can I help you reflect today? You can also ask me about your plants!' }]);
     const [input, setInput] = useState('');
     const [isThinking, setIsThinking] = useState(false);
     const messagesEndRef = useRef(null);
@@ -21,22 +22,20 @@ const PremiumChatbot = () => {
         if (!input.trim() || isThinking) return;
 
         const userMessage = { sender: 'user', text: input.trim() };
-        setMessages(prev => [...prev, userMessage]);
+        const newMessages = [...messages, userMessage];
+        setMessages(newMessages);
         setInput('');
         setIsThinking(true);
 
         try {
-            // This is where you would call the Gemini API
-            // For now, we will simulate a response.
-            setTimeout(() => {
-                const botResponse = { sender: 'bot', text: `That's a very interesting thought about "${userMessage.text}". Let's explore that further.` };
-                setMessages(prev => [...prev, botResponse]);
-                setIsThinking(false);
-            }, 1500);
+            const response = await chatbotAPI.sendMessage(newMessages);
+            const botResponse = { sender: 'bot', text: response.data.reply };
+            setMessages(prev => [...prev, botResponse]);
         } catch (error) {
             console.error("Error with chatbot:", error);
-            const errorResponse = { sender: 'bot', text: "I'm having a little trouble thinking right now. Please try again in a moment." };
+            const errorResponse = { sender: 'bot', text: error.response?.data?.error || "I'm having a little trouble thinking right now. Please try again in a moment." };
             setMessages(prev => [...prev, errorResponse]);
+        } finally {
             setIsThinking(false);
         }
     };

@@ -83,7 +83,13 @@ INSTALLED_APPS = [
     'apps.payments',
     'apps.memory',
     'apps.chatbot',
+    'apps.store',
+    'djoser',
+    'drf_yasg',
+    'django_filters',
 ]
+
+AUTH_USER_MODEL = 'accounts.User'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

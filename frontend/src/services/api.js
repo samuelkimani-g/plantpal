@@ -211,6 +211,11 @@ export const musicAPI = {
   }
 }
 
+// Chatbot API calls (chatbot app)
+export const chatbotAPI = {
+  sendMessage: (messages) => api.post("/api/chatbot/chat/", { messages }),
+};
+
 // Payments API calls (payments app)
 export const paymentsAPI = {
   // Leaf packages

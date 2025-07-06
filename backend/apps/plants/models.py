@@ -3,6 +3,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 from django.utils import timezone
 import json
+from apps.store.models import StoreItem
 
 class Plant(models.Model):
     """
@@ -99,13 +100,31 @@ class Plant(models.Model):
     last_mood_update = models.DateTimeField(auto_now=True)
 
     # Social features
-    is_public = models.BooleanField(default=True, help_text="Whether this plant is visible to other users")
+    is_public = models.BooleanField(default=False, help_text="Whether this plant is visible to other users")
+
+    # Customization
+    pot = models.ForeignKey(
+        StoreItem, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        limit_choices_to={'item_type': 'POT'},
+        related_name='plants_in_pot'
+    )
+    decoration = models.ForeignKey(
+        StoreItem, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        limit_choices_to={'item_type': 'DECORATION'},
+        related_name='plants_with_decoration'
+    )
 
     class Meta:
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.name} ({self.user.username}) - {self.stage.title()}"
+        return self.name
 
     @property
     def get_health_status(self):

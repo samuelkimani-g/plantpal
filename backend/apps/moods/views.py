@@ -5,8 +5,6 @@ from apps.journal.permissions import IsOwner # Reusing IsOwner permission
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Mood
-from .serializers import MoodSerializer
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Avg, Count
@@ -43,7 +41,7 @@ class MoodAnalyticsView(APIView):
 
         # Get data for the last 30 days
         thirty_days_ago = timezone.now() - timedelta(days=30)
-        moods = Mood.objects.filter(user=request.user, created_at__gte=thirty_days_ago)
+        moods = MoodEntry.objects.filter(user=request.user, created_at__gte=thirty_days_ago)
 
         # Time series data
         time_series = (

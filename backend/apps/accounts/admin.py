@@ -1,22 +1,19 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from django.contrib.auth import get_user_model
-from .models import UserProfile
+from .models import User
 
-User = get_user_model()
-
-# Unregister the default User admin
-admin.site.unregister(User)
-
-@admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    """
-    Admin configuration for CustomUser
-    """
-    pass
+    model = User
+    list_display = ('email', 'username', 'is_premium', 'is_staff', 'is_active',)
+    list_filter = ('is_staff', 'is_active', 'is_premium',)
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        ('Personal info', {'fields': ('username', 'bio', 'plantpal_leaves')}),
+        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Premium Status', {'fields': ('is_premium', 'premium_expiry_date')}),
+        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+    )
+    search_fields = ('email', 'username',)
+    ordering = ('email',)
 
-@admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ['user', 'bio', 'reminder_enabled', 'spotify_connected']
-    list_filter = ['reminder_enabled', 'spotify_connected', 'created_at']
-    search_fields = ['user__username', 'user__email', 'bio']
+admin.site.register(User, CustomUserAdmin)
