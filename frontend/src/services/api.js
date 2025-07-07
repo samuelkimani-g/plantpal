@@ -39,15 +39,33 @@ api.interceptors.response.use(
     console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`)
     return response
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const refreshToken = localStorage.getItem('refresh_token');
+        const response = await axios.post(`${API_BASE_URL}/api/auth/jwt/refresh/`, { refresh: refreshToken });
+        const { access } = response.data;
+        localStorage.setItem('access_token', access);
+        api.defaults.headers.common['Authorization'] = 'Bearer ' + access;
+        originalRequest.headers['Authorization'] = 'Bearer ' + access;
+        return api(originalRequest);
+      } catch (refreshError) {
+        // Handle failed refresh (e.g., redirect to login)
+        console.error("Token refresh failed:", refreshError);
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        window.location.href = '/login'; // Or dispatch a logout action
+        return Promise.reject(refreshError);
+      }
+    }
     console.error(`❌ API Response Error: ${error.config?.method?.toUpperCase()} ${error.config?.url}`)
     console.error("Error details:", {
       status: error.response?.status,
       message: error.message,
       data: error.response?.data,
     })
-    // You might want to handle token refresh logic here if not already in a central place
-    // For now, just re-reject the error
     return Promise.reject(error)
   },
 )
