@@ -25,10 +25,11 @@ export default function BuyLeavesPage() {
     paymentsAPI.getPackages()
       .then((res) => {
         console.log("✅ Packages loaded:", res.data);
-        setPackages(res.data);
+        setPackages(Array.isArray(res.data) ? res.data : []);
       })
       .catch((err) => {
         console.error("❌ Failed to load packages:", err);
+        setPackages([]);
         setError("Failed to load packages. Please refresh the page.");
       });
 
@@ -46,10 +47,11 @@ export default function BuyLeavesPage() {
     paymentsAPI.getTransactions()
       .then((res) => {
         console.log("✅ Transactions loaded:", res.data);
-        setTransactions(res.data);
+        setTransactions(Array.isArray(res.data) ? res.data : []);
       })
       .catch((err) => {
         console.error("❌ Failed to load transactions:", err);
+        setTransactions([]);
         // Don't set error for this, keep transactions empty
       })
       .finally(() => {

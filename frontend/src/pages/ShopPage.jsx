@@ -19,11 +19,13 @@ const ShopPage = () => {
             storeAPI.getStoreItems(),
             storeAPI.getUserInventory(),
         ]).then(([itemsRes, inventoryRes]) => {
-            setItems(itemsRes.data);
-            setInventory(inventoryRes.data);
+            setItems(Array.isArray(itemsRes.data) ? itemsRes.data : []);
+            setInventory(Array.isArray(inventoryRes.data) ? inventoryRes.data : []);
             setLoading(false);
         }).catch(err => {
             console.error("Failed to load store data:", err);
+            setItems([]);
+            setInventory([]);
             setLoading(false);
         });
     }, []);
@@ -46,10 +48,10 @@ const ShopPage = () => {
         }
     };
 
-    const isOwned = (itemId) => inventory.some(inv => inv.item.id === itemId);
+    const isOwned = (itemId) => Array.isArray(inventory) ? inventory.some(inv => inv.item.id === itemId) : false;
 
     const renderItemList = (itemType) => {
-        const filteredItems = items.filter(item => item.item_type === itemType);
+        const filteredItems = Array.isArray(items) ? items.filter(item => item.item_type === itemType) : [];
         if (filteredItems.length === 0) {
             return <p>No {itemType.toLowerCase()}s available right now.</p>;
         }
