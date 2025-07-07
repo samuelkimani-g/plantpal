@@ -53,13 +53,14 @@ urlpatterns = [
     path('api/auth/', include('djoser.urls.jwt')),
     # Custom Views
     path('api/accounts/', include('apps.accounts.urls')),
-    path('api/plants/', include('apps.plants.urls')),
+    path('api/chatbot/', include('apps.chatbot.urls')),
+    path('api/journal/', include('apps.journal.urls')),
+    path('api/memory/', include('apps.memory.urls')),
     path('api/moods/', include('apps.moods.urls')),
     path('api/music/', include('apps.music.urls')),
-    path('api/reminders/', include('apps.reminders.urls')),
     path('api/payments/', include('apps.payments.urls')),
-    path('api/memory/', include('apps.memory.urls')),
-    path('api/chatbot/', include('apps.chatbot.urls')),
+    path('api/plants/', include('apps.plants.urls')),
+    path('api/reminders/', include('apps.reminders.urls')),
     path('api/store/', include('apps.store.urls')),
 
     # Swagger/OpenAPI documentation

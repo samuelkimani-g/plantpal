@@ -7,8 +7,7 @@ from django.utils import timezone
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 django.setup()
 
-from django.contrib.auth.models import User
-from apps.accounts.models import UserProfile
+from apps.accounts.models import User
 from apps.payments.models import MpesaTransaction
 
 def complete_user_transactions():
@@ -20,12 +19,7 @@ def complete_user_transactions():
         user = User.objects.get(username='sam')
         print(f"👤 User: {user.username} ({user.email})")
         
-        # Get or create user profile
-        profile, created = UserProfile.objects.get_or_create(user=user)
-        if created:
-            print("✅ Created new user profile")
-        
-        print(f"🍃 Current leaves: {profile.plantpal_leaves}")
+        print(f"🍃 Current leaves: {user.plantpal_leaves}")
         
         # Get pending transactions (excluding the early failed ones)
         pending_txns = MpesaTransaction.objects.filter(
@@ -50,12 +44,12 @@ def complete_user_transactions():
                 total_leaves_to_add += txn.leaves
                 print(f"✅ Completed transaction {txn.id}: {txn.package_name} - {txn.leaves} leaves")
         
-        # Add leaves to user profile
+        # Add leaves to user account
         if total_leaves_to_add > 0:
-            profile.plantpal_leaves += total_leaves_to_add
-            profile.save()
+            user.plantpal_leaves += total_leaves_to_add
+            user.save()
             print(f"🎉 Added {total_leaves_to_add} leaves to user account")
-            print(f"🍃 New leaves balance: {profile.plantpal_leaves}")
+            print(f"🍃 New leaves balance: {user.plantpal_leaves}")
         else:
             print("ℹ️  No leaves to add")
         

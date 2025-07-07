@@ -5,7 +5,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from django.contrib.auth.models import User
 from django.utils import timezone
 from django.conf import settings
 from .models import LeafPackage, PremiumPackage, MpesaTransaction, WateringTransaction
@@ -324,7 +323,7 @@ class PublicGardenView(APIView):
     def get(self, request):
         """Get all public plants"""
         # Get all public plants, excluding the current user's plant
-        public_plants = Plant.objects.filter(is_public=True).exclude(user=request.user).select_related('user', 'user__userprofile')
+        public_plants = Plant.objects.filter(is_public=True).exclude(user=request.user).select_related('user')
         
         # Serialize the data
         serializer = PublicPlantSerializer(public_plants, many=True)
@@ -350,25 +349,20 @@ class WaterOtherPlantView(APIView):
                     }, status=status.HTTP_400_BAD_REQUEST)
                 
                 # Check if user has enough leaves
-                try:
-                    user_profile = request.user.userprofile
-                except AttributeError:
-                    from apps.accounts.models import UserProfile
-                    user_profile, created = UserProfile.objects.get_or_create(user=request.user)
-                
+                user = request.user
                 leaves_required = 2  # Cost to water another plant
                 
-                if user_profile.plantpal_leaves < leaves_required:
+                if user.plantpal_leaves < leaves_required:
                     return Response({
                         'success': False,
                         'error': f'Not enough leaves. You need {leaves_required} leaves to water this plant.',
-                        'current_leaves': user_profile.plantpal_leaves,
+                        'current_leaves': user.plantpal_leaves,
                         'required_leaves': leaves_required
                     }, status=status.HTTP_400_BAD_REQUEST)
                 
                 # Deduct leaves from user
-                user_profile.plantpal_leaves -= leaves_required
-                user_profile.save()
+                user.plantpal_leaves -= leaves_required
+                user.save()
                 
                 # Water the plant
                 water_amount = 20
@@ -390,7 +384,7 @@ class WaterOtherPlantView(APIView):
                     'message': f'Successfully watered {plant.name}!',
                     'leaves_spent': leaves_required,
                     'water_amount': water_amount,
-                    'new_balance': user_profile.plantpal_leaves,
+                    'new_balance': user.plantpal_leaves,
                     'plant_health': plant.health_score,
                     'plant_water': plant.water_level
                 })
@@ -411,21 +405,12 @@ class UserLeavesView(APIView):
     def get(self, request):
         """Get user's current leaves balance"""
         try:
-            # Try to get userprofile, create if doesn't exist
-            if hasattr(request.user, 'userprofile'):
-                profile = request.user.userprofile
-                created = False
-            else:
-                from apps.accounts.models import UserProfile
-                profile, created = UserProfile.objects.get_or_create(user=request.user)
-                
-            leaves = profile.plantpal_leaves
+            leaves = request.user.plantpal_leaves
             return Response({
-                'leaves': leaves,
-                'profile_created': created
+                'leaves': leaves
             })
         except Exception as e:
-            logger.error(f"Error getting user leaves: {e}")
+            logger.error(f"Error getting user leaves for {request.user.id}: {e}")
             # Return default leaves if there's an error
             return Response({
                 'leaves': 0,
