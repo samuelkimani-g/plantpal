@@ -58,21 +58,21 @@ api.interceptors.response.use(
 // main 'api' instance's baseURL is JUST THE DOMAIN.
 // ----------------------------------------------------
 
-// Auth API calls (accounts app)
+// Auth API calls (using djoser endpoints)
 export const authAPI = {
-  register: (userData) => api.post("/api/accounts/register/", userData),
-  login: (credentials) => api.post("/api/accounts/login/", credentials),
-  logout: (refreshToken) => api.post("/api/accounts/logout/", { refresh: refreshToken }),
-  refreshToken: (refreshToken) => api.post("/api/accounts/token/refresh/", { refresh: refreshToken }),
-  getProfile: () => api.get("/api/accounts/me/"),
-  updateProfile: (userData) => api.patch("/api/accounts/me/update/", userData),
-  changePassword: (passwordData) => api.post("/api/accounts/change-password/", passwordData),
-  deleteAccount: (refreshToken) => api.delete("/api/accounts/delete/", { data: { refresh: refreshToken } }),
+  register: (userData) => api.post("/api/auth/users/", userData),
+  login: (credentials) => api.post("/api/auth/jwt/create/", credentials),
+  logout: (refreshToken) => api.post("/api/auth/jwt/logout/", { refresh: refreshToken }),
+  refreshToken: (refreshToken) => api.post("/api/auth/jwt/refresh/", { refresh: refreshToken }),
+  getProfile: () => api.get("/api/auth/users/me/"),
+  updateProfile: (userData) => api.patch("/api/auth/users/me/", userData),
+  changePassword: (passwordData) => api.post("/api/auth/users/set_password/", passwordData),
+  deleteAccount: (refreshToken) => api.delete("/api/auth/users/me/"),
   connectSpotify: (spotifyData) => api.post("/api/music/status/", spotifyData),
   getUserStats: () => api.get("/api/accounts/stats/"),
   // Convenience methods for direct API calls
-  post: (url, data) => api.post(`/api/accounts${url}`, data),
-  delete: (url, config) => api.delete(`/api/accounts${url}`, config),
+  post: (url, data) => api.post(`/api/auth${url}`, data),
+  delete: (url, config) => api.delete(`/api/auth${url}`, config),
 }
 
 // Journal API calls (journal app)

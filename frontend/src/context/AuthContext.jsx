@@ -103,16 +103,15 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (credentials) => {
     dispatch({ type: "AUTH_START" })
     try {
-      console.log("Attempting login with:", { username: credentials.email, password: "***" })
+      console.log("Attempting login with:", { email: credentials.email, password: "***" })
 
-      // Backend expects 'username' and 'password'. Your Login form sends 'email' and 'password'.
-      // Map 'email' from frontend formData to 'username' for backend.
+      // Since our custom User model uses email as USERNAME_FIELD, djoser expects 'email' and 'password'
       const loginData = {
-        username: credentials.email, // Assuming backend accepts email as username for login
+        email: credentials.email,
         password: credentials.password,
       }
 
-      console.log("Sending login request to:", "/api/accounts/login/")
+      console.log("Sending login request to:", "/api/auth/jwt/create/")
       const response = await authAPI.login(loginData)
       console.log("Login response:", response.data)
 
@@ -143,8 +142,8 @@ export function AuthProvider({ children }) {
           errorMessage = error.response.data.detail
         } else if (error.response.data.non_field_errors) {
           errorMessage = error.response.data.non_field_errors[0]
-        } else if (error.response.data.username) {
-          errorMessage = error.response.data.username[0]
+        } else if (error.response.data.email) {
+          errorMessage = error.response.data.email[0]
         } else if (error.response.data.password) {
           errorMessage = error.response.data.password[0]
         }
@@ -166,15 +165,15 @@ export function AuthProvider({ children }) {
     try {
       console.log("Attempting registration with:", { username, email, password: "***", confirmPassword: "***" })
 
-      // Map frontend fields to backend expected fields
+      // Map frontend fields to djoser expected fields
       const registrationData = {
         username: username,
         email: email,
         password: password,
-        password_confirm: confirmPassword, // Map confirmPassword to password_confirm
+        re_password: confirmPassword, // djoser uses 're_password' for password confirmation
       }
 
-      console.log("Sending registration request to:", "/api/accounts/register/")
+      console.log("Sending registration request to:", "/api/auth/users/")
       const response = await authAPI.register(registrationData) // Just register, don't auto-login
       console.log("Registration response:", response.data)
 
@@ -197,8 +196,8 @@ export function AuthProvider({ children }) {
           errorMessage = `Email: ${errors.email[0]}`
         } else if (errors.password) {
           errorMessage = `Password: ${errors.password[0]}`
-        } else if (errors.password_confirm) {
-          errorMessage = `Password confirmation: ${errors.password_confirm[0]}`
+        } else if (errors.re_password) {
+          errorMessage = `Password confirmation: ${errors.re_password[0]}`
         } else if (errors.non_field_errors) {
           errorMessage = errors.non_field_errors[0]
         } else {
