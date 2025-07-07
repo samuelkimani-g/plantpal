@@ -91,25 +91,26 @@ class MpesaTransaction(models.Model):
         self.result_desc = result_desc
         self.completed_at = timezone.now()
         
-        profile = self.user.userprofile
+        # Get the user directly (no userprofile needed)
+        user = self.user
         
         if self.transaction_type == 'LEAVES' and self.leaf_package:
             # Credit leaves to user
-            profile.plantpal_leaves += self.leaves
+            user.plantpal_leaves += self.leaves
         elif self.transaction_type == 'PREMIUM' and self.premium_package:
             # Add bonus leaves
-            profile.plantpal_leaves += self.premium_package.bonus_leaves
+            user.plantpal_leaves += self.premium_package.bonus_leaves
 
             # Activate premium membership
-            if profile.is_premium and profile.premium_expiry_date > timezone.now():
+            if user.is_premium and user.premium_expiry_date and user.premium_expiry_date > timezone.now():
                 # Extend existing premium
-                profile.premium_expiry_date += timedelta(days=self.premium_days)
+                user.premium_expiry_date += timedelta(days=self.premium_days)
             else:
                 # Start new premium
-                profile.is_premium = True
-                profile.premium_expiry_date = timezone.now() + timedelta(days=self.premium_days)
+                user.is_premium = True
+                user.premium_expiry_date = timezone.now() + timedelta(days=self.premium_days)
         
-        profile.save()
+        user.save()
         self.save()
         return True
     

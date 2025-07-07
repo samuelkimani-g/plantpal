@@ -270,19 +270,40 @@ class MpesaService:
                     result_desc=callback_data.get('ResultDesc', 'Success')
                 )
                 
-                # Send success SMS to user
-                sms_message = f"✅ PlantPal: Payment successful! You received {transaction.leaves} leaves. Receipt: {receipt_number}. Happy gardening! 🌿"
+                # Send success SMS to user based on transaction type
+                if transaction.transaction_type == 'LEAVES':
+                    sms_message = f"✅ PlantPal: Payment successful! You received {transaction.leaves} leaves. Receipt: {receipt_number}. Happy gardening! 🌿"
+                elif transaction.transaction_type == 'PREMIUM':
+                    sms_message = f"✅ PlantPal: Premium activated! You now have {transaction.premium_days} days of premium access"
+                    if transaction.premium_package and transaction.premium_package.bonus_leaves > 0:
+                        sms_message += f" + {transaction.premium_package.bonus_leaves} bonus leaves"
+                    sms_message += f". Receipt: {receipt_number}. Enjoy premium features! 🌟"
+                else:
+                    sms_message = f"✅ PlantPal: Payment successful! Receipt: {receipt_number}. Thank you! 🌿"
+                
                 self.send_sms_notification(transaction.phone_number, sms_message)
                 
                 # Send notification SMS to your number (0707953603)
-                owner_sms = f"💰 PlantPal Payment Received!\n• Amount: KES {transaction.amount}\n• From: {transaction.phone_number}\n• Leaves: {transaction.leaves}\n• Receipt: {receipt_number}\n• User: {transaction.user.username}"
+                if transaction.transaction_type == 'LEAVES':
+                    owner_sms = f"💰 PlantPal Payment Received!\n• Amount: KES {transaction.amount}\n• From: {transaction.phone_number}\n• Leaves: {transaction.leaves}\n• Receipt: {receipt_number}\n• User: {transaction.user.username}"
+                elif transaction.transaction_type == 'PREMIUM':
+                    owner_sms = f"💰 PlantPal Premium Payment!\n• Amount: KES {transaction.amount}\n• From: {transaction.phone_number}\n• Premium Days: {transaction.premium_days}\n• Receipt: {receipt_number}\n• User: {transaction.user.username}"
+                else:
+                    owner_sms = f"💰 PlantPal Payment Received!\n• Amount: KES {transaction.amount}\n• From: {transaction.phone_number}\n• Receipt: {receipt_number}\n• User: {transaction.user.username}"
+                
                 self.send_sms_notification(self.target_phone, owner_sms)
                 
                 logger.info(f"✅ PAYMENT SUCCESSFUL:")
                 logger.info(f"   • Transaction {transaction.id} completed")
                 logger.info(f"   • Customer: {transaction.phone_number}")
                 logger.info(f"   • Amount: KES {transaction.amount}")
-                logger.info(f"   • Leaves credited: {transaction.leaves}")
+                logger.info(f"   • Type: {transaction.transaction_type}")
+                if transaction.transaction_type == 'LEAVES':
+                    logger.info(f"   • Leaves credited: {transaction.leaves}")
+                elif transaction.transaction_type == 'PREMIUM':
+                    logger.info(f"   • Premium days: {transaction.premium_days}")
+                    if transaction.premium_package and transaction.premium_package.bonus_leaves > 0:
+                        logger.info(f"   • Bonus leaves: {transaction.premium_package.bonus_leaves}")
                 logger.info(f"   • Receipt: {receipt_number}")
                 logger.info(f"   • Money received by: 0707953603")
                 return True
