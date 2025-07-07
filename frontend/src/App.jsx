@@ -189,6 +189,16 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/shop"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <ShopPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
 
             {/* Redirect any unknown routes to dashboard if authenticated, otherwise to landing */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
