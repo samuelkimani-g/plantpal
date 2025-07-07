@@ -14,4 +14,7 @@ python manage.py migrate
 # Create default packages and store items
 python manage.py create_packages
 python manage.py create_default_items
-python manage.py setup_premium_packages 
+python manage.py setup_premium_packages
+
+# Create test user with premium status
+python create_test_user.py 
