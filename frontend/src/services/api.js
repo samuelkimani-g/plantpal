@@ -41,10 +41,26 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    if (error.response.status === 401 && !originalRequest._retry) {
+
+    const excludedPaths = [
+      '/api/auth/jwt/create/',
+      '/api/auth/jwt/refresh/'
+    ];
+
+    if (
+      error.response.status === 401 &&
+      originalRequest.url &&
+      !excludedPaths.includes(originalRequest.url) &&
+      !originalRequest._retry
+    ) {
       originalRequest._retry = true;
       try {
         const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) {
+            localStorage.removeItem("access_token");
+            window.location.href = '/login';
+            return Promise.reject(error);
+        }
         const response = await axios.post(`${API_BASE_URL}/api/auth/jwt/refresh/`, { refresh: refreshToken });
         const { access } = response.data;
         localStorage.setItem('access_token', access);
@@ -52,14 +68,14 @@ api.interceptors.response.use(
         originalRequest.headers['Authorization'] = 'Bearer ' + access;
         return api(originalRequest);
       } catch (refreshError) {
-        // Handle failed refresh (e.g., redirect to login)
         console.error("Token refresh failed:", refreshError);
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
-        window.location.href = '/login'; // Or dispatch a logout action
+        window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }
+
     console.error(`❌ API Response Error: ${error.config?.method?.toUpperCase()} ${error.config?.url}`)
     console.error("Error details:", {
       status: error.response?.status,

@@ -215,14 +215,11 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(() => {
     try {
-      const refreshToken = localStorage.getItem("refresh_token")
-      if (refreshToken) {
-        await authAPI.logout(refreshToken)
-      }
+      console.log("Logging out and clearing local tokens.");
     } catch (error) {
-      console.error("Logout error:", error)
+      console.error("Error during logout pre-cleanup:", error);
     } finally {
       localStorage.removeItem("access_token")
       localStorage.removeItem("refresh_token")
