@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
+import { Alert, AlertDescription } from '../components/ui/alert';
 import {
   Music,
   Heart,
@@ -268,48 +268,71 @@ const MusicDashboard = () => {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center text-green-700">
-              <Leaf className="h-5 w-5 mr-2" /> Mood Analysis
+              <Leaf className="h-5 w-5 mr-2" /> Mood Summary
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 text-center text-gray-500">
-            <p>No mood data available for the last 7 days. Listen to more music to generate a mood profile!</p>
+            <p>No mood data available. Listen to more music to generate a mood profile!</p>
           </CardContent>
         </Card>
       );
     }
 
-    const currentMood = moodAnalysis.current_mood_label || 'neutral';
-    const moodScore = moodAnalysis.current_mood_score || 0.5;
+    const currentMood = moodAnalysis.overall_mood_label || moodAnalysis.current_mood_label || 'neutral';
+    const moodScore = moodAnalysis.overall_mood_score || moodAnalysis.current_mood_score || 0.5;
     const moodEmoji = musicAPI.getMoodEmoji(currentMood);
 
     return (
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center text-green-700">
-            <Leaf className="h-5 w-5 mr-2" /> Mood Analysis (Last 7 Days)
+            <Leaf className="h-5 w-5 mr-2" /> Mood Summary - Last 7 Days
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <div className="text-center mb-6">
-            <div className="text-4xl mb-2">{moodEmoji}</div>
-            <h3 className="text-xl font-semibold text-gray-800 capitalize">{currentMood}</h3>
-            <p className="text-sm text-gray-600">{(moodScore * 100).toFixed(0)}% mood score</p>
+            <div className="text-6xl mb-3">{moodEmoji}</div>
+            <h3 className="text-2xl font-bold text-gray-800 capitalize mb-2">{currentMood}</h3>
+            <p className="text-lg text-gray-600">{(moodScore * 100).toFixed(0)}% mood score</p>
+            
+            {/* Show how mood affects plant */}
+            <div className="mt-4 p-3 bg-green-50 rounded-lg">
+              <p className="text-sm text-green-800">
+                {moodScore > 0.7 ? "🌱 Your positive mood is helping your plant thrive!" :
+                 moodScore > 0.5 ? "🌿 Your balanced mood keeps your plant healthy" :
+                 moodScore > 0.3 ? "🍂 Your plant needs more positive energy" :
+                 "🥀 Your plant is wilting - try some uplifting music!"}
+              </p>
+            </div>
           </div>
           
-          {moodAnalysis.mood_distribution && Object.keys(moodAnalysis.mood_distribution).length > 0 && (
+          {moodAnalysis.mood_breakdown && moodAnalysis.mood_breakdown.mood_distribution && 
+           Object.keys(moodAnalysis.mood_breakdown.mood_distribution).length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-semibold text-gray-700 mb-3">Mood Distribution</h4>
-              {Object.entries(moodAnalysis.mood_distribution)
-                .sort(([,a], [,b]) => parseFloat(b) - parseFloat(a))
-                .map(([mood, percentage]) => (
-                  <div key={mood} className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <span className="text-xl mr-2">{musicAPI.getMoodEmoji(mood)}</span>
-                      <span className="capitalize">{mood}</span>
+              <h4 className="font-semibold text-gray-700 mb-3">Mood Breakdown</h4>
+              {Object.entries(moodAnalysis.mood_breakdown.mood_distribution)
+                .sort(([,a], [,b]) => b - a)
+                .map(([mood, count]) => {
+                  const total = moodAnalysis.mood_breakdown.total_sessions || 1;
+                  const percentage = ((count / total) * 100).toFixed(0);
+                  return (
+                    <div key={mood} className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <span className="text-xl mr-2">{musicAPI.getMoodEmoji(mood)}</span>
+                        <span className="capitalize">{mood}</span>
+                      </div>
+                      <span className="font-semibold">{percentage}%</span>
                     </div>
-                    <span className="font-semibold">{parseFloat(percentage).toFixed(0)}%</span>
-                  </div>
-                ))}
+                  );
+                })}
+            </div>
+          )}
+          
+          {/* Stats summary */}
+          {moodAnalysis.mood_breakdown && (
+            <div className="mt-4 pt-4 border-t text-sm text-gray-600">
+              <p>{moodAnalysis.mood_breakdown.total_sessions || 0} listening sessions analyzed</p>
+              <p>{moodAnalysis.mood_breakdown.total_listening_minutes || 0} minutes of music</p>
             </div>
           )}
         </CardContent>
@@ -388,7 +411,6 @@ const MusicDashboard = () => {
         {error && (
           <Alert variant="destructive" className="mt-6 max-w-md">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Connection Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -403,7 +425,6 @@ const MusicDashboard = () => {
         {error && (
           <Alert variant="destructive" className="mt-6 max-w-md">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Connection Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -415,16 +436,15 @@ const MusicDashboard = () => {
     <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
       <h1 className="text-4xl font-extrabold text-gray-900 mb-2 flex items-center">
         <Music className="h-10 w-10 text-green-600 mr-3" />
-        Music Dashboard
+        Music Mood Tracker
       </h1>
       <p className="text-lg text-gray-600 mb-8">
-        Track your music mood and plant growth integration (Last 7 Days)
+        Your music affects your plant's mood and health - see your mood summary below
       </p>
 
       {error && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error Loading Data</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -463,9 +483,6 @@ const MusicDashboard = () => {
 
         {/* Mood Analysis */}
         {renderMoodAnalysis()}
-
-        {/* Recently Played */}
-        {renderTrackList(recentTracks, 'Recently Played')}
 
         {/* Settings Section */}
         <Card className="p-6 shadow-lg">
