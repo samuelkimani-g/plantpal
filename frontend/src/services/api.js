@@ -271,6 +271,9 @@ export const storeAPI = {
 
 // Payments API calls (payments app)
 export const paymentsAPI = {
+  // User leaves balance
+  getLeaves: () => api.get("/api/payments/leaves/"),
+  
   // Premium and packages
   getPackages: () => api.get("/api/payments/packages/"),
   purchasePremium: (paymentData) => api.post("/api/payments/premium/", paymentData),
