@@ -6,10 +6,23 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 import logging
 
-from .models import Plant, PlantLog, MemorySeed
-from .serializers import PlantSerializer, PlantLogSerializer, MemorySeedSerializer
+from .models import Plant, PlantLog, MemorySeed, FantasyPlantParams
+from .serializers import PlantSerializer, PlantLogSerializer, MemorySeedSerializer, FantasyPlantParamsSerializer
 from .services import PlantGrowthService, FirestoreService
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from .models import Plant, PlantLog, MemorySeed, FantasyPlantParams
+from .serializers import PlantSerializer, PlantLogSerializer, MemorySeedSerializer, FantasyPlantParamsSerializer
+from utils.enhanced_mood_system import EnhancedMoodSystem
+import logging
+
+logger = logging.getLogger(__name__)
 
 class PlantViewSet(viewsets.ModelViewSet):
     """
@@ -466,18 +479,45 @@ class FantasyParamsView(APIView):
 
 class MindfulnessRewardView(APIView):
     permission_classes = [IsAuthenticated]
-
+    
     def post(self, request):
-        try:
-            plant = Plant.objects.filter(user=request.user).first()
-            if not plant:
-                return Response({"error": "No plant found."}, status=status.HTTP_404_NOT_FOUND)
-            reward_type = request.data.get('reward_type', 'breathing')
-            from .services import PlantGrowthService
-            PlantGrowthService.reward_mindfulness(plant, reward_type=reward_type)
-            return Response({"message": "Mindfulness reward applied!"})
-        except Exception as e:
-            import traceback
-            print(f"Error in MindfulnessRewardView.post: {e}")
-            print(traceback.format_exc())
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        """Record mindfulness activity and reward with mood tracking"""
+        reward_type = request.data.get('reward_type', 'breathing')
+        duration = request.data.get('duration_minutes', 5)
+        
+        # Determine action type based on reward type
+        action_mapping = {
+            'breathing': 'breathing_exercise',
+            'meditation': 'meditation_session',
+            'gratitude': 'gratitude_journal',
+            'visualization': 'visualization_exercise',
+            'game': 'mindfulness_game'
+        }
+        
+        action_type = action_mapping.get(reward_type, 'mindfulness_game')
+        
+        # Record mood impact
+        mood_result = EnhancedMoodSystem.record_action(
+            request.user, 
+            action_type,
+            {'duration_minutes': duration}
+        )
+        
+        # Give leaves as reward
+        leaves_earned = 5  # Base reward
+        if duration > 10:
+            leaves_earned += 3  # Bonus for longer sessions
+        
+        user_profile = request.user.userprofile
+        user_profile.plantpal_leaves += leaves_earned
+        user_profile.save()
+        
+        logger.info(f"Mindfulness activity completed: {reward_type} with mood impact: {mood_result}")
+        
+        return Response({
+            'reward_type': reward_type,
+            'duration_minutes': duration,
+            'leaves_earned': leaves_earned,
+            'mood_impact': mood_result,
+            'total_leaves': user_profile.plantpal_leaves
+        })

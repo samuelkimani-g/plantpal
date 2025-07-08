@@ -16,6 +16,7 @@ from .mpesa_service import MpesaService
 from apps.plants.models import Plant
 import logging
 from datetime import datetime
+from apps.mood.mood_system import EnhancedMoodSystem
 
 logger = logging.getLogger(__name__)
 
@@ -463,6 +464,45 @@ class WateringHistoryView(APIView):
         return Response({
             'sent': WateringTransactionSerializer(sent_waterings, many=True).data,
             'received': WateringTransactionSerializer(received_waterings, many=True).data
+        })
+
+class WaterPurchaseView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Purchase water using leaves"""
+        water_amount = request.data.get('water_amount', 1)
+        leaves_per_water = 10  # Cost: 10 leaves per water
+        
+        total_cost = water_amount * leaves_per_water
+        user_profile = request.user.userprofile
+        
+        # Check if user has enough leaves
+        if user_profile.plantpal_leaves < total_cost:
+            return Response({
+                'error': f'Not enough leaves. You need {total_cost} leaves but have {user_profile.plantpal_leaves}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Deduct leaves and add water
+        user_profile.plantpal_leaves -= total_cost
+        user_profile.water_count += water_amount
+        user_profile.save()
+        
+        # Record mood impact (spending leaves has slight negative impact)
+        mood_result = EnhancedMoodSystem.record_action(
+            request.user, 
+            'spend_leaves',
+            {'amount': total_cost, 'purpose': 'water_purchase'}
+        )
+        
+        logger.info(f"Water purchased: {water_amount} water for {total_cost} leaves")
+        
+        return Response({
+            'water_purchased': water_amount,
+            'leaves_spent': total_cost,
+            'remaining_leaves': user_profile.plantpal_leaves,
+            'total_water': user_profile.water_count,
+            'mood_impact': mood_result
         })
 
 class SetupPackagesView(APIView):

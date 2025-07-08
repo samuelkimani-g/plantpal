@@ -271,34 +271,26 @@ export const storeAPI = {
 
 // Payments API calls (payments app)
 export const paymentsAPI = {
-  // Leaf packages
+  // Premium and packages
   getPackages: () => api.get("/api/payments/packages/"),
-  initiatePayment: (packageId, phoneNumber) =>
-    api.post("/api/payments/initiate/", { package_id: packageId, phone_number: phoneNumber }),
+  purchasePremium: (paymentData) => api.post("/api/payments/premium/", paymentData),
+  purchaseLeaves: (packageData) => api.post("/api/payments/packages/", packageData),
   
-  // Premium packages
-  getPremiumPackages: () => api.get("/api/payments/premium-packages/"),
-  initiatePremiumPayment: (data) =>
-    api.post("/api/payments/initiate-premium/", data),
+  // Water purchase
+  purchaseWater: (waterAmount) => api.post("/api/payments/water/purchase/", { water_amount: waterAmount }),
   
-  // Store items
-  getStoreItems: () => api.get("/api/payments/store-items/"),
-  purchaseStoreItem: (itemId) => api.post(`/api/payments/store-items/${itemId}/purchase/`),
-  getInventory: () => api.get("/api/payments/inventory/"),
+  // Transaction management
+  getTransactionStatus: () => api.get("/api/payments/transactions/status/"),
+  completePendingTransactions: () => api.post("/api/payments/transactions/complete-pending/"),
   
-  // Manual transaction completion
-  completeTransaction: (transactionId) => 
-    api.post("/api/payments/complete-transaction/", { transaction_id: transactionId }),
-  completeAllPending: () => 
-    api.post("/api/payments/complete-all-pending/"),
-  
-  // General
-  getLeaves: () => api.get("/api/payments/leaves/"),
-  getTransactions: () => api.get("/api/payments/transactions/"),
-  getTransactionHistory: () => api.get("/api/payments/transactions/"),
-  getGarden: (query = "") => api.get(`/api/payments/garden/${query ? `?query=${encodeURIComponent(query)}` : ""}`),
+  // Public garden and social features
+  getGarden: (query = "") => api.get(`/api/payments/garden/${query ? `?${query}` : ""}`),
   waterOtherPlant: (plantId) => api.post(`/api/payments/water/${plantId}/`),
-  getWateringHistory: () => api.get("/api/payments/watering-history/"),
-};
+  
+  // Store and inventory
+  getStoreItems: () => api.get("/api/payments/store-items/"),
+  getUserInventory: () => api.get("/api/payments/inventory/"),
+  purchaseStoreItem: (itemId) => api.post(`/api/payments/store-items/${itemId}/purchase/`),
+}
 
 export default api

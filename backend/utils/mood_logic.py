@@ -1,383 +1,208 @@
 """
-Central Mood Engine for PlantPal
-Coordinates between Journal sentiment, Music mood, and Plant growth
-Following the architecture specification for unified mood determination
+Comprehensive Mood Engine for PlantPal
+Every action affects mood, which affects plant health
+Mood is very sensitive, plant health changes gradually
 """
 
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, List
 from django.utils import timezone
-from django.db import models  # Needed for aggregation functions
+from django.db import models
 from datetime import datetime, timedelta
+import logging
 
+logger = logging.getLogger(__name__)
 
 class MoodEngine:
     """
-    Central mood engine that processes and unifies mood data from multiple sources
-    As specified in the architecture: Merges journal + music mood to get unified emotional state
+    Comprehensive mood engine that tracks every user action and affects plant health
     """
     
-    # Mood type mappings as specified in architecture
+    # Very sensitive mood types with fine-grained scoring
     MOOD_TYPES = {
-        'euphoric': {'score': 0.95, 'label': 'euphoric', 'emoji': '🤩'},
-        'happy': {'score': 0.8, 'label': 'happy', 'emoji': '😊'},
-        'upbeat': {'score': 0.7, 'label': 'upbeat', 'emoji': '😎'},
-        'energetic': {'score': 0.75, 'label': 'energetic', 'emoji': '⚡'},
-        'neutral': {'score': 0.5, 'label': 'neutral', 'emoji': '😐'},
-        'calm': {'score': 0.4, 'label': 'calm', 'emoji': '😌'},
-        'melancholy': {'score': 0.3, 'label': 'melancholy', 'emoji': '😔'},
-        'sad': {'score': 0.2, 'label': 'sad', 'emoji': '😢'},
-        'low': {'score': 0.15, 'label': 'low', 'emoji': '😞'},
+        'euphoric': {'score': 0.95, 'label': 'euphoric', 'emoji': '🤩', 'health_boost': 3},
+        'happy': {'score': 0.85, 'label': 'happy', 'emoji': '😊', 'health_boost': 2},
+        'upbeat': {'score': 0.75, 'label': 'upbeat', 'emoji': '😎', 'health_boost': 1.5},
+        'energetic': {'score': 0.7, 'label': 'energetic', 'emoji': '⚡', 'health_boost': 1},
+        'positive': {'score': 0.65, 'label': 'positive', 'emoji': '😌', 'health_boost': 0.5},
+        'neutral': {'score': 0.5, 'label': 'neutral', 'emoji': '😐', 'health_boost': 0},
+        'calm': {'score': 0.4, 'label': 'calm', 'emoji': '😌', 'health_boost': -0.5},
+        'melancholy': {'score': 0.3, 'label': 'melancholy', 'emoji': '😔', 'health_boost': -1},
+        'sad': {'score': 0.2, 'label': 'sad', 'emoji': '😢', 'health_boost': -1.5},
+        'low': {'score': 0.1, 'label': 'low', 'emoji': '😞', 'health_boost': -2},
+        'depressed': {'score': 0.05, 'label': 'depressed', 'emoji': '😭', 'health_boost': -3},
     }
     
-    # Weights for different mood sources as per architecture
-    MOOD_SOURCE_WEIGHTS = {
-        'journal': 0.6,  # Journal entries carry more weight (primary)
-        'music': 0.4,    # Music mood is secondary
+    # Action-based mood impacts (very sensitive)
+    ACTION_MOOD_IMPACTS = {
+        # Journal actions
+        'journal_entry_positive': 0.15,    # Writing positive journal entry
+        'journal_entry_negative': -0.15,   # Writing negative journal entry
+        'journal_entry_neutral': 0.02,     # Writing neutral journal entry
+        'journal_favorite': 0.1,           # Marking entry as favorite
+        
+        # Music actions
+        'music_listen_happy': 0.12,        # Listening to happy music
+        'music_listen_sad': -0.08,         # Listening to sad music
+        'music_listen_energetic': 0.1,     # Listening to energetic music
+        'music_connect_spotify': 0.05,     # Connecting Spotify
+        
+        # Plant care actions
+        'water_plant': 0.08,               # Watering plant
+        'fertilize_plant': 0.1,            # Fertilizing plant
+        'plant_growth': 0.15,              # Plant growing
+        'plant_wilting': -0.1,             # Plant wilting
+        
+        # Mindfulness actions
+        'breathing_exercise': 0.12,        # Completing breathing exercise
+        'meditation_session': 0.15,        # Completing meditation
+        'gratitude_journal': 0.2,          # Writing gratitude
+        'visualization_exercise': 0.1,     # Completing visualization
+        'mindfulness_game': 0.08,          # Playing mindfulness game
+        
+        # Social actions
+        'water_other_plant': 0.1,          # Watering someone else's plant
+        'receive_water': 0.08,             # Receiving water from others
+        'community_garden_visit': 0.05,    # Visiting community garden
+        
+        # Memory and personal actions
+        'open_memory_seed': 0.12,          # Opening memory seed
+        'create_memory_seed': 0.1,         # Creating memory seed
+        'chatbot_positive': 0.08,          # Positive chatbot interaction
+        'chatbot_negative': -0.05,         # Negative chatbot interaction
+        
+        # Premium and rewards
+        'premium_purchase': 0.05,          # Buying premium
+        'earn_leaves': 0.03,               # Earning leaves
+        'spend_leaves': -0.02,             # Spending leaves
+        
+        # Negative actions
+        'miss_watering': -0.05,            # Missing watering
+        'plant_dying': -0.15,              # Plant dying
+        'app_neglect': -0.02,              # Not using app for long time
     }
     
-    # Plant growth stage thresholds as specified
-    PLANT_GROWTH_STAGES = {
-        'wilt': {'min_score': 0.0, 'max_score': 0.2, 'label': 'Wilting', 'emoji': '🥀'},
-        'seedling': {'min_score': 0.2, 'max_score': 0.4, 'label': 'Seedling', 'emoji': '🌱'},
-        'sprout': {'min_score': 0.4, 'max_score': 0.7, 'label': 'Sprouting', 'emoji': '🌿'},
-        'bloom': {'min_score': 0.7, 'max_score': 1.0, 'label': 'Blooming', 'emoji': '🌸'},
-    }
-
     @classmethod
-    def determine_user_mood(cls, journal_mood: Optional[str] = None, 
-                           music_mood: Optional[str] = None,
-                           journal_score: Optional[float] = None,
-                           music_score: Optional[float] = None) -> Dict[str, Union[float, str]]:
+    def record_action(cls, user, action_type: str, action_data: Dict = None) -> Dict:
         """
-        Implementation of the architecture's determine_user_mood function:
-        "Merge journal + music mood to get unified emotional state"
+        Record any user action and update mood accordingly
+        This is the main entry point for all mood tracking
         """
-        # Handle the case where we have mood strings
-        if journal_mood and music_mood:
-            if journal_mood == music_mood:
-                return {
-                    'unified_mood': journal_mood,
-                    'mood_score': cls.MOOD_TYPES.get(journal_mood, {}).get('score', 0.5),
-                    'confidence': 0.9,
-                    'sources': ['journal', 'music'],
-                    'agreement': True
-                }
-            
-            # Different moods - use architecture logic
-            if 'sad' in [journal_mood, music_mood]:
-                unified_mood = 'low'
-            elif 'happy' in [journal_mood, music_mood]:
-                unified_mood = 'balanced'
-            else:
-                unified_mood = 'neutral'
-            
-            return {
-                'unified_mood': unified_mood,
-                'mood_score': cls.MOOD_TYPES.get(unified_mood, {}).get('score', 0.5),
-                'confidence': 0.7,
-                'sources': ['journal', 'music'],
-                'agreement': False,
-                'source_moods': {'journal': journal_mood, 'music': music_mood}
-            }
-        
-        # Handle numerical scores
-        if journal_score is not None and music_score is not None:
-            # Weighted combination as per architecture
-            unified_score = (
-                journal_score * cls.MOOD_SOURCE_WEIGHTS['journal'] +
-                music_score * cls.MOOD_SOURCE_WEIGHTS['music']
-            )
-            
-            unified_mood = cls.score_to_mood_type(unified_score)
-            
-            return {
-                'unified_mood': unified_mood,
-                'mood_score': unified_score,
-                'confidence': 0.8,
-                'sources': ['journal', 'music'],
-                'source_scores': {'journal': journal_score, 'music': music_score}
-            }
-        
-        # Single source
-        if journal_mood or journal_score is not None:
-            score = journal_score if journal_score is not None else cls.MOOD_TYPES.get(journal_mood, {}).get('score', 0.5)
-            mood = journal_mood if journal_mood else cls.score_to_mood_type(score)
-            
-            return {
-                'unified_mood': mood,
-                'mood_score': score,
-                'confidence': 0.7,
-                'sources': ['journal'],
-                'primary_source': 'journal'
-            }
-        
-        if music_mood or music_score is not None:
-            score = music_score if music_score is not None else cls.MOOD_TYPES.get(music_mood, {}).get('score', 0.5)
-            mood = music_mood if music_mood else cls.score_to_mood_type(score)
-            
-            return {
-                'unified_mood': mood,
-                'mood_score': score,
-                'confidence': 0.6,
-                'sources': ['music'],
-                'primary_source': 'music'
-            }
-        
-        # Default neutral
-        return {
-            'unified_mood': 'neutral',
-            'mood_score': 0.5,
-            'confidence': 0.0,
-            'sources': []
-        }
-
-    @classmethod
-    def update_plant_mood(cls, plant, unified_mood_data: Dict) -> Dict[str, Union[int, str]]:
-        """
-        Update plant based on unified mood as specified in architecture:
-        "Mood affects plant → Stage updated (via growth points)"
-        """
-        mood_score = unified_mood_data.get('mood_score', 0.5)
-        mood_type = unified_mood_data.get('unified_mood', 'neutral')
-        
-        # Calculate growth points change as per architecture
-        current_growth_points = getattr(plant, 'growth_points', 0)
-        
-        # Growth logic as specified
-        if mood_type == 'happy' or mood_score >= 0.8:
-            growth_change = 2
-        elif mood_type == 'neutral' or 0.4 <= mood_score < 0.6:
-            growth_change = 1
-        elif mood_score < 0.3:  # sad mood
-            growth_change = -1
-        else:
-            growth_change = 0
-        
-        # Update growth points
-        new_growth_points = max(0, current_growth_points + growth_change)
-        
-        # Determine stage as per architecture
-        if new_growth_points >= 10:
-            current_stage = 'bloom'
-        elif new_growth_points >= 5:
-            current_stage = 'sprout'
-        elif new_growth_points <= 0:
-            current_stage = 'wilt'
-        else:
-            current_stage = 'seedling'
-        
-        # Update plant
-        plant.growth_points = new_growth_points
-        plant.current_stage = current_stage
-        plant.last_mood = mood_type
-        plant.combined_mood_score = mood_score
-        plant.save()
-        
-        return {
-            'growth_change': growth_change,
-            'new_growth_points': new_growth_points,
-            'current_stage': current_stage,
-            'mood_influence': mood_type
-        }
-
-    @classmethod
-    def get_combined_user_mood(cls, user) -> Dict[str, Union[float, str]]:
-        """
-        Get the combined user mood from recent journal and music data
-        Implementation of architecture's get_combined_user_mood function
-        """
-        from apps.journal.models import JournalEntry
-        from apps.music.models import ListeningSession
-        
-        # Get recent journal mood (last 3 days)
-        recent_journals = JournalEntry.objects.filter(
-            user=user,
-            created_at__gte=timezone.now() - timedelta(days=3)
-        )
-        
-        journal_mood_score = None
-        if recent_journals.exists():
-            journal_mood_score = recent_journals.aggregate(
-                avg_score=models.Avg('mood_score')
-            )['avg_score']
-        
-        # Get recent music mood (last 3 days)
-        music_mood_score = None
         try:
-            recent_sessions = ListeningSession.objects.filter(
-                user=user,
-                session_start__gte=timezone.now() - timedelta(days=3)
-            )
+            # Get user's plant
+            plant = cls._get_user_plant(user)
+            if not plant:
+                return {'error': 'No plant found for user'}
             
-            if recent_sessions.exists():
-                music_mood_score = recent_sessions.aggregate(
-                    avg_score=models.Avg('computed_mood_score')
-                )['avg_score']
-        except:
-            # Handle case where music app might not be available
-            pass
+            # Get current mood
+            current_mood = cls.get_current_mood(user)
+            current_score = current_mood.get('mood_score', 0.5)
+            
+            # Calculate mood impact from action
+            mood_impact = cls.ACTION_MOOD_IMPACTS.get(action_type, 0)
+            
+            # Apply additional modifiers based on action data
+            if action_data:
+                mood_impact = cls._calculate_action_modifiers(mood_impact, action_data)
+            
+            # Update mood score (very sensitive)
+            new_mood_score = max(0.0, min(1.0, current_score + mood_impact))
+            
+            # Update plant mood
+            plant.combined_mood_score = new_mood_score
+            plant.current_mood_influence = cls.score_to_mood_type(new_mood_score)
+            
+            # Calculate health impact (less sensitive)
+            health_impact = cls._calculate_health_impact(new_mood_score, current_score)
+            new_health = max(0, min(100, plant.health_score + health_impact))
+            plant.health_score = new_health
+            
+            # Update plant
+            plant.last_mood_update = timezone.now()
+            plant.save()
+            
+            return {
+                'action_type': action_type,
+                'mood_change': mood_impact,
+                'new_mood_score': new_mood_score,
+                'new_mood_type': plant.current_mood_influence,
+                'health_change': health_impact,
+                'new_health_score': new_health
+            }
+            
+        except Exception as e:
+            logger.error(f"Error recording action {action_type}: {str(e)}")
+            return {'error': str(e)}
+    
+    @classmethod
+    def _calculate_action_modifiers(cls, base_impact: float, action_data: Dict) -> float:
+        """Calculate additional mood modifiers based on action data"""
+        modified_impact = base_impact
         
-        # Combine moods
-        return cls.determine_user_mood(
-            journal_score=journal_mood_score,
-            music_score=music_mood_score
-        )
-
+        # Journal entry sentiment
+        if 'sentiment' in action_data:
+            sentiment = action_data['sentiment']
+            if sentiment > 0.7:
+                modified_impact += 0.05
+            elif sentiment < 0.3:
+                modified_impact -= 0.05
+        
+        # Music mood
+        if 'music_mood' in action_data:
+            music_mood = action_data['music_mood']
+            if music_mood > 0.7:
+                modified_impact += 0.03
+            elif music_mood < 0.3:
+                modified_impact -= 0.03
+        
+        return modified_impact
+    
+    @classmethod
+    def _calculate_health_impact(cls, new_mood: float, old_mood: float) -> float:
+        """Calculate plant health impact from mood change (less sensitive)"""
+        mood_change = new_mood - old_mood
+        
+        # Health changes are 1/3 as sensitive as mood changes
+        health_change = mood_change * 3
+        
+        # Cap health changes to prevent extreme swings
+        health_change = max(-2, min(2, health_change))
+        
+        return health_change
+    
+    @classmethod
+    def get_current_mood(cls, user) -> Dict:
+        """Get current mood for user"""
+        try:
+            plant = cls._get_user_plant(user)
+            if not plant:
+                return {'mood_score': 0.5, 'mood_type': 'neutral'}
+            
+            return {
+                'mood_score': plant.combined_mood_score,
+                'mood_type': plant.current_mood_influence,
+                'health_score': plant.health_score
+            }
+        except Exception as e:
+            logger.error(f"Error getting current mood: {str(e)}")
+            return {'mood_score': 0.5, 'mood_type': 'neutral'}
+    
     @classmethod
     def score_to_mood_type(cls, score: float) -> str:
-        """Convert mood score (0.0-1.0) to mood type string"""
-        # Finer-grained mapping (10 % bands) for higher sensitivity
-        if score >= 0.9:
-            return 'euphoric'
-        elif score >= 0.75:
-            return 'happy'
-        elif score >= 0.6:
-            return 'upbeat'
-        elif score >= 0.5:
-            return 'calm'
-        elif score >= 0.4:
-            return 'neutral'
-        elif score >= 0.3:
-            return 'melancholy'
-        elif score >= 0.2:
-            return 'sad'
-        elif score >= 0.1:
-            return 'low'
-        else:
-            return 'very_low'
-
-    @classmethod
-    def get_plant_stage_from_points(cls, growth_points: int) -> Dict[str, str]:
-        """
-        Get plant stage based on growth points as per architecture:
-        seedling, sprout, bloom, wilt
-        """
-        if growth_points >= 10:
-            return {'stage': 'bloom', 'label': 'Blooming', 'emoji': '🌸'}
-        elif growth_points >= 5:
-            return {'stage': 'sprout', 'label': 'Sprouting', 'emoji': '🌿'}
-        elif growth_points <= 0:
-            return {'stage': 'wilt', 'label': 'Wilting', 'emoji': '🥀'}
-        else:
-            return {'stage': 'seedling', 'label': 'Seedling', 'emoji': '🌱'}
-
+        """Convert mood score to mood type"""
+        for mood_type, data in cls.MOOD_TYPES.items():
+            if score >= data['score']:
+                return mood_type
+        return 'neutral'
+    
     @classmethod
     def get_mood_emoji(cls, mood_type: str) -> str:
         """Get emoji for mood type"""
         return cls.MOOD_TYPES.get(mood_type, {}).get('emoji', '😐')
-
+    
     @classmethod
-    def calculate_plant_growth_impact(cls, unified_mood: Dict, 
-                                    current_growth_points: int = 0) -> Dict[str, Union[int, str]]:
-        """
-        Calculate how mood affects plant growth following the architecture
-        """
-        mood_score = unified_mood.get('mood_score', 0.5)
-        mood_type = unified_mood.get('unified_mood', 'neutral')
-        
-        # Growth changes as per architecture specification
-        if mood_score >= 0.8:  # happy
-            growth_change = 2
-        elif mood_score >= 0.4:  # neutral
-            growth_change = 1
-        else:  # sad
-            growth_change = -1
-        
-        new_growth_points = max(0, current_growth_points + growth_change)
-        plant_stage = cls.get_plant_stage_from_points(new_growth_points)
-        
-        return {
-            'growth_change': growth_change,
-            'new_growth_points': new_growth_points,
-            'plant_stage': plant_stage['stage'],
-            'stage_emoji': plant_stage['emoji'],
-            'mood_influence': mood_type
-        }
-
-    @classmethod
-    def get_daily_mood_summary(cls, user, date: Optional[datetime] = None) -> Dict:
-        """
-        Get daily mood summary as specified in architecture flow:
-        "User writes journal or listens to music → Mood is analyzed → Score is stored"
-        """
-        if not date:
-            date = timezone.now().date()
-        
-        from apps.journal.models import JournalEntry
-        
-        # Get journal entries for the day
-        journal_entries = JournalEntry.objects.filter(
-            user=user,
-            date=date
-        )
-        
-        # Get music sessions for the day (if available)
-        music_sessions = 0
+    def _get_user_plant(cls, user):
+        """Get user's plant"""
         try:
-            from apps.music.models import ListeningSession
-            music_sessions = ListeningSession.objects.filter(
-                user=user,
-                session_start__date=date
-            ).count()
+            return user.plant
         except:
-            pass
-        
-        # Calculate unified mood
-        unified_mood = cls.get_combined_user_mood(user)
-        
-        # Calculate plant growth impact
-        growth_impact = 0
-        if hasattr(user, 'plant'):
-            plant_data = cls.calculate_plant_growth_impact(
-                unified_mood, 
-                getattr(user.plant, 'growth_points', 0)
-            )
-            growth_impact = plant_data['growth_change']
-        
-        return {
-            'date': date.isoformat(),
-            'journal_entries': journal_entries.count(),
-            'music_sessions': music_sessions,
-            'unified_mood': unified_mood,
-            'plant_growth_impact': growth_impact,
-            'recommendations': cls.generate_mood_recommendations(unified_mood)
-        }
-
-    @classmethod
-    def generate_mood_recommendations(cls, mood_data: Dict) -> list:
-        """
-        Generate recommendations based on mood as specified in architecture:
-        "Mood reminders, wilting, encouragements"
-        """
-        mood_type = mood_data.get('unified_mood', 'neutral')
-        mood_score = mood_data.get('mood_score', 0.5)
-        
-        recommendations = []
-        
-        if mood_score < 0.3:  # Low mood - encouragement needed
-            recommendations.extend([
-                "Your plant needs some positive energy - try writing about something good today",
-                "Listen to some uplifting music to help both you and your plant feel better",
-                "Your plant is wilting - it needs your care and positive thoughts",
-                "Take a moment to water your plant and reflect on something you're grateful for"
-            ])
-        elif mood_score < 0.5:  # Neutral-low
-            recommendations.extend([
-                "Share what's on your mind in a journal entry to help your plant grow",
-                "Some energizing music could boost both your mood and your plant's health",
-                "Your plant is waiting for your positive energy - how are you feeling today?"
-            ])
-        elif mood_score > 0.7:  # High mood - positive reinforcement
-            recommendations.extend([
-                "Your positive energy is making your plant bloom beautifully!",
-                "Keep journaling about the good things - your plant loves your happiness!",
-                "Your plant is thriving thanks to your positive mood - keep it up!"
-            ])
-        else:  # Neutral
-            recommendations.extend([
-                "Write in your journal to help your plant continue growing steadily",
-                "Your plant is doing well - maintain this balance with regular check-ins",
-                "Consider what might boost your mood a little higher to help your plant bloom"
-            ])
-        
-        return recommendations[:3]  # Return top 3 recommendations 
+            return None 

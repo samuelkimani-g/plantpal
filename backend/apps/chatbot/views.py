@@ -6,6 +6,14 @@ import google.generativeai as genai
 import logging
 import os
 from django.conf import settings
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.utils import timezone
+from .models import ChatMessage
+from utils.enhanced_mood_system import EnhancedMoodSystem
 
 logger = logging.getLogger(__name__)
 
@@ -15,126 +23,75 @@ genai.configure(api_key=os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY
 class ChatbotView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
+        """Handle chatbot interaction with mood tracking"""
+        user_message = request.data.get('message', '')
+        
+        if not user_message:
+            return Response({'error': 'Message is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
-            # Check premium status
-            if not request.user.is_premium:
-                return Response(
-                    {"error": "This feature is for premium users only."},
-                    status=403
-                )
-
-            messages = request.data.get('messages', [])
-            if not messages:
-                return Response({"error": "No messages provided."}, status=400)
-
-            # Get the last user message
-            last_user_message = messages[-1]['text']
-            logger.info(f"Processing chatbot message: {last_user_message}")
+            # Configure Google AI
+            genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+            model = genai.GenerativeModel('gemini-1.5-flash')
             
-            # Always provide a response, even if AI fails
-            try:
-                # Check if API key is available
-                api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
-                if api_key:
-                    # Try AI response first
-                    user_context = f"""
-                    You are PlantPal AI, a compassionate and intelligent chatbot designed to help users with:
-                    1. Mental health and emotional support
-                    2. Plant care advice and guidance
-                    3. Mindfulness and wellness practices
-                    
-                    The user's name is {request.user.username or request.user.email}.
-                    
-                    Previous conversation context:
-                    {self._format_conversation_history(messages)}
-                    
-                    Respond as a warm, empathetic friend who:
-                    - Shows genuine care and understanding
-                    - Asks thoughtful follow-up questions
-                    - Provides practical advice when appropriate
-                    - Maintains a positive, supportive tone
-                    - Can switch between emotional support and plant care seamlessly
-                    
-                    Keep responses conversational, helpful, and under 150 words.
-                    """
-
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                    response = model.generate_content(user_context + f"\n\nUser: {last_user_message}\n\nPlantPal AI:")
-                    
-                    ai_response = response.text.strip()
-                    if ai_response:
-                        logger.info(f"AI generated response: {ai_response[:100]}...")
-                        return Response({"reply": ai_response})
-                    else:
-                        logger.warning("AI returned empty response, using fallback")
-                else:
-                    logger.warning("No Google API key found, using fallback responses")
-                    
-            except Exception as ai_error:
-                logger.error(f"AI error: {ai_error}")
-                # Continue to fallback response
+            # Create context-aware prompt
+            system_prompt = """You are a friendly, supportive plant companion AI. You help users with their mental health, plant care, and general well-being. 
+            Always be encouraging, positive, and helpful. Keep responses concise but warm. 
+            If the user seems sad or stressed, offer gentle support and suggestions for mindfulness activities."""
             
-            # Fallback response - always works
-            fallback_response = self._get_fallback_response(last_user_message, messages)
-            logger.info(f"Using fallback response: {fallback_response[:100]}...")
-            return Response({"reply": fallback_response})
+            full_prompt = f"{system_prompt}\n\nUser: {user_message}\n\nPlant Companion:"
+            
+            # Generate response
+            response = model.generate_content(full_prompt)
+            bot_response = response.text.strip()
+            
+            # Analyze response sentiment for mood tracking
+            sentiment_prompt = f"Analyze the sentiment of this response (positive/negative/neutral): {bot_response}"
+            sentiment_response = model.generate_content(sentiment_prompt)
+            sentiment_text = sentiment_response.text.lower()
+            
+            # Determine action type based on sentiment
+            if 'positive' in sentiment_text or 'encouraging' in sentiment_text:
+                action_type = 'chatbot_positive'
+            elif 'negative' in sentiment_text or 'discouraging' in sentiment_text:
+                action_type = 'chatbot_negative'
+            else:
+                action_type = 'chatbot_positive'  # Default to positive for supportive responses
+            
+            # Record mood impact
+            mood_result = EnhancedMoodSystem.record_action(
+                request.user, 
+                action_type
+            )
+            
+            # Save chat message
+            ChatMessage.objects.create(
+                user=request.user,
+                message=user_message,
+                response=bot_response,
+                timestamp=timezone.now()
+            )
+            
+            logger.info(f"Chatbot interaction with mood impact: {mood_result}")
+            
+            return Response({
+                'response': bot_response,
+                'mood_impact': mood_result
+            })
             
         except Exception as e:
-            logger.error(f"Critical error in chatbot: {e}")
-            # Last resort - always return something helpful
+            logger.error(f"Chatbot error: {str(e)}")
+            # Fallback response
+            fallback_response = "I'm here to support you! How are you feeling today?"
+            
+            # Record positive mood impact for supportive response
+            mood_result = EnhancedMoodSystem.record_action(
+                request.user, 
+                'chatbot_positive'
+            )
+            
             return Response({
-                "reply": "I'm here to listen and support you. What's on your mind today?"
+                'response': fallback_response,
+                'mood_impact': mood_result
             })
-
-    def _format_conversation_history(self, messages):
-        """Format conversation history for context"""
-        if len(messages) <= 1:
-            return "This is the start of our conversation."
-        
-        history = []
-        for msg in messages[:-1]:  # Exclude the last message as it's the current one
-            role = "User" if msg.get('role') == 'user' else "PlantPal AI"
-            history.append(f"{role}: {msg.get('text', '')}")
-        
-        return "\n".join(history[-6:])  # Keep last 6 exchanges for context
-
-    def _get_fallback_response(self, user_message, messages=None):
-        """Provide thoughtful fallback responses based on context"""
-        user_message_lower = user_message.lower()
-        
-        # Check conversation context for repeated messages
-        if messages and len(messages) > 1:
-            recent_messages = [msg.get('text', '').lower() for msg in messages[-3:]]
-            if all('sad' in msg or 'down' in msg for msg in recent_messages if msg):
-                return "I notice you've mentioned feeling down a few times. That's completely valid, and I want you to know that it's okay to not be okay. Sometimes when we're feeling low, it helps to talk about what's really bothering us. Would you like to share more about what's been difficult lately?"
-        
-        # Plant-related keywords
-        plant_keywords = ['plant', 'leaf', 'leaves', 'sick', 'dying', 'brown', 'yellow', 'water', 'soil', 'pot', 'grow']
-        if any(keyword in user_message_lower for keyword in plant_keywords):
-            return "I'd love to help with your plant! 🌱 Could you tell me more about what you're seeing? For example, are the leaves changing color, or is the soil dry? Sometimes plants give us little signals about what they need."
-        
-        # Emotional keywords with more specific responses
-        if 'sad' in user_message_lower or 'down' in user_message_lower:
-            return "I hear you, and I'm sorry you're feeling this way. Sadness can be really heavy to carry. Sometimes it helps to know that you're not alone in feeling this way. What do you think might help you feel a little better right now? Maybe talking about it, or doing something that usually brings you comfort?"
-        
-        if 'happy' in user_message_lower or 'good' in user_message_lower:
-            return "That's wonderful! 😊 I'm so glad you're feeling good today. What's been bringing you joy? It's always nice to celebrate the good moments and understand what makes us feel uplifted."
-        
-        if 'angry' in user_message_lower or 'frustrated' in user_message_lower:
-            return "Anger and frustration are completely normal emotions, and it's okay to feel them. Sometimes when we're angry, it's because something important to us isn't going the way we hoped. What's been frustrating you? I'm here to listen."
-        
-        if 'anxious' in user_message_lower or 'worried' in user_message_lower or 'stressed' in user_message_lower:
-            return "Anxiety and worry can feel really overwhelming. You're not alone in feeling this way. Sometimes it helps to take a deep breath and focus on one thing at a time. What's been on your mind? I'm here to support you."
-        
-        # Greeting keywords
-        greeting_keywords = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening']
-        if any(keyword in user_message_lower for keyword in greeting_keywords):
-            return "Hello! 👋 I'm here to support you today. How are you feeling, or is there anything specific you'd like to talk about? I'm ready to listen and help however I can."
-        
-        # Short responses
-        if len(user_message.strip()) < 5:
-            return "I'm here and ready to listen. Sometimes it takes a moment to find the right words, and that's totally okay. What's on your mind?"
-        
-        # Default thoughtful response
-        return "Thank you for sharing that with me. I'm here to listen and support you. Sometimes just talking about what's on our minds can help us feel a little lighter. What would be most helpful for you right now?"
