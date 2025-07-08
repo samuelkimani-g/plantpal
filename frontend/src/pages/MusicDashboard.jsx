@@ -481,6 +481,63 @@ const MusicDashboard = () => {
           </div>
         </div>
 
+        {/* Current Track Display */}
+        {currentTrack && currentTrack.track && (
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center text-green-700">
+                <Play className="h-5 w-5 mr-2" />
+                Currently Playing
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center space-x-4">
+                {currentTrack.track.album_image_url && (
+                  <img
+                    src={currentTrack.track.album_image_url}
+                    alt="Album cover"
+                    className="w-16 h-16 rounded-lg shadow-md"
+                  />
+                )}
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg text-gray-900">{currentTrack.track.name}</h3>
+                  <p className="text-gray-600">
+                    {Array.isArray(currentTrack.track.artists) 
+                      ? currentTrack.track.artists.join(', ') 
+                      : currentTrack.track.artists}
+                  </p>
+                  <p className="text-sm text-gray-500">{currentTrack.track.album_name}</p>
+                  {currentTrack.track.computed_mood_score !== undefined && (
+                    <div className="flex items-center mt-2">
+                      <span className="text-2xl mr-2">
+                        {musicAPI.getMoodEmoji(musicAPI.formatMoodScore(currentTrack.track.computed_mood_score))}
+                      </span>
+                      <span className="text-sm text-gray-600">
+                        Mood: {musicAPI.formatMoodScore(currentTrack.track.computed_mood_score)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  {currentTrack.is_playing && (
+                    <div className="flex space-x-1">
+                      <div className="w-1 h-4 bg-green-500 rounded-full animate-pulse"></div>
+                      <div className="w-1 h-4 bg-green-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                      <div className="w-1 h-4 bg-green-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                    </div>
+                  )}
+                  {isUpdatingPlant && (
+                    <Loader2 className="h-5 w-5 animate-spin text-green-600" />
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recent Tracks */}
+        {renderTrackList(recentTracks, 'Recently Played')}
+
         {/* Mood Analysis */}
         {renderMoodAnalysis()}
 
