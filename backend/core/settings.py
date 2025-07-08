@@ -317,4 +317,4 @@ MPESA_ENV = os.getenv('MPESA_ENV', 'sandbox')  # 'sandbox' or 'production'
 MPESA_TARGET_PHONE = '254707953603'  # Converted to 254 format
 
 # === GOOGLE AI CONFIGURATION ===
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', '')
+GOOGLE_API_KEY = os.getenv('GEMINI_API_KEY', '')
