@@ -58,11 +58,23 @@ class MoodAnalyticsView(APIView):
             .order_by('-count')
         )
 
-        # Overall average
-        overall_avg = moods.aggregate(Avg('mood_score'))['mood_score__avg']
+        # Overall average - handle null values
+        overall_avg_result = moods.aggregate(Avg('mood_score'))
+        overall_avg = overall_avg_result['mood_score__avg'] if overall_avg_result['mood_score__avg'] is not None else 0.5
+
+        # Ensure time series has valid values
+        time_series_data = []
+        for entry in time_series:
+            avg_score = entry.get('avg_score', 0.5)
+            if avg_score is None:
+                avg_score = 0.5
+            time_series_data.append({
+                'day': entry['day'],
+                'avg_score': avg_score
+            })
 
         return Response({
-            "time_series": list(time_series),
+            "time_series": time_series_data,
             "mood_distribution": list(mood_distribution),
             "overall_average_score": overall_avg,
             "total_entries": moods.count()

@@ -46,7 +46,8 @@ export default function MoodAnalysisDashboard() {
         day: new Date(item.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     }));
     
-    const overallMoodLabel = data.overall_average_score > 0.6 ? "Positive" : data.overall_average_score < 0.4 ? "Negative" : "Neutral";
+    const avgScore = data.overall_average_score || 0.5;
+    const overallMoodLabel = avgScore > 0.6 ? "Positive" : avgScore < 0.4 ? "Negative" : "Neutral";
     const OverallIcon = overallMoodLabel === "Positive" ? Smile : overallMoodLabel === "Negative" ? Frown : Meh;
 
     return (
@@ -67,7 +68,7 @@ export default function MoodAnalysisDashboard() {
                 </Card>
                 <Card>
                     <CardHeader><CardTitle>Average Score</CardTitle></CardHeader>
-                    <CardContent><p className="text-3xl font-bold">{data.overall_average_score.toFixed(2)}</p></CardContent>
+                    <CardContent><p className="text-3xl font-bold">{(data.overall_average_score || 0.5).toFixed(2)}</p></CardContent>
                 </Card>
             </div>
 
@@ -96,9 +97,9 @@ export default function MoodAnalysisDashboard() {
                 <CardContent style={{ height: '400px' }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                            <Pie data={data.mood_distribution} dataKey="count" nameKey="mood_label" cx="50%" cy="50%" outerRadius={150} fill="#8884d8" label>
-                                {data.mood_distribution.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={moodColorMap[entry.mood_label] || '#cccccc'} />
+                            <Pie data={data.mood_distribution || []} dataKey="count" nameKey="mood_type" cx="50%" cy="50%" outerRadius={150} fill="#8884d8" label>
+                                {(data.mood_distribution || []).map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={moodColorMap[entry.mood_type] || '#cccccc'} />
                                 ))}
                             </Pie>
                             <Tooltip />
