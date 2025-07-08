@@ -10,9 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { User, Edit, Save, X, Trash2, Key, Music, AlertCircle, CheckCircle, Loader2, Leaf, Shield, Calendar, Sparkles } from "lucide-react"
+import { User, Edit, Save, X, Trash2, Key, AlertCircle, CheckCircle, Loader2, Leaf, Shield, Calendar, Sparkles, Star } from "lucide-react"
 import { authAPI } from "../../services/api"
-import SpotifyIntegration from "../music/SpotifyIntegration"
 
 export default function ProfilePage() {
   const navigate = useNavigate()
@@ -29,7 +28,6 @@ export default function ProfilePage() {
     last_name: "",
     email: "",
     bio: "",
-    music_mood_weight: 0.5,
   })
 
   const [passwordData, setPasswordData] = useState({
@@ -47,7 +45,6 @@ export default function ProfilePage() {
         last_name: user.last_name || "",
         email: user.email || "",
         bio: user.bio || "",
-        music_mood_weight: user.music_mood_weight || 0.5,
       })
     }
   }, [user])
@@ -191,13 +188,6 @@ export default function ProfilePage() {
                   </div>
                   <p className="text-xs text-muted-foreground">Joined</p>
                 </div>
-                <div className="text-center">
-                  <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
-                    <Music className="h-4 w-4" />
-                    <span className="font-semibold">{user.spotify_connected ? 'Yes' : 'No'}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Spotify</p>
-                </div>
               </div>
             </div>
           </div>
@@ -288,28 +278,6 @@ export default function ProfilePage() {
                       rows={3}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="music_mood_weight">Music Influence on Plants</Label>
-                    <div className="space-y-2">
-                      <Input
-                        id="music_mood_weight"
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={profileData.music_mood_weight}
-                        onChange={(e) =>
-                          setProfileData({ ...profileData, music_mood_weight: Number.parseFloat(e.target.value) })
-                        }
-                        className="w-full"
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Low influence</span>
-                        <span>{Math.round(profileData.music_mood_weight * 100)}%</span>
-                        <span>High influence</span>
-                      </div>
-                    </div>
-                  </div>
                   <div className="flex gap-2">
                     <Button type="submit" disabled={isLoading}>
                       {isLoading ? (
@@ -348,13 +316,6 @@ export default function ProfilePage() {
                   <div>
                     <Label className="text-sm text-muted-foreground">Bio</Label>
                     <p className="font-medium">{user.bio || "No bio added yet"}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Music Influence</Label>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{Math.round((user.music_mood_weight || 0.5) * 100)}%</Badge>
-                      <span className="text-sm text-muted-foreground">influence on plant growth</span>
-                    </div>
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">Member Since</Label>
@@ -489,24 +450,6 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* Spotify Connection Status */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <Music className="h-4 w-4" />
-                    Spotify Connection
-                  </h4>
-                  <Badge variant={user.spotify_connected ? "default" : "secondary"}>
-                    {user.spotify_connected ? "Connected" : "Not Connected"}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {user.spotify_connected
-                    ? "Your music is influencing your plant growth"
-                    : "Connect Spotify to let music affect your plants"}
-                </p>
-              </div>
-
               {/* Delete Account */}
               <div className="space-y-4 pt-4 border-t border-destructive/20">
                 <div className="space-y-2">
@@ -554,20 +497,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Spotify Integration */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Music className="h-5 w-5" />
-              Music Integration
-            </CardTitle>
-            <CardDescription>Connect your Spotify account to let music influence your plant growth</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <SpotifyIntegration />
-          </CardContent>
-        </Card>
       </div>
     </div>
   )
