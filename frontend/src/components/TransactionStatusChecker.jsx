@@ -14,7 +14,7 @@ import {
   Leaf
 } from 'lucide-react'
 
-const TransactionStatusChecker = () => {
+function TransactionStatusChecker() {
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -22,11 +22,7 @@ const TransactionStatusChecker = () => {
 
   useEffect(() => {
     loadTransactions()
-    // Auto-refresh every 30 seconds for pending transactions
-    const interval = setInterval(() => {
-      loadTransactions()
-    }, 30000)
-    
+    const interval = setInterval(loadTransactions, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -91,7 +87,7 @@ const TransactionStatusChecker = () => {
   }
 
   const pendingTransactions = transactions.filter(t => t.status === 'PENDING')
-  const recentTransactions = transactions.slice(0, 10) // Show last 10 transactions
+  const recentTransactions = transactions.slice(0, 10)
 
   if (loading) {
     return (
@@ -107,7 +103,6 @@ const TransactionStatusChecker = () => {
 
   return (
     <div className="space-y-4">
-      {/* Pending Transactions Alert */}
       {pendingTransactions.length > 0 && (
         <Card className="border-amber-200 bg-amber-50">
           <CardHeader>
@@ -144,13 +139,12 @@ const TransactionStatusChecker = () => {
               })}
             </div>
             <div className="mt-3 p-2 bg-amber-100 rounded text-xs text-amber-700">
-              <strong>Note:</strong> If a transaction remains pending for more than 10 minutes, please contact support with your phone number and transaction time.
+              <strong>Note:</strong> If a transaction remains pending for more than 10 minutes, please contact support.
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Transaction History */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">

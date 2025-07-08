@@ -183,15 +183,15 @@ const PremiumPage = () => {
       {/* Header */}
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-2 mb-4">
-          <Crown className="h-8 w-8 text-purple-600" />
+          <Leaf className="h-8 w-8 text-amber-500" />
           <h1 className="text-3xl font-bold text-gray-900">PlantPal Premium</h1>
-          <Sparkles className="h-8 w-8 text-amber-500" />
+          <Leaf className="h-8 w-8 text-amber-500" />
         </div>
         <p className="text-lg text-gray-600">Unlock exclusive features and premium plant care tools</p>
         
         {user?.is_premium && (
-          <div className="mt-4 inline-flex items-center gap-2 bg-purple-100 text-purple-800 px-4 py-2 rounded-full">
-            <Crown className="h-4 w-4" />
+          <div className="mt-4 inline-flex items-center gap-2 bg-amber-100 text-amber-800 px-4 py-2 rounded-full">
+            <Leaf className="h-4 w-4" />
             <span className="font-medium">Premium Active</span>
             <span className="text-sm">
               • Expires {user.premium_expiry_date ? new Date(user.premium_expiry_date).toLocaleDateString() : 'Never'}
