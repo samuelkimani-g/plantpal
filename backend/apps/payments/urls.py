@@ -33,7 +33,8 @@ urlpatterns = [
     # Setup and debug endpoints
     path('setup-packages/', SetupPackagesView.as_view(), name='setup-packages'),
     
-    # Premium packages
+    # Package endpoints
+    path('packages/', LeafPackageViewSet.as_view(), name='leaf-packages'),
     path('premium-packages/', PremiumPackageViewSet.as_view(), name='premium-packages'),
     
     # Include router URLs for store items and inventory
