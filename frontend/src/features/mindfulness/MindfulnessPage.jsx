@@ -34,7 +34,6 @@ import {
   Gift,
   Trees,
   Brain,
-  Meditation,
   Flower,
   Rainbow,
   Lightbulb,
@@ -43,7 +42,6 @@ import {
   Music,
   BookOpen,
   Smile,
-  Peace,
   Infinity
 } from "lucide-react"
 
