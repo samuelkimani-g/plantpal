@@ -133,9 +133,9 @@ const MusicDashboard = () => {
         musicAPI.getCurrentTrack()
       ]);
 
-      const moodDataResult = results[0].status === 'fulfilled' ? results[0].value : null;
-      const statsDataResult = results[1].status === 'fulfilled' ? results[1].value : null;
-      const currentTrackResult = results[2].status === 'fulfilled' ? results[2].value : null;
+      const moodDataResult = results[0].status === 'fulfilled' ? results[0].value.data : null;
+      const statsDataResult = results[1].status === 'fulfilled' ? results[1].value.data : null;
+      const currentTrackResult = results[2].status === 'fulfilled' ? results[2].value.data : null;
 
       console.log("🎵 DEBUG - Mood Data:", moodDataResult);
       console.log("📊 DEBUG - Stats Data:", statsDataResult);
@@ -183,11 +183,11 @@ const MusicDashboard = () => {
   const loadCurrentTrack = async () => {
     try {
       const response = await musicAPI.getCurrentTrack();
-      setCurrentTrack(response);
-      console.log("Refreshed Current Track:", response);
+      setCurrentTrack(response.data); // Extract data from response
+      console.log("Refreshed Current Track:", response.data);
       
       // If there's a track playing, update plant growth
-      if (response && response.track && response.is_playing) {
+      if (response.data && response.data.track && response.data.is_playing) {
         setIsUpdatingPlant(true);
         try {
           const plantUpdate = await musicAPI.updatePlantFromMusic();
