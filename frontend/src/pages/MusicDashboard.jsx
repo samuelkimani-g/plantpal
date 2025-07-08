@@ -18,7 +18,7 @@ import {
 import SpotifyConnect from '../components/SpotifyConnect';
 import NowPlayingWidget from '../components/NowPlayingWidget';
 import OfflineMusicWidget from '../components/OfflineMusicWidget';
-import { musicAPI, paymentsAPI, getMoodAnalysis } from '../services/api';
+import { musicAPI, paymentsAPI } from '../services/api';
 
 const MusicDashboard = () => {
   const location = useLocation();
@@ -124,7 +124,7 @@ const MusicDashboard = () => {
         musicAPI.getCurrentTrack(),
         musicAPI.getRecentlyPlayed(10),
         musicAPI.getListeningStats(7), // Only 7 days
-        getMoodAnalysis(7) // Only 7 days
+        musicAPI.getMoodAnalysis(7) // Only 7 days
       ]);
 
       console.log("📊 API Results:", results.map((r, i) => ({
