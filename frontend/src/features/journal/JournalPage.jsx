@@ -123,7 +123,7 @@ const JournalPage = () => {
     try {
       const response = await plantAPI.createMemorySeed({
         ...newMemorySeed,
-        journal_entry_id: selectedEntry.id
+        journal_entry: selectedEntry.id
       })
       
       setMemorySeeds([response.data, ...memorySeeds])
