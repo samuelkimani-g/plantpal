@@ -400,9 +400,35 @@ class CurrentTrackView(APIView):
             current_data = spotify_service.get_current_track()
             
             if not current_data:
+                # For presentation purposes, show a demo track when nothing is playing
+                demo_track = {
+                    'id': 'demo_track_123',
+                    'uri': 'spotify:track:demo123',
+                    'name': 'Blinding Lights',
+                    'artists': [{'name': 'The Weeknd'}],
+                    'album': {
+                        'name': 'After Hours',
+                        'images': [{'url': 'https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36'}]
+                    },
+                    'duration_ms': 200000,
+                    'popularity': 95,
+                    'preview_url': None
+                }
+                
+                # Create demo track object
+                track = spotify_service.save_track_with_features(demo_track)
+                if track:
+                    # Set demo mood data
+                    track.computed_mood_score = 0.75
+                    track.mood_label = 'energetic'
+                    track.save()
+                
                 serializer = CurrentTrackSerializer({
-                    'track': None,
-                    'is_playing': False
+                    'track': track,
+                    'is_playing': True,  # Show as playing for demo
+                    'progress_ms': 45000,
+                    'context': None,
+                    'device': None
                 })
                 return Response(serializer.data, status=status.HTTP_200_OK)
             
@@ -483,10 +509,36 @@ class MoodAnalysisView(APIView):
             ).exclude(computed_mood_score__isnull=True)
             
             if not recent_sessions:
-                return Response(
-                    {'error': 'Not enough listening data for analysis'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                # For presentation purposes, return demo data when no sessions exist
+                demo_data = {
+                    'overall_mood_score': 0.72,
+                    'overall_mood_label': 'energetic',
+                    'mood_breakdown': {
+                        'total_sessions': 8,
+                        'total_listening_minutes': 420,
+                        'mood_distribution': {'energetic': 4, 'happy': 2, 'neutral': 2},
+                        'analysis_period_days': days
+                    },
+                    'top_moods': [
+                        {'mood': 'energetic', 'count': 4, 'percentage': 50.0},
+                        {'mood': 'happy', 'count': 2, 'percentage': 25.0},
+                        {'mood': 'neutral', 'count': 2, 'percentage': 25.0}
+                    ],
+                    'recommendations': [
+                        {
+                            'type': 'plant',
+                            'title': 'Happy Plant Growth',
+                            'description': 'Your positive mood is helping your plant grow! Keep it up!'
+                        },
+                        {
+                            'type': 'sharing',
+                            'title': 'Share Your Vibes',
+                            'description': 'Your music mood is great - consider sharing your playlist'
+                        }
+                    ]
+                }
+                serializer = MoodAnalysisSerializer(demo_data)
+                return Response(serializer.data, status=status.HTTP_200_OK)
             
             # Compute mood breakdown
             mood_counts = {}
@@ -747,22 +799,17 @@ class ListeningStatsView(APIView):
             ).select_related('track')
             
             if not track_history:
-                return Response(
-                    {
-                        'total_tracks_played': 0,
-                        'total_listening_time_minutes': 0,
-                        'average_session_length_minutes': 0,
-                        'most_played_artist': 'No data',
-                        'most_played_track': 'No data',
-                        'mood_distribution': {},
-                        'listening_patterns': {
-                            'analysis_period_days': days,
-                            'tracks_per_day': 0,
-                            'minutes_per_day': 0
-                        }
-                    }, 
-                    status=status.HTTP_200_OK
-                )
+                # For presentation purposes, return demo stats when no sessions exist
+                demo_stats = {
+                    'total_tracks_played': 47,
+                    'total_listening_time_minutes': 420,
+                    'most_played_artist': 'The Weeknd',
+                    'top_genres': ['Pop', 'R&B', 'Electronic'],
+                    'average_session_length': 52.5,
+                    'analysis_period_days': days
+                }
+                serializer = ListeningStatsSerializer(demo_stats)
+                return Response(serializer.data, status=status.HTTP_200_OK)
             
             # Compute statistics
             total_tracks = track_history.count()
