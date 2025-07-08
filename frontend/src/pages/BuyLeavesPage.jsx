@@ -118,6 +118,64 @@ export default function BuyLeavesPage() {
     return phoneNumber;
   };
 
+  const handleCompleteTransaction = async (transactionId) => {
+    try {
+      await paymentsAPI.completeTransaction(transactionId);
+      setTransactions(prev => prev.map(tx => 
+        tx.id === transactionId ? { ...tx, status: 'SUCCESS' } : tx
+      ));
+      setLeaves(prev => prev + (transactions.find(tx => tx.id === transactionId)?.leaves || 0));
+      setStatus({
+        success: true,
+        message: "Transaction completed successfully!",
+        details: `Leaves for transaction ${transactionId} have been added to your wallet.`
+      });
+    } catch (e) {
+      setError(e.response?.data?.error || "Failed to complete transaction.");
+      setStatus({
+        success: false,
+        message: e.response?.data?.error || "Failed to complete transaction.",
+        details: "Please try again or contact support if the problem persists."
+      });
+    }
+  };
+
+  const handleCompleteAllPending = async () => {
+    const pendingTransactions = transactions.filter(tx => tx.status === 'PENDING');
+    if (pendingTransactions.length === 0) {
+      setStatus({
+        success: false,
+        message: "No pending transactions to complete.",
+        details: ""
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    setStatus(null);
+    setError("");
+
+    try {
+      for (const tx of pendingTransactions) {
+        await handleCompleteTransaction(tx.id);
+      }
+      setStatus({
+        success: true,
+        message: `Successfully completed ${pendingTransactions.length} pending transactions!`,
+        details: `All leaves for pending transactions have been added to your wallet.`
+      });
+    } catch (e) {
+      setError(e.response?.data?.error || "Failed to complete all pending transactions.");
+      setStatus({
+        success: false,
+        message: e.response?.data?.error || "Failed to complete all pending transactions.",
+        details: "Please try again or contact support if the problem persists."
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/40 dark:to-emerald-950/40 py-10 px-4">
       <div className="max-w-2xl mx-auto">
@@ -362,7 +420,19 @@ export default function BuyLeavesPage() {
         {/* Transaction History Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Transaction History</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>Transaction History</span>
+              {transactions.some(tx => tx.status === 'PENDING') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCompleteAllPending}
+                  className="text-xs"
+                >
+                  Complete All Pending
+                </Button>
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {transactions.length === 0 ? (
@@ -394,15 +464,27 @@ export default function BuyLeavesPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          tx.status === "SUCCESS" 
-                            ? "bg-emerald-100 text-emerald-700" 
-                            : tx.status === "PENDING" 
-                            ? "bg-yellow-100 text-yellow-700" 
-                            : "bg-red-100 text-red-700"
-                        }`}>
-                          {tx.status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            tx.status === "SUCCESS" 
+                              ? "bg-emerald-100 text-emerald-700" 
+                              : tx.status === "PENDING" 
+                              ? "bg-yellow-100 text-yellow-700" 
+                              : "bg-red-100 text-red-700"
+                          }`}>
+                            {tx.status}
+                          </span>
+                          {tx.status === 'PENDING' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCompleteTransaction(tx.id)}
+                              className="text-xs h-6 px-2"
+                            >
+                              Complete
+                            </Button>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-400 mt-1">
                           {new Date(tx.created_at).toLocaleString()}
                         </div>
