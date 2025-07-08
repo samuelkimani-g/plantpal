@@ -28,9 +28,9 @@ class JournalEntryViewSet(APIView):
     
     def post(self, request):
         """Create a new journal entry with mood tracking"""
-        serializer = JournalEntrySerializer(data=request.data)
+        serializer = JournalEntrySerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            entry = serializer.save(user=request.user)
+            entry = serializer.save()
             
             # Determine mood impact based on entry content
             mood_type = entry.mood or 'neutral'
@@ -59,7 +59,7 @@ class JournalEntryViewSet(APIView):
     def patch(self, request, entry_id):
         """Update journal entry with mood tracking"""
         entry = get_object_or_404(JournalEntry, id=entry_id, user=request.user)
-        serializer = JournalEntrySerializer(entry, data=request.data, partial=True)
+        serializer = JournalEntrySerializer(entry, data=request.data, partial=True, context={'request': request})
         
         if serializer.is_valid():
             old_mood = entry.mood

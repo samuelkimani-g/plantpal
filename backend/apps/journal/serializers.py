@@ -19,5 +19,14 @@ class JournalEntrySerializer(serializers.ModelSerializer):
         if mood_type:
             validated_data['mood'] = mood_type
         
-        validated_data['user'] = self.context['request'].user
+        # Get user from context or request
+        user = None
+        if hasattr(self, 'context') and 'request' in self.context:
+            user = self.context['request'].user
+        elif hasattr(self, 'context') and 'user' in self.context:
+            user = self.context['user']
+        
+        if user:
+            validated_data['user'] = user
+        
         return super().create(validated_data)
