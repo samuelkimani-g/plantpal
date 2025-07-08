@@ -16,5 +16,4 @@ python manage.py create_packages
 python manage.py create_default_items
 python manage.py setup_premium_packages
 
-# Create test user with premium status
-python create_test_user.py 
+# Note: Test user creation removed - users can register normally 
