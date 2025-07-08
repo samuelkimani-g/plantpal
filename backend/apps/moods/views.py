@@ -36,7 +36,7 @@ class MoodAnalyticsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if not request.user.userprofile.is_premium:
+        if not request.user.is_premium:
             return Response({"error": "This feature is for premium users only."}, status=403)
 
         # Get data for the last 30 days

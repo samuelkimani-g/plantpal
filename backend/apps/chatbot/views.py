@@ -10,7 +10,7 @@ class ChatbotView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        if not request.user.userprofile.is_premium:
+        if not request.user.is_premium:
             return Response(
                 {"error": "This feature is for premium users only."},
                 status=403

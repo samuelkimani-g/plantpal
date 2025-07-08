@@ -5,8 +5,11 @@ from .views import (
     TransactionHistoryView, PublicGardenView, WaterOtherPlantView, UserLeavesView, WateringHistoryView,
     SetupPackagesView, ManualCompleteTransactionView, CompleteAllPendingTransactionsView
 )
+from apps.store.views import StoreItemViewSet, UserInventoryViewSet
 
 router = DefaultRouter()
+router.register(r'store-items', StoreItemViewSet, basename='store-item')
+router.register(r'inventory', UserInventoryViewSet, basename='user-inventory')
 
 urlpatterns = [
     # M-Pesa payment endpoints
@@ -29,4 +32,10 @@ urlpatterns = [
     
     # Setup and debug endpoints
     path('setup-packages/', SetupPackagesView.as_view(), name='setup-packages'),
+    
+    # Premium packages
+    path('premium-packages/', PremiumPackageViewSet.as_view(), name='premium-packages'),
+    
+    # Include router URLs for store items and inventory
+    path('', include(router.urls)),
 ] 

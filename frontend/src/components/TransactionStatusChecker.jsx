@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { paymentsAPI } from '../services/api'
 import { Button } from './ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
+import { Badge } from './ui/badge'
 import { 
   RefreshCw, 
   Clock, 
@@ -11,7 +12,8 @@ import {
   Phone,
   CreditCard,
   Sparkles,
-  Leaf
+  Leaf,
+  AlertCircle
 } from 'lucide-react'
 
 function TransactionStatusChecker() {
@@ -19,12 +21,18 @@ function TransactionStatusChecker() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
+  const [notification, setNotification] = useState(null)
 
   useEffect(() => {
     loadTransactions()
     const interval = setInterval(loadTransactions, 30000)
     return () => clearInterval(interval)
   }, [])
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type })
+    setTimeout(() => setNotification(null), 5000)
+  }
 
   const loadTransactions = async () => {
     try {
@@ -55,112 +63,138 @@ function TransactionStatusChecker() {
       const response = await paymentsAPI.completeAllPending()
       
       if (response.data.success) {
-        alert(`Successfully completed ${response.data.completed_count} pending transactions!`)
+        showNotification(`Successfully completed ${response.data.completed_count} pending transactions!`)
         await loadTransactions() // Refresh the list
       } else {
-        alert('Failed to complete transactions: ' + response.data.error)
+        showNotification('Failed to complete transactions: ' + response.data.error, 'error')
       }
     } catch (err) {
       console.error('Failed to complete pending transactions:', err)
-      alert('Failed to complete transactions. Please try again.')
+      showNotification('Failed to complete transactions. Please try again.', 'error')
     } finally {
       setRefreshing(false)
     }
   }
 
   const formatPhoneNumber = (phoneNumber) => {
-    if (!phoneNumber) return ''
-    const cleaned = phoneNumber.replace(/\D/g, '')
-    if (cleaned.startsWith('254')) {
-      return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4')
-    } else if (cleaned.startsWith('0')) {
-      return cleaned.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3')
+    if (!phoneNumber) return 'N/A'
+    // Convert 254 format to 0 format for display
+    if (phoneNumber.startsWith('254')) {
+      return '0' + phoneNumber.substring(3)
     }
     return phoneNumber
   }
 
-  const getTransactionIcon = (type) => {
-    return type === 'PREMIUM' ? Sparkles : Leaf
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: true
+    })
   }
 
   const getStatusIcon = (status) => {
     switch (status) {
       case 'SUCCESS':
-        return CheckCircle2
+        return <CheckCircle2 className="h-4 w-4 text-green-500" />
       case 'PENDING':
-        return Clock
+        return <Clock className="h-4 w-4 text-amber-500" />
       case 'FAILED':
-        return AlertTriangle
+        return <AlertCircle className="h-4 w-4 text-red-500" />
       default:
-        return CreditCard
+        return <Clock className="h-4 w-4 text-gray-500" />
     }
   }
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'SUCCESS':
-        return 'text-emerald-600 bg-emerald-50 border-emerald-200'
+        return 'bg-green-100 text-green-800'
       case 'PENDING':
-        return 'text-amber-600 bg-amber-50 border-amber-200'
+        return 'bg-amber-100 text-amber-800'
       case 'FAILED':
-        return 'text-red-600 bg-red-50 border-red-200'
+        return 'bg-red-100 text-red-800'
       default:
-        return 'text-gray-600 bg-gray-50 border-gray-200'
+        return 'bg-gray-100 text-gray-800'
     }
   }
 
   const pendingTransactions = transactions.filter(t => t.status === 'PENDING')
-  const recentTransactions = transactions.slice(0, 10)
+  const completedTransactions = transactions.filter(t => t.status === 'SUCCESS').slice(0, 5)
 
   if (loading) {
     return (
       <Card>
-        <CardContent className="p-6">
-          <div className="flex justify-center items-center h-32">
-            <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
-          </div>
-        </CardContent>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading Transactions...
+          </CardTitle>
+        </CardHeader>
       </Card>
     )
   }
 
   return (
     <div className="space-y-4">
+      {/* Notification */}
+      {notification && (
+        <div className={`p-4 rounded-lg border ${
+          notification.type === 'error' 
+            ? 'bg-red-50 border-red-200 text-red-800' 
+            : 'bg-green-50 border-green-200 text-green-800'
+        }`}>
+          <div className="flex items-center gap-2">
+            {notification.type === 'error' ? (
+              <AlertCircle className="h-4 w-4" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4" />
+            )}
+            <span className="font-medium">{notification.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Pending Transactions */}
       {pendingTransactions.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-amber-700">
-              <Clock className="h-5 w-5" />
-              Pending Transactions ({pendingTransactions.length})
+            <CardTitle className="flex items-center justify-between">
+              <span>Pending Transactions ({pendingTransactions.length})</span>
+              <Button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                variant="outline"
+                size="sm"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
             </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-amber-600 mb-3">
+            <p className="text-sm text-gray-600">
               These transactions are awaiting M-Pesa confirmation. They should complete automatically within a few minutes.
-            </div>
-            <div className="space-y-2">
-              {pendingTransactions.map((tx) => {
-                const TypeIcon = getTransactionIcon(tx.transaction_type)
-                return (
-                  <div key={tx.id} className="flex items-center justify-between p-2 bg-white rounded border">
-                    <div className="flex items-center gap-2">
-                      <TypeIcon className="h-4 w-4 text-amber-500" />
-                      <span className="font-medium">
-                        {tx.transaction_type === 'PREMIUM' 
-                          ? `${tx.premium_days} Days Premium` 
-                          : `${tx.leaves} Leaves`}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        KES {tx.amount}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(tx.created_at).toLocaleString()}
-                    </div>
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {pendingTransactions.map((txn) => (
+              <div key={txn.id} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  {getStatusIcon(txn.status)}
+                  <div>
+                    <p className="font-medium">{txn.transaction_type}</p>
+                    <p className="text-sm text-gray-600">KES {txn.amount}</p>
+                    <p className="text-xs text-gray-500">{formatDate(txn.created_at)}</p>
                   </div>
-                )
-              })}
-            </div>
+                </div>
+                <Badge className={getStatusColor(txn.status)}>
+                  {txn.status}
+                </Badge>
+              </div>
+            ))}
             <div className="mt-3 p-2 bg-amber-100 rounded text-xs text-amber-700">
               <strong>Note:</strong> If a transaction remains pending for more than 10 minutes, please contact support.
             </div>
@@ -188,82 +222,44 @@ function TransactionStatusChecker() {
         </Card>
       )}
 
+      {/* Transaction History */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Transaction History</span>
             <Button
-              variant="outline"
-              size="sm"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center gap-2"
+              variant="outline"
+              size="sm"
             >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center gap-2 text-red-600">
-                <AlertTriangle className="h-4 w-4" />
-                <span className="text-sm">{error}</span>
-              </div>
-            </div>
-          )}
-
-          {recentTransactions.length === 0 ? (
-            <div className="text-center py-8">
-              <CreditCard className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-              <div className="text-gray-500">No transactions yet</div>
-              <div className="text-sm text-gray-400 mt-1">Your purchase history will appear here</div>
-            </div>
+          {completedTransactions.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No completed transactions yet.</p>
           ) : (
             <div className="space-y-3">
-              {recentTransactions.map((tx) => {
-                const TypeIcon = getTransactionIcon(tx.transaction_type)
-                const StatusIcon = getStatusIcon(tx.status)
-                const statusColor = getStatusColor(tx.status)
-                
-                return (
-                  <div key={tx.id} className="p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <TypeIcon className={`h-5 w-5 ${tx.transaction_type === 'PREMIUM' ? 'text-amber-500' : 'text-emerald-500'}`} />
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {tx.transaction_type === 'PREMIUM' 
-                              ? `${tx.premium_days || 0} Days Premium` 
-                              : `${tx.leaves || 0} Leaves`}
-                          </div>
-                          <div className="text-sm text-gray-500 flex items-center gap-2">
-                            <span>KES {tx.amount}</span>
-                            <span>•</span>
-                            <Phone className="h-3 w-3" />
-                            <span>{formatPhoneNumber(tx.phone_number)}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${statusColor}`}>
-                          <StatusIcon className="h-3 w-3 mr-1" />
-                          {tx.status}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {new Date(tx.created_at).toLocaleDateString()} {new Date(tx.created_at).toLocaleTimeString()}
-                        </div>
-                        {tx.receipt_number && (
-                          <div className="text-xs text-gray-400 mt-1">
-                            Receipt: {tx.receipt_number}
-                          </div>
-                        )}
-                      </div>
+              {completedTransactions.map((txn) => (
+                <div key={txn.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    {getStatusIcon(txn.status)}
+                    <div>
+                      <p className="font-medium">{txn.transaction_type}</p>
+                      <p className="text-sm text-gray-600">
+                        KES {txn.amount} • {formatPhoneNumber(txn.phone_number)}
+                      </p>
+                      <p className="text-xs text-gray-500">{formatDate(txn.created_at)}</p>
                     </div>
                   </div>
-                )
-              })}
+                  <Badge className={getStatusColor(txn.status)}>
+                    {txn.status}
+                  </Badge>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
