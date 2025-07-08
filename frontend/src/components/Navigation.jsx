@@ -78,6 +78,9 @@ const Navigation = () => {
     if (segments.includes("reminders")) {
       breadcrumbs.push({ name: "Reminders", path: "/reminders" })
     }
+    if (segments.includes("premium")) {
+      breadcrumbs.push({ name: "Premium", path: "/premium" })
+    }
 
     return breadcrumbs
   }
@@ -86,12 +89,16 @@ const Navigation = () => {
     { name: "Dashboard", path: "/dashboard", icon: Home },
     { name: "My Plants", path: "/my-plants", icon: Leaf },
     { name: "Journal", path: "/journal", icon: BookOpen },
-    { name: "Mood", path: "/mood", icon: Heart },
+    { name: "Mindfulness", path: "/mindfulness", icon: Heart },
     { name: "Public Garden", path: "/public-garden", icon: Users },
-    { name: "Premium", path: "/premium", icon: Leaf },
-    { name: "AI Chat", path: "/premium-chatbot", icon: MessageCircle, premiumRequired: true },
     { name: "Music", path: "/music", icon: Music },
-    { name: "Reminders", path: "/reminders", icon: Bell },
+    { name: "Premium", path: "/premium", icon: Crown },
+  ]
+
+  // Premium-only items (shown in dropdown or premium page)
+  const premiumItems = [
+    { name: "Mood Analytics", path: "/mood", icon: TrendingUp },
+    { name: "AI Chat", path: "/premium-chatbot", icon: MessageCircle },
   ]
 
   const breadcrumbs = getBreadcrumbs()
@@ -225,18 +232,6 @@ const Navigation = () => {
                     <CreditCard className="h-4 w-4 mr-2" />
                     Buy Leaves
                   </button>
-                  {!user?.is_premium && (
-                    <button
-                      onClick={() => {
-                        navigate("/profile")
-                        setIsUserMenuOpen(false)
-                      }}
-                      className="flex items-center w-full px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 hover:text-amber-700"
-                    >
-                      <Leaf className="h-4 w-4 mr-2 text-amber-500" />
-                      Upgrade to Premium
-                    </button>
-                  )}
                   <button
                     onClick={() => {
                       navigate("/reminders")
@@ -247,6 +242,42 @@ const Navigation = () => {
                     <Bell className="h-4 w-4 mr-2" />
                     Reminders
                   </button>
+                  
+                  {/* Premium Features */}
+                  {user?.is_premium ? (
+                    <>
+                      <hr className="my-1" />
+                      <div className="px-4 py-1 text-xs font-medium text-amber-600 bg-amber-50">Premium Features</div>
+                      {premiumItems.map((item) => {
+                        const Icon = item.icon
+                        return (
+                          <button
+                            key={item.path}
+                            onClick={() => {
+                              navigate(item.path)
+                              setIsUserMenuOpen(false)
+                            }}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600"
+                          >
+                            <Icon className="h-4 w-4 mr-2" />
+                            {item.name}
+                          </button>
+                        )
+                      })}
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        navigate("/premium")
+                        setIsUserMenuOpen(false)
+                      }}
+                      className="flex items-center w-full px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                    >
+                      <Crown className="h-4 w-4 mr-2 text-amber-500" />
+                      Upgrade to Premium
+                    </button>
+                  )}
+                  
                   <hr className="my-1" />
                   <button
                     onClick={handleLogout}
@@ -294,6 +325,46 @@ const Navigation = () => {
                   </button>
                 )
               })}
+              
+              {/* Reminders in mobile menu */}
+              <button
+                onClick={() => {
+                  navigate("/reminders")
+                  setIsMobileMenuOpen(false)
+                }}
+                className={`flex items-center w-full px-4 py-2 text-left rounded-md transition-colors ${
+                  location.pathname === "/reminders" ? "bg-green-100 text-green-700" : "text-gray-600 hover:bg-green-50 hover:text-green-600"
+                }`}
+              >
+                <Bell className="h-4 w-4 mr-3" />
+                Reminders
+              </button>
+              
+              {/* Premium Features in mobile menu */}
+              {user?.is_premium && (
+                <>
+                  <div className="px-4 py-2 text-xs font-medium text-amber-600 bg-amber-50 rounded-md">Premium Features</div>
+                  {premiumItems.map((item) => {
+                    const Icon = item.icon
+                    const isActive = location.pathname === item.path
+                    return (
+                      <button
+                        key={item.path}
+                        onClick={() => {
+                          navigate(item.path)
+                          setIsMobileMenuOpen(false)
+                        }}
+                        className={`flex items-center w-full px-4 py-2 text-left rounded-md transition-colors ${
+                          isActive ? "bg-amber-100 text-amber-700" : "text-gray-600 hover:bg-amber-50 hover:text-amber-600"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 mr-3" />
+                        {item.name}
+                      </button>
+                    )
+                  })}
+                </>
+              )}
             </div>
           </div>
         )}
