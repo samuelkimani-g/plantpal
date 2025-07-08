@@ -2,18 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { Progress } from '../components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import {
   Music,
   Heart,
-  TrendingUp,
   Leaf,
-  Calendar,
-  BarChart3,
   RefreshCw,
-  Settings,
   Play,
   Pause,
   Volume2,
@@ -22,10 +16,9 @@ import {
   ExternalLink
 } from 'lucide-react';
 import SpotifyConnect from '../components/SpotifyConnect';
-import MoodAnalysisDashboard from '../components/MoodAnalysisDashboard';
 import NowPlayingWidget from '../components/NowPlayingWidget';
 import OfflineMusicWidget from '../components/OfflineMusicWidget';
-import { musicAPI, paymentsAPI, getMoodAnalysis, getMoodSummary } from '../services/api';
+import { musicAPI, paymentsAPI, getMoodAnalysis } from '../services/api';
 
 const MusicDashboard = () => {
   const location = useLocation();
@@ -37,7 +30,6 @@ const MusicDashboard = () => {
   });
   const [currentTrack, setCurrentTrack] = useState(null);
   const [recentTracks, setRecentTracks] = useState([]);
-  const [topTracks, setTopTracks] = useState([]);
   const [listeningStats, setListeningStats] = useState(null);
   const [moodAnalysis, setMoodAnalysis] = useState(null);
   const [isLoadingMood, setIsLoadingMood] = useState(true);
@@ -115,7 +107,6 @@ const MusicDashboard = () => {
       // Clear all data when disconnected
       setCurrentTrack(null);
       setRecentTracks([]);
-      setTopTracks([]);
       setListeningStats(null);
       setMoodAnalysis(null);
     }
@@ -126,15 +117,14 @@ const MusicDashboard = () => {
     setError(null); // Clear previous errors
 
     try {
-      console.log("🔄 Loading dashboard data...");
+      console.log("🔄 Loading dashboard data for last 7 days...");
       
       // Use Promise.allSettled to allow some fetches to fail without stopping others
       const results = await Promise.allSettled([
         musicAPI.getCurrentTrack(),
         musicAPI.getRecentlyPlayed(10),
-        musicAPI.getTopTracks('medium_term', 10),
-        musicAPI.getListeningStats(30),
-        getMoodAnalysis()
+        musicAPI.getListeningStats(7), // Only 7 days
+        getMoodAnalysis(7) // Only 7 days
       ]);
 
       console.log("📊 API Results:", results.map((r, i) => ({
@@ -145,19 +135,16 @@ const MusicDashboard = () => {
 
       const currentTrackData = results[0].status === 'fulfilled' ? results[0].value : null;
       const recentTracksData = results[1].status === 'fulfilled' ? (results[1].value.tracks || []) : [];
-      const topTracksData = results[2].status === 'fulfilled' ? (results[2].value.tracks || []) : [];
-      const listeningStatsData = results[3].status === 'fulfilled' ? results[3].value : null;
-      const moodAnalysisData = results[4].status === 'fulfilled' ? results[4].value : null;
+      const listeningStatsData = results[2].status === 'fulfilled' ? results[2].value : null;
+      const moodAnalysisData = results[3].status === 'fulfilled' ? results[3].value : null;
 
       console.log("🎵 Current Track Data:", currentTrackData);
       console.log("📻 Recent Tracks Data:", recentTracksData);
-      console.log("🏆 Top Tracks Data:", topTracksData);
       console.log("📈 Listening Stats Data:", listeningStatsData);
       console.log("😊 Mood Analysis Data:", moodAnalysisData);
 
       setCurrentTrack(currentTrackData);
       setRecentTracks(recentTracksData);
-      setTopTracks(topTracksData);
       setListeningStats(listeningStatsData);
       setMoodAnalysis(moodAnalysisData);
 
@@ -173,6 +160,7 @@ const MusicDashboard = () => {
       setError('Failed to load music data. Some sections might be empty.');
     } finally {
       setIsLoading(false);
+      setIsLoadingMood(false);
     }
   }, []);
 
@@ -198,172 +186,130 @@ const MusicDashboard = () => {
         try {
           const plantUpdate = await musicAPI.updatePlantFromMusic();
           console.log("🌱 Plant updated from music:", plantUpdate.data);
-          
-          // You can add a notification here if you want to show the user
-          // that their plant is growing from the music
         } catch (plantErr) {
-          console.error('Error updating plant from music:', plantErr);
-          // Don't fail the current track load if plant update fails
+          console.error("❌ Failed to update plant from music:", plantErr);
         } finally {
           setIsUpdatingPlant(false);
         }
       }
     } catch (err) {
-      console.error('Error loading current track:', err);
-      setCurrentTrack(null);
+      console.error("❌ Error refreshing current track:", err);
     }
   };
 
   const handleSyncData = async () => {
     setIsLoading(true);
     setError(null);
+    
     try {
+      console.log("🔄 Syncing music data...");
       await musicAPI.syncListeningData();
       await loadDashboardData(); // Reload all data after sync
+      console.log("✅ Music data synced successfully!");
     } catch (err) {
-      console.error('Error syncing data:', err);
-      setError('Failed to sync listening data. Please ensure you are playing music on Spotify.');
+      console.error("❌ Error syncing music data:", err);
+      setError('Failed to sync music data. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Audio Playback
   const togglePlayPreview = (url) => {
-    if (!url) {
-      alert("No preview URL available for this track.");
-      return;
-    }
-
     if (audio.src === url && !audio.paused) {
       audio.pause();
-      audio.src = ''; // Clear source to stop buffering
     } else {
-      audio.pause(); // Pause any currently playing track
       audio.src = url;
-      audio.play().catch(e => console.error("Error playing audio preview:", e));
+      audio.play().catch(err => console.error('Error playing preview:', err));
     }
   };
 
-  const renderCurrentTrack = () => {
-    console.log("🎵 Rendering current track with data:", currentTrack);
-    console.log("🎵 Is loading:", isLoading);
-    
-    if (isLoading && !currentTrack) { // Only show loader if no data yet
-      return (
-        <Card className="col-span-full">
-          <CardContent className="p-6 text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-green-500 mb-4" />
-            <p className="text-gray-600">Loading current track...</p>
-          </CardContent>
-        </Card>
-      );
-    }
-    if (!currentTrack || !currentTrack.track || Object.keys(currentTrack.track).length === 0) { // Check if track exists
-      console.log("🎵 No current track data, showing empty state");
-      return (
-        <Card className="col-span-full">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center justify-center text-gray-500 py-8">
-              <Music className="h-16 w-16 mb-4 text-green-400" />
-              <p className="text-lg font-semibold">No track playing</p>
-              <p className="text-sm text-center mt-2">Start playing music on Spotify to see it here.</p>
-              <Button 
-                className="mt-4 bg-green-600 hover:bg-green-700 text-white"
-                onClick={() => window.open('https://open.spotify.com/', '_blank')}
-              >
-                Open Spotify <ExternalLink className="h-4 w-4 ml-2" />
-              </Button>
+  const renderQuickStats = () => {
+    if (!listeningStats) return null;
+
+    const stats = [
+      {
+        title: "Sessions",
+        value: listeningStats.sessions || 0,
+        icon: Music,
+        color: "text-blue-600"
+      },
+      {
+        title: "Listening Time",
+        value: musicAPI.formatDuration(listeningStats.total_duration_ms || 0),
+        icon: Volume2,
+        color: "text-green-600"
+      },
+      {
+        title: "Tracks Played",
+        value: listeningStats.tracks_played || 0,
+        icon: Heart,
+        color: "text-purple-600"
+      }
+    ];
+
+    return stats.map((stat, index) => (
+      <Card key={index} className="shadow-lg">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
             </div>
+            <stat.icon className={`h-8 w-8 ${stat.color}`} />
+          </div>
+        </CardContent>
+      </Card>
+    ));
+  };
+
+  const renderMoodAnalysis = () => {
+    if (!moodAnalysis) {
+      return (
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center text-green-700">
+              <Leaf className="h-5 w-5 mr-2" /> Mood Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 text-center text-gray-500">
+            <p>No mood data available for the last 7 days. Listen to more music to generate a mood profile!</p>
           </CardContent>
         </Card>
       );
     }
 
-    const track = currentTrack.track;
-    console.log("🎵 Rendering current track with data:", track);
-    const isPlayingThisPreview = audio.src === track.preview_url && !audio.paused;
+    const currentMood = moodAnalysis.current_mood_label || 'neutral';
+    const moodScore = moodAnalysis.current_mood_score || 0.5;
+    const moodEmoji = musicAPI.getMoodEmoji(currentMood);
 
     return (
-      <Card className="col-span-full shadow-lg border-green-200">
-        <CardHeader className="bg-green-50 rounded-t-lg">
-          <CardTitle className="flex items-center text-green-800">
-            <Volume2 className="h-5 w-5 mr-2" />
-            Currently Playing
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center text-green-700">
+            <Leaf className="h-5 w-5 mr-2" /> Mood Analysis (Last 7 Days)
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="flex items-center space-x-4 mb-4">
-            {track.album_image_url && (
-              <img
-                src={track.album_image_url}
-                alt="Album cover"
-                className="w-20 h-20 rounded-lg shadow-md"
-              />
-            )}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-xl truncate">{track.name}</h3>
-              <p className="text-gray-700 truncate">
-                {Array.isArray(track.artists) ? track.artists.join(', ') : track.artists}
-              </p>
-              <p className="text-sm text-gray-500 truncate">{track.album_name}</p>
-              {track.external_url && (
-                <a 
-                  href={track.external_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-green-600 hover:underline text-sm flex items-center mt-1"
-                >
-                  View on Spotify <ExternalLink className="h-3 w-3 ml-1" />
-                </a>
-              )}
-            </div>
-            {track.computed_mood_score !== undefined && (
-              <div className="text-center">
-                <div className="text-4xl mb-1">
-                  {musicAPI.getMoodEmoji(musicAPI.formatMoodScore(track.computed_mood_score))}
-                </div>
-                <Badge variant="secondary" className="px-3 py-1 text-base capitalize">
-                  {musicAPI.formatMoodScore(track.computed_mood_score)}
-                </Badge>
-                <div className="flex items-center justify-center mt-2 text-green-600">
-                  {isUpdatingPlant ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Leaf className="h-4 w-4 mr-1" />
-                  )}
-                  <span className="text-xs">
-                    {isUpdatingPlant ? 'Updating Plant...' : 'Plant Growing'}
-                  </span>
-                </div>
-              </div>
-            )}
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-2">{moodEmoji}</div>
+            <h3 className="text-xl font-semibold text-gray-800 capitalize">{currentMood}</h3>
+            <p className="text-sm text-gray-600">{(moodScore * 100).toFixed(0)}% mood score</p>
           </div>
           
-          {currentTrack.progress_ms !== undefined && track.duration_ms !== undefined && (
-            <div className="mt-4">
-              <Progress 
-                value={(currentTrack.progress_ms / track.duration_ms) * 100} 
-                className="w-full h-2 bg-gray-200 rounded-full"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>{musicAPI.formatDuration(currentTrack.progress_ms)}</span>
-                <span>{musicAPI.formatDuration(track.duration_ms)}</span>
-              </div>
-            </div>
-          )}
-          
-          {track.preview_url && (
-            <div className="mt-4 text-center">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => togglePlayPreview(track.preview_url)}
-                className="border-green-500 text-green-700 hover:bg-green-50"
-              >
-                {isPlayingThisPreview ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                {isPlayingThisPreview ? 'Pause Preview' : 'Play Preview'}
-              </Button>
+          {moodAnalysis.mood_distribution && Object.keys(moodAnalysis.mood_distribution).length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-semibold text-gray-700 mb-3">Mood Distribution</h4>
+              {Object.entries(moodAnalysis.mood_distribution)
+                .sort(([,a], [,b]) => parseFloat(b) - parseFloat(a))
+                .map(([mood, percentage]) => (
+                  <div key={mood} className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="text-xl mr-2">{musicAPI.getMoodEmoji(mood)}</span>
+                      <span className="capitalize">{mood}</span>
+                    </div>
+                    <span className="font-semibold">{parseFloat(percentage).toFixed(0)}%</span>
+                  </div>
+                ))}
             </div>
           )}
         </CardContent>
@@ -371,107 +317,14 @@ const MusicDashboard = () => {
     );
   };
 
-  const renderQuickStats = () => {
-    if (isLoading && (!listeningStats || !moodAnalysis)) {
-      return (
-        <Card className="col-span-full md:col-span-3">
-          <CardContent className="p-6 text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-green-500 mb-4" />
-            <p className="text-gray-600">Loading stats...</p>
-          </CardContent>
-        </Card>
-      );
-    }
-    if (!listeningStats || !moodAnalysis) return null; // Render nothing if data is not available
-
-    return (
-      <>
-        <Card className="shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Listening Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{listeningStats.total_listening_time}</div>
-            <p className="text-xs text-gray-600">Last 30 days</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Current Mood</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              <span className="text-3xl">
-                {musicAPI.getMoodEmoji(moodAnalysis.current_mood_label)}
-              </span>
-              <div>
-                <div className="font-bold capitalize text-gray-800">{moodAnalysis.current_mood_label}</div>
-                <div className="text-xs text-gray-600">
-                  {Math.round(moodAnalysis.current_mood_score * 100)}% confidence
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Plant Growth Boost</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              <Leaf className="h-6 w-6 text-green-600" />
-              <div>
-                <div className="font-bold text-green-700 text-2xl">
-                  +{Math.round(musicAPI.calculatePlantGrowthBonus(moodAnalysis.current_mood_score) * 100)}%
-                </div>
-                <div className="text-xs text-gray-600">Growth bonus</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </>
-    );
-  };
-
   const renderTrackList = (tracks, title) => {
-    console.log(`📻 Rendering ${title} with data:`, tracks);
-    console.log(`📻 Is loading:`, isLoading);
-    
-    if (isLoading && tracks.length === 0) {
-      return (
-        <Card className="col-span-1">
-          <CardContent className="p-6 text-center">
-            <Loader2 className="h-6 w-6 animate-spin mx-auto text-green-500 mb-4" />
-            <p className="text-gray-600">Loading {title.toLowerCase()}...</p>
-          </CardContent>
-        </Card>
-      );
-    }
-    if (!tracks || tracks.length === 0) {
-      console.log(`📻 No ${title} data, showing empty state`);
-      return (
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center text-gray-800">
-              <Music className="h-5 w-5 mr-2 text-blue-500" />
-              {title}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-500 text-sm">No {title.toLowerCase()} available.</p>
-          </CardContent>
-        </Card>
-      );
-    }
+    if (!tracks || tracks.length === 0) return null;
 
-    console.log(`📻 Rendering ${title} with ${tracks.length} tracks`);
     return (
-      <Card className="shadow-sm">
+      <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center text-gray-800">
-            <Music className="h-5 w-5 mr-2 text-blue-500" />
+          <CardTitle className="flex items-center text-green-700">
+            <Music className="h-5 w-5 mr-2" />
             {title}
           </CardTitle>
         </CardHeader>
@@ -565,7 +418,7 @@ const MusicDashboard = () => {
         Music Dashboard
       </h1>
       <p className="text-lg text-gray-600 mb-8">
-        Connect your Spotify to see your listening habits and how they influence your plant's mood!
+        Track your music mood and plant growth integration (Last 7 Days)
       </p>
 
       {error && (
@@ -575,10 +428,6 @@ const MusicDashboard = () => {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {renderQuickStats()}
-      </div>
 
       <div className="mb-6 flex justify-end">
         <Button 
@@ -595,7 +444,12 @@ const MusicDashboard = () => {
         </Button>
       </div>
 
-      {/* Main Content - Single View */}
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {renderQuickStats()}
+      </div>
+
+      {/* Main Content */}
       <div className="space-y-6">
         {/* Current Track Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -608,13 +462,10 @@ const MusicDashboard = () => {
         </div>
 
         {/* Mood Analysis */}
-        <MoodAnalysisDashboard isLoading={isLoadingMood} moodSummary={moodAnalysis} />
+        {renderMoodAnalysis()}
 
-        {/* Music Library */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {renderTrackList(topTracks, 'Top Tracks (Medium Term)')}
-          {renderTrackList(recentTracks, 'Recently Played')}
-        </div>
+        {/* Recently Played */}
+        {renderTrackList(recentTracks, 'Recently Played')}
 
         {/* Settings Section */}
         <Card className="p-6 shadow-lg">
