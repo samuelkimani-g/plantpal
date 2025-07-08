@@ -16,7 +16,7 @@ from .mpesa_service import MpesaService
 from apps.plants.models import Plant
 import logging
 from datetime import datetime
-from apps.mood.mood_system import EnhancedMoodSystem
+from utils.enhanced_mood_system import EnhancedMoodSystem
 
 logger = logging.getLogger(__name__)
 

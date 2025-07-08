@@ -6,8 +6,8 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import datetime, timedelta
-from .models import JournalEntry, JournalPrompt
-from .serializers import JournalEntrySerializer, JournalPromptSerializer
+from .models import JournalEntry
+from .serializers import JournalEntrySerializer
 from utils.enhanced_mood_system import EnhancedMoodSystem
 import logging
 

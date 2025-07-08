@@ -1,11 +1,7 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import JournalEntryViewSet, JournalPromptView
-
-router = DefaultRouter()
-router.register(r'entries', JournalEntryViewSet, basename='journalentry')
+from django.urls import path
+from .views import JournalEntryViewSet
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('prompts/', JournalPromptView.as_view(), name='journal-prompts'),
+    path('entries/', JournalEntryViewSet.as_view(), name='journal-entries'),
+    path('entries/<int:entry_id>/', JournalEntryViewSet.as_view(), name='journal-entry-detail'),
 ]
