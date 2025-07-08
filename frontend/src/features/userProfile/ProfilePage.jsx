@@ -222,30 +222,115 @@ export default function ProfilePage() {
             <CardDescription>Update your personal details and bio</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-col md:flex-row md:gap-8 gap-4">
-              <div className="flex-1 space-y-2">
-                <Label>First Name</Label>
-                <p className="font-medium">{user.first_name || 'Not set'}</p>
-                <Label>Last Name</Label>
-                <p className="font-medium">{user.last_name || 'Not set'}</p>
-                <Label>Username</Label>
-                <p className="font-medium">{user.username}</p>
-                <Label>Email</Label>
-                <p className="font-medium">{user.email || 'Not set'}</p>
+            {!isEditing ? (
+              <div className="flex flex-col md:flex-row md:gap-8 gap-4">
+                <div className="flex-1 space-y-2">
+                  <Label>First Name</Label>
+                  <p className="font-medium">{user.first_name || 'Not set'}</p>
+                  <Label>Last Name</Label>
+                  <p className="font-medium">{user.last_name || 'Not set'}</p>
+                  <Label>Username</Label>
+                  <p className="font-medium">{user.username}</p>
+                  <Label>Email</Label>
+                  <p className="font-medium">{user.email || 'Not set'}</p>
+                </div>
+                <div className="flex-1 space-y-2">
+                  <Label>Bio</Label>
+                  <p className="font-medium">{user.bio ? user.bio : 'No bio added yet'}</p>
+                  <Label>Member Since</Label>
+                  <p className="font-medium">{user.date_joined ? new Date(user.date_joined).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not set'}</p>
+                </div>
               </div>
-              <div className="flex-1 space-y-2">
-                <Label>Bio</Label>
-                <p className="font-medium">{user.bio ? user.bio : 'No bio added yet'}</p>
-                <Label>Member Since</Label>
-                <p className="font-medium">{user.date_joined ? new Date(user.date_joined).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not set'}</p>
+            ) : (
+              <form onSubmit={handleProfileUpdate} className="space-y-4">
+                <div className="flex flex-col md:flex-row md:gap-8 gap-4">
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <Label htmlFor="first_name">First Name</Label>
+                      <Input
+                        id="first_name"
+                        value={profileData.first_name}
+                        onChange={(e) => setProfileData({ ...profileData, first_name: e.target.value })}
+                        placeholder="Enter first name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="last_name">Last Name</Label>
+                      <Input
+                        id="last_name"
+                        value={profileData.last_name}
+                        onChange={(e) => setProfileData({ ...profileData, last_name: e.target.value })}
+                        placeholder="Enter last name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="username">Username</Label>
+                      <Input
+                        id="username"
+                        value={user.username}
+                        disabled
+                        className="bg-gray-50"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Username cannot be changed</p>
+                    </div>
+                    <div>
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        value={profileData.email}
+                        onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                        placeholder="Enter email"
+                        type="email"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <Label htmlFor="bio">Bio</Label>
+                      <textarea
+                        id="bio"
+                        value={profileData.bio}
+                        onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
+                        placeholder="Tell us about yourself..."
+                        className="w-full min-h-[100px] px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        maxLength={500}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {profileData.bio?.length || 0}/500 characters
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Member Since</Label>
+                      <p className="font-medium text-muted-foreground">
+                        {user.date_joined ? new Date(user.date_joined).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not set'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Join date cannot be changed</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Save Changes
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
+            {!isEditing && (
+              <div className="flex justify-end mt-4">
+                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
               </div>
-            </div>
-            <div className="flex justify-end mt-4">
-              <Button variant="outline" onClick={() => setIsEditing(true)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-            </div>
+            )}
           </CardContent>
         </Card>
 

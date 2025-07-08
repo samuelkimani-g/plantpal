@@ -18,10 +18,13 @@ class UserSerializer(serializers.ModelSerializer):
             "id",
             "email",
             "username",
+            "first_name",
+            "last_name",
             "bio",
             "plantpal_leaves",
             "is_premium",
             "premium_expiry_date",
+            "date_joined",
         )
 
 
