@@ -137,16 +137,16 @@ class JournalEntry(models.Model):
                     plant.combined_mood_score = combined_mood.get('mood_score', 0.5)
                     plant.current_mood_influence = combined_mood.get('unified_mood', 'neutral')
                     
-                    # Calculate growth impact
+                    # Calculate growth impact (returns float)
                     mood_impact = MoodEngine.calculate_plant_growth_impact(
                         combined_mood, 
                         plant.growth_points
                     )
                     
-                    # Apply growth points if there's a change
-                    if mood_impact['growth_change'] != 0:
+                    # Apply growth points if there's a change (mood_impact is a float)
+                    if mood_impact != 0:
                         plant.add_growth_points(
-                            mood_impact['growth_change'], 
+                            int(mood_impact), 
                             source=f"journal_mood_{self.mood}"
                         )
                     
@@ -159,7 +159,7 @@ class JournalEntry(models.Model):
                         activity_type='journal_sentiment',
                         note=f"Journal mood updated: {self.mood} ({self.mood_score:.2f}) → {plant.current_mood_influence}",
                         value=self.mood_score,
-                        growth_impact=mood_impact['growth_change']
+                        growth_impact=int(mood_impact)
                     )
         except Exception as e:
             print(f"Error updating plant mood: {e}")

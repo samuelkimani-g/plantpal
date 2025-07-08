@@ -7,11 +7,16 @@ class JournalEntrySerializer(serializers.ModelSerializer):
     """
     mood_type = serializers.CharField(write_only=True, required=False, help_text="User-selected mood type")
     mood_emoji = serializers.CharField(read_only=True, help_text="Emoji representation of mood")
+    formatted_date = serializers.SerializerMethodField(help_text="Formatted date for display")
     
     class Meta:
         model = JournalEntry
-        fields = ['id', 'text', 'mood', 'mood_score', 'mood_emoji', 'is_favorite', 'created_at', 'mood_type']
-        read_only_fields = ['id', 'created_at', 'mood_score', 'mood_emoji']
+        fields = ['id', 'text', 'mood', 'mood_score', 'mood_emoji', 'formatted_date', 'is_favorite', 'created_at', 'mood_type']
+        read_only_fields = ['id', 'created_at', 'mood_score', 'mood_emoji', 'formatted_date']
+
+    def get_formatted_date(self, obj):
+        """Format date as MM/DD/YYYY"""
+        return obj.created_at.strftime('%m/%d/%Y')
 
     def create(self, validated_data):
         # Extract mood_type and map it to mood field
