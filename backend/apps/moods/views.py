@@ -47,19 +47,19 @@ class MoodAnalyticsView(APIView):
         time_series = (
             moods.annotate(day=TruncDay('created_at'))
             .values('day')
-            .annotate(avg_score=Avg('unified_mood_score'))
+            .annotate(avg_score=Avg('mood_score'))
             .order_by('day')
         )
         
         # Mood distribution
         mood_distribution = (
-            moods.values('mood_label')
+            moods.values('mood_type')
             .annotate(count=Count('id'))
             .order_by('-count')
         )
 
         # Overall average
-        overall_avg = moods.aggregate(Avg('unified_mood_score'))['unified_mood_score__avg']
+        overall_avg = moods.aggregate(Avg('mood_score'))['mood_score__avg']
 
         return Response({
             "time_series": list(time_series),
