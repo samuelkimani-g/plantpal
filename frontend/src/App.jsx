@@ -27,6 +27,7 @@ import PremiumChatbot from "./pages/PremiumChatbot"
 import PremiumUpgradePage from "./pages/PremiumUpgradePage"
 import MoodAnalysisDashboard from "./features/mood/MoodAnalysisDashboard"
 import ShopPage from './pages/ShopPage';
+import PremiumPage from './pages/PremiumPage';
 
 function App() {
   return (
@@ -53,6 +54,16 @@ function App() {
             />
             <Route
               path="/plants"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <PlantManagement />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-plants"
               element={
                 <ProtectedRoute>
                   <Layout>
@@ -190,11 +201,51 @@ function App() {
                 }
               />
               <Route
+                path="/my-plants"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <PlantManagement />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/public-garden"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <PublicGarden />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/mood"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <MoodAnalysisDashboard />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/shop"
                 element={
                   <ProtectedRoute>
                     <Layout>
                       <ShopPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/premium"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <PremiumPage />
                     </Layout>
                   </ProtectedRoute>
                 }

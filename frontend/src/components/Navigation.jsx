@@ -21,6 +21,10 @@ import {
   MessageCircle,
   TrendingUp,
   ShoppingCart,
+  Heart,
+  Users,
+  Crown,
+  Music,
 } from "lucide-react"
 import { Button } from "./ui/button"
 
@@ -80,13 +84,14 @@ const Navigation = () => {
 
   const navigationItems = [
     { name: "Dashboard", path: "/dashboard", icon: Home },
-    { name: "My Plant", path: "/plants", icon: Leaf },
+    { name: "My Plants", path: "/my-plants", icon: Leaf },
     { name: "Journal", path: "/journal", icon: BookOpen },
-    { name: "Shop", path: "/shop", icon: ShoppingCart },
-    { name: "Mindfulness", path: "/mindfulness", icon: Smile },
-    { name: "Music", path: "/music", icon: Settings },
+    { name: "Mood", path: "/mood", icon: Heart },
+    { name: "Public Garden", path: "/public-garden", icon: Users },
+    { name: "Premium", path: "/premium", icon: Crown },
     { name: "AI Chat", path: "/premium-chatbot", icon: MessageCircle, premiumRequired: true },
-    { name: "Analytics", path: "/mood-analytics", icon: TrendingUp, premiumRequired: true },
+    { name: "Music", path: "/music", icon: Music },
+    { name: "Reminders", path: "/reminders", icon: Bell },
   ]
 
   const breadcrumbs = getBreadcrumbs()
