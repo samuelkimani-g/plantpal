@@ -279,7 +279,7 @@ const PremiumPage = () => {
                   <li>• Premium accessories</li>
                 </ul>
                 <Button 
-                  onClick={() => document.querySelector('[value="store"]').click()}
+                  onClick={() => navigate('/premium')}
                   className="w-full bg-emerald-600 hover:bg-emerald-700"
                 >
                   <Store className="h-4 w-4 mr-2" />
@@ -541,7 +541,13 @@ const PremiumPage = () => {
                     Upgrade to premium to unlock 24/7 AI-powered plant care assistance.
                   </p>
                   <Button 
-                    onClick={() => document.querySelector('[value="upgrade"]').click()}
+                    onClick={() => {
+                      // Set the active tab to upgrade
+                      const upgradeTab = document.querySelector('[value="upgrade"]');
+                      if (upgradeTab) {
+                        upgradeTab.click();
+                      }
+                    }}
                     size="lg"
                     className="bg-purple-600 hover:bg-purple-700"
                   >

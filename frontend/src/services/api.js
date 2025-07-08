@@ -267,12 +267,18 @@ export const paymentsAPI = {
   
   // Premium packages
   getPremiumPackages: () => api.get("/api/payments/premium-packages/"),
-  initiatePremiumPayment: (packageId, phoneNumber) =>
-    api.post("/api/payments/initiate-premium/", { package_id: packageId, phone_number: phoneNumber }),
+  initiatePremiumPayment: (data) =>
+    api.post("/api/payments/initiate-premium/", data),
+  
+  // Store items
+  getStoreItems: () => api.get("/api/payments/store-items/"),
+  purchaseStoreItem: (itemId) => api.post(`/api/payments/store-items/${itemId}/purchase/`),
+  getInventory: () => api.get("/api/payments/inventory/"),
   
   // General
   getLeaves: () => api.get("/api/payments/leaves/"),
   getTransactions: () => api.get("/api/payments/transactions/"),
+  getTransactionHistory: () => api.get("/api/payments/transactions/"),
   getGarden: (query = "") => api.get(`/api/payments/garden/${query ? `?query=${encodeURIComponent(query)}` : ""}`),
   waterOtherPlant: (plantId) => api.post(`/api/payments/water/${plantId}/`),
   getWateringHistory: () => api.get("/api/payments/watering-history/"),
