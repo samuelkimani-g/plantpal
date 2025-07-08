@@ -84,12 +84,16 @@ const ReminderSettings = () => {
     setIsLoading(true)
     setError(null)
     
+    console.log("🔔 Loading reminder data...")
+    
     try {
       const response = await reminderAPI.getReminders()
+      console.log("📥 Reminder data response:", response.data)
       
       if (response.data) {
         // Backend returns { reminder: {...}, created: boolean }
         const reminderData = response.data.reminder || response.data
+        console.log("📋 Processed reminder data:", reminderData)
         
         if (reminderData) {
           setReminder(reminderData)
@@ -99,11 +103,18 @@ const ReminderSettings = () => {
             method: reminderData.method || "email",
             enabled: reminderData.enabled !== false
           })
+          console.log("✅ Reminder form updated:", {
+            time: reminderData.time || "19:00",
+            timezone: reminderData.timezone || "UTC",
+            method: reminderData.method || "email",
+            enabled: reminderData.enabled !== false
+          })
         }
       }
 
     } catch (err) {
-      console.error("Error loading reminder data:", err)
+      console.error("❌ Error loading reminder data:", err)
+      console.error("❌ Error response:", err.response?.data)
       setError("Failed to load reminder settings")
     } finally {
       setIsLoading(false)
@@ -115,27 +126,47 @@ const ReminderSettings = () => {
     setError(null)
     setSuccess(null)
 
+    console.log("🔔 Saving reminder settings:", reminderForm)
+
     try {
+      // Convert time string to proper format for backend
+      const timeString = reminderForm.time
+      const [hours, minutes] = timeString.split(':').map(Number)
+      const timeObject = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`
+      
+      const dataToSend = {
+        ...reminderForm,
+        time: timeObject
+      }
+      
+      console.log("📤 Sending data to backend:", dataToSend)
+
       let response
       if (reminder?.id) {
-        response = await reminderAPI.updateReminder(reminder.id, reminderForm)
+        console.log("🔄 Updating existing reminder with ID:", reminder.id)
+        response = await reminderAPI.updateReminder(reminder.id, dataToSend)
       } else {
-        response = await reminderAPI.createReminder(reminderForm)
+        console.log("🆕 Creating new reminder")
+        response = await reminderAPI.createReminder(dataToSend)
       }
+
+      console.log("✅ Reminder save response:", response.data)
 
       // Backend returns { message: "...", reminder: {...} }
       const reminderData = response.data.reminder || response.data
       setReminder(reminderData)
       setSuccess("Reminder settings saved successfully!")
       
+      // Refresh data to show updated status
       setTimeout(() => {
         loadReminderData()
         setSuccess(null)
       }, 2000)
 
     } catch (err) {
-      console.error("Error saving reminder:", err)
-      setError(err.response?.data?.detail || "Failed to save reminder settings")
+      console.error("❌ Error saving reminder:", err)
+      console.error("❌ Error response:", err.response?.data)
+      setError(err.response?.data?.detail || err.response?.data?.error || "Failed to save reminder settings")
     } finally {
       setIsSaving(false)
     }
