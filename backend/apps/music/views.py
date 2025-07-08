@@ -688,7 +688,7 @@ class MoodSummaryView(APIView):
             }
             
             impact = MoodEngine.calculate_plant_growth_impact(mood_data, 0)
-            return impact.get('growth_change', 0)
+            return impact if isinstance(impact, (int, float)) else 0
             
         except ImportError:
             # Fallback calculation
@@ -1039,7 +1039,7 @@ def update_plant_from_music(request):
         mood_impact = MoodEngine.calculate_plant_growth_impact(combined_mood, plant.growth_points)
         
         # Apply growth points
-        growth_change = mood_impact['growth_change']
+        growth_change = mood_impact if isinstance(mood_impact, (int, float)) else 0
         if growth_change != 0:
             stage_changed = plant.add_growth_points(
                 growth_change, 
