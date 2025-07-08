@@ -276,6 +276,7 @@ export const paymentsAPI = {
   
   // Premium and packages
   getPackages: () => api.get("/api/payments/packages/"),
+  getPremiumPackages: () => api.get("/api/payments/packages/"), // Alias for getPackages
   purchasePremium: (paymentData) => api.post("/api/payments/premium/", paymentData),
   purchaseLeaves: (packageData) => api.post("/api/payments/packages/", packageData),
   
@@ -284,6 +285,7 @@ export const paymentsAPI = {
   
   // Transaction management
   getTransactionStatus: () => api.get("/api/payments/transactions/status/"),
+  getTransactionHistory: () => api.get("/api/payments/transactions/"),
   completePendingTransactions: () => api.post("/api/payments/transactions/complete-pending/"),
   
   // Public garden and social features
@@ -293,6 +295,7 @@ export const paymentsAPI = {
   // Store and inventory
   getStoreItems: () => api.get("/api/payments/store-items/"),
   getUserInventory: () => api.get("/api/payments/inventory/"),
+  getInventory: () => api.get("/api/payments/inventory/"), // Alias for getUserInventory
   purchaseStoreItem: (itemId) => api.post(`/api/payments/store-items/${itemId}/purchase/`),
 }
 

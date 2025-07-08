@@ -497,9 +497,8 @@ class MindfulnessRewardView(APIView):
         if duration > 10:
             leaves_earned += 3  # Bonus for longer sessions
         
-        user_profile = request.user.userprofile
-        user_profile.plantpal_leaves += leaves_earned
-        user_profile.save()
+        request.user.plantpal_leaves += leaves_earned
+        request.user.save()
         
         logger.info(f"Mindfulness activity completed: {reward_type} with mood impact: {mood_result}")
         
@@ -508,5 +507,5 @@ class MindfulnessRewardView(APIView):
             'duration_minutes': duration,
             'leaves_earned': leaves_earned,
             'mood_impact': mood_result,
-            'total_leaves': user_profile.plantpal_leaves
+            'total_leaves': request.user.plantpal_leaves
         })

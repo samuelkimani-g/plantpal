@@ -608,3 +608,33 @@ class SetupPackagesView(APIView):
                 'success': False,
                 'error': f'Failed to setup packages: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+
+class StoreItemsView(APIView):
+    """View for getting store items"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get available store items"""
+        try:
+            from apps.store.models import StoreItem
+            items = StoreItem.objects.filter(is_active=True)
+            
+            items_data = []
+            for item in items:
+                items_data.append({
+                    'id': item.id,
+                    'name': item.name,
+                    'description': item.description,
+                    'price': item.price,
+                    'item_type': item.item_type,
+                    'image_url': item.image_url if hasattr(item, 'image_url') else None,
+                    'is_available': item.is_available
+                })
+            
+            return Response({
+                'items': items_data,
+                'total_items': len(items_data)
+            })
+        except Exception as e:
+            logger.error(f"Error getting store items: {e}")
+            return Response({'error': 'Failed to get store items'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

@@ -203,6 +203,54 @@ class MoodEngine:
     def _get_user_plant(cls, user):
         """Get user's plant"""
         try:
-            return user.plant
-        except:
-            return None 
+            from apps.plants.models import Plant
+            return Plant.objects.filter(user=user).first()
+        except Exception as e:
+            logger.error(f"Error getting user plant: {str(e)}")
+            return None
+    
+    @classmethod
+    def get_combined_user_mood(cls, user) -> Dict:
+        """Get combined user mood from all sources"""
+        try:
+            plant = cls._get_user_plant(user)
+            if not plant:
+                return {'mood_score': 0.5, 'mood_type': 'neutral'}
+            
+            # Combine journal and music mood scores
+            journal_mood = plant.journal_mood_score or 0.5
+            music_mood = plant.music_mood_score or 0.5
+            
+            # Weighted average (journal has more impact)
+            combined_score = (journal_mood * 0.6) + (music_mood * 0.4)
+            
+            return {
+                'mood_score': combined_score,
+                'mood_type': cls.score_to_mood_type(combined_score),
+                'journal_mood': journal_mood,
+                'music_mood': music_mood,
+                'health_score': plant.health_score
+            }
+        except Exception as e:
+            logger.error(f"Error getting combined user mood: {str(e)}")
+            return {'mood_score': 0.5, 'mood_type': 'neutral'}
+    
+    @classmethod
+    def calculate_plant_growth_impact(cls, mood_data: Dict, current_growth: int) -> float:
+        """Calculate plant growth impact from mood data"""
+        try:
+            mood_score = mood_data.get('mood_score', 0.5)
+            
+            # Positive mood increases growth, negative decreases
+            if mood_score > 0.6:
+                growth_boost = (mood_score - 0.6) * 10  # Up to 4 points for very positive mood
+            elif mood_score < 0.4:
+                growth_penalty = (0.4 - mood_score) * 5  # Up to 2 points penalty for very negative mood
+                growth_boost = -growth_penalty
+            else:
+                growth_boost = 0
+            
+            return growth_boost
+        except Exception as e:
+            logger.error(f"Error calculating plant growth impact: {str(e)}")
+            return 0 

@@ -5,7 +5,9 @@ from .views import (
     CompleteAllPendingTransactionsView,
     LeafPackageViewSet,
     WaterPurchaseView,
-    UserLeavesView
+    UserLeavesView,
+    PublicGardenView,
+    StoreItemsView
 )
 
 urlpatterns = [
@@ -15,4 +17,6 @@ urlpatterns = [
     path('transactions/complete-pending/', CompleteAllPendingTransactionsView.as_view(), name='complete-pending'),
     path('water/purchase/', WaterPurchaseView.as_view(), name='water-purchase'),
     path('packages/', LeafPackageViewSet.as_view(), name='leaf-packages'),
+    path('garden/', PublicGardenView.as_view(), name='public-garden'),
+    path('store-items/', StoreItemsView.as_view(), name='store-items'),
 ] 
