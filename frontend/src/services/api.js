@@ -10,7 +10,7 @@ console.log("🌐 API Service: Base URL configured as:", API_BASE_URL)
 // Create a general Axios instance with the base URL
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // Increased timeout for Render cold starts
+  timeout: 60000, // Increased timeout to 60 seconds for Render cold starts
   headers: {
     "Content-Type": "application/json",
   },
@@ -47,8 +47,20 @@ api.interceptors.response.use(
       '/api/auth/jwt/refresh/'
     ];
 
+    // Handle timeout errors with retry for Render cold starts
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      console.log("⏰ Request timeout detected - may be Render cold start")
+      if (!originalRequest._retry && !excludedPaths.includes(originalRequest.url)) {
+        originalRequest._retry = true;
+        console.log("🔄 Retrying request after timeout...")
+        // Wait 2 seconds before retry
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return api(originalRequest);
+      }
+    }
+
     if (
-      error.response.status === 401 &&
+      error.response?.status === 401 &&
       originalRequest.url &&
       !excludedPaths.includes(originalRequest.url) &&
       !originalRequest._retry

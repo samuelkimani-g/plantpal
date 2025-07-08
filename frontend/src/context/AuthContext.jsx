@@ -61,9 +61,9 @@ export function AuthProvider({ children }) {
       if (accessToken) {
         console.log("🔑 AuthContext: Access token found, verifying with backend...")
         try {
-          // Add timeout to prevent infinite loading
+          // Add timeout to prevent infinite loading - increased for Render cold starts
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Request timeout')), 10000) // 10 second timeout
+            setTimeout(() => reject(new Error('Request timeout - backend may be starting up')), 45000) // 45 second timeout
           )
           
           const response = await Promise.race([
@@ -84,12 +84,21 @@ export function AuthProvider({ children }) {
             data: error.response?.data
           })
           
-          localStorage.removeItem("access_token")
-          localStorage.removeItem("refresh_token")
-          dispatch({
-            type: "AUTH_FAILURE",
-            payload: null, // Clear error on failed checkAuth
-          })
+          // Don't clear tokens on timeout - user might want to retry
+          if (error.message.includes('timeout')) {
+            console.log("⏰ AuthContext: Backend timeout - keeping tokens for retry")
+            dispatch({
+              type: "AUTH_FAILURE",
+              payload: { message: "Backend is starting up, please try again in a moment" },
+            })
+          } else {
+            localStorage.removeItem("access_token")
+            localStorage.removeItem("refresh_token")
+            dispatch({
+              type: "AUTH_FAILURE",
+              payload: null, // Clear error on failed checkAuth
+            })
+          }
         }
       } else {
         console.log("🚫 AuthContext: No access token found, user not authenticated")
