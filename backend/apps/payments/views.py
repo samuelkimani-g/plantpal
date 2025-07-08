@@ -15,6 +15,7 @@ from .serializers import (
 from .mpesa_service import MpesaService
 from apps.plants.models import Plant
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -52,51 +53,41 @@ class ManualCompleteTransactionView(APIView):
         """Manually complete a pending transaction"""
         try:
             transaction_id = request.data.get('transaction_id')
-            
             if not transaction_id:
                 return Response({
                     'success': False,
-                    'error': 'transaction_id is required'
+                    'error': 'Transaction ID is required'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Find the pending transaction for this user
+            # Find the transaction
             transaction = MpesaTransaction.objects.filter(
                 id=transaction_id,
-                user=request.user,
-                status='PENDING'
+                status='PENDING',
+                user=request.user
             ).first()
             
             if not transaction:
                 return Response({
                     'success': False,
-                    'error': 'Pending transaction not found'
+                    'error': 'Transaction not found or not pending'
                 }, status=status.HTTP_404_NOT_FOUND)
             
-            # Manually mark as successful (simulating successful callback)
-            fake_receipt = f"MANUAL{transaction.id}{timezone.now().strftime('%Y%m%d%H%M%S')}"
-            transaction.mark_successful(
-                receipt_number=fake_receipt,
-                result_code="0",
-                result_desc="Manually completed - money was deducted"
-            )
+            # Generate receipt number
+            receipt_number = f"MANUAL_{transaction.id}_{int(datetime.now().timestamp())}"
             
-            logger.info(f"✅ MANUALLY COMPLETED TRANSACTION:")
-            logger.info(f"   • Transaction {transaction.id}")
-            logger.info(f"   • User: {transaction.user.username}")
-            logger.info(f"   • Amount: KES {transaction.amount}")
-            logger.info(f"   • Leaves credited: {transaction.leaves}")
-            logger.info(f"   • Receipt: {fake_receipt}")
+            # Mark as successful
+            transaction.mark_successful(
+                receipt_number=receipt_number,
+                result_code='0',
+                result_desc='Manually completed by user'
+            )
             
             return Response({
                 'success': True,
-                'message': f'Transaction completed! {transaction.leaves} leaves have been credited to your account.',
-                'transaction': {
-                    'id': transaction.id,
-                    'status': transaction.status,
-                    'leaves': transaction.leaves,
-                    'amount': transaction.amount,
-                    'receipt_number': transaction.mpesa_receipt_number
-                }
+                'message': 'Transaction completed successfully',
+                'receipt_number': receipt_number,
+                'transaction_type': transaction.transaction_type,
+                'amount': transaction.amount
             })
             
         except Exception as e:
@@ -104,6 +95,49 @@ class ManualCompleteTransactionView(APIView):
             return Response({
                 'success': False,
                 'error': 'Failed to complete transaction'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class CompleteAllPendingTransactionsView(APIView):
+    """Complete all pending transactions for the current user"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Complete all pending transactions for the user"""
+        try:
+            # Find all pending transactions for the user
+            pending_transactions = MpesaTransaction.objects.filter(
+                status='PENDING',
+                user=request.user
+            )
+            
+            if not pending_transactions.exists():
+                return Response({
+                    'success': True,
+                    'message': 'No pending transactions found',
+                    'completed_count': 0
+                })
+            
+            completed_count = 0
+            for transaction in pending_transactions:
+                receipt_number = f"MANUAL_{transaction.id}_{int(datetime.now().timestamp())}"
+                transaction.mark_successful(
+                    receipt_number=receipt_number,
+                    result_code='0',
+                    result_desc='Manually completed - batch operation'
+                )
+                completed_count += 1
+            
+            return Response({
+                'success': True,
+                'message': f'Completed {completed_count} pending transactions',
+                'completed_count': completed_count
+            })
+            
+        except Exception as e:
+            logger.error(f"Error completing pending transactions: {e}")
+            return Response({
+                'success': False,
+                'error': 'Failed to complete transactions'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class InitiatePremiumPaymentView(APIView):

@@ -275,6 +275,12 @@ export const paymentsAPI = {
   purchaseStoreItem: (itemId) => api.post(`/api/payments/store-items/${itemId}/purchase/`),
   getInventory: () => api.get("/api/payments/inventory/"),
   
+  // Manual transaction completion
+  completeTransaction: (transactionId) => 
+    api.post("/api/payments/complete-transaction/", { transaction_id: transactionId }),
+  completeAllPending: () => 
+    api.post("/api/payments/complete-all-pending/"),
+  
   // General
   getLeaves: () => api.get("/api/payments/leaves/"),
   getTransactions: () => api.get("/api/payments/transactions/"),

@@ -88,7 +88,7 @@ const Navigation = () => {
     { name: "Journal", path: "/journal", icon: BookOpen },
     { name: "Mood", path: "/mood", icon: Heart },
     { name: "Public Garden", path: "/public-garden", icon: Users },
-    { name: "Premium", path: "/premium", icon: Crown },
+    { name: "Premium", path: "/premium", icon: Leaf },
     { name: "AI Chat", path: "/premium-chatbot", icon: MessageCircle, premiumRequired: true },
     { name: "Music", path: "/music", icon: Music },
     { name: "Reminders", path: "/reminders", icon: Bell },

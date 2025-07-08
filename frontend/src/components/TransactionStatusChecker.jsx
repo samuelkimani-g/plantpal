@@ -45,6 +45,29 @@ function TransactionStatusChecker() {
     await loadTransactions()
   }
 
+  const handleCompleteAllPending = async () => {
+    if (!window.confirm('Are you sure you want to complete all pending transactions? This will mark them as successful.')) {
+      return
+    }
+    
+    try {
+      setRefreshing(true)
+      const response = await paymentsAPI.completeAllPending()
+      
+      if (response.data.success) {
+        alert(`Successfully completed ${response.data.completed_count} pending transactions!`)
+        await loadTransactions() // Refresh the list
+      } else {
+        alert('Failed to complete transactions: ' + response.data.error)
+      }
+    } catch (err) {
+      console.error('Failed to complete pending transactions:', err)
+      alert('Failed to complete transactions. Please try again.')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   const formatPhoneNumber = (phoneNumber) => {
     if (!phoneNumber) return ''
     const cleaned = phoneNumber.replace(/\D/g, '')
@@ -140,6 +163,26 @@ function TransactionStatusChecker() {
             </div>
             <div className="mt-3 p-2 bg-amber-100 rounded text-xs text-amber-700">
               <strong>Note:</strong> If a transaction remains pending for more than 10 minutes, please contact support.
+            </div>
+            <div className="mt-3">
+              <Button
+                onClick={handleCompleteAllPending}
+                disabled={refreshing}
+                className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                size="sm"
+              >
+                {refreshing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Completing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Complete All Pending Transactions
+                  </>
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>

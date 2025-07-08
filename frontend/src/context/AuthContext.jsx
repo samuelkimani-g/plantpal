@@ -137,18 +137,22 @@ export function AuthProvider({ children }) {
 
       let errorMessage = "Login failed. Please try again."
 
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          errorMessage = error.response.data.detail
-        } else if (error.response.data.non_field_errors) {
-          errorMessage = error.response.data.non_field_errors[0]
-        } else if (error.response.data.email) {
-          errorMessage = error.response.data.email[0]
-        } else if (error.response.data.password) {
-          errorMessage = error.response.data.password[0]
+      // Handle different types of errors more safely
+      if (error.response && error.response.data) {
+        const data = error.response.data
+        if (data.detail) {
+          errorMessage = data.detail
+        } else if (data.non_field_errors && Array.isArray(data.non_field_errors)) {
+          errorMessage = data.non_field_errors[0]
+        } else if (data.email && Array.isArray(data.email)) {
+          errorMessage = data.email[0]
+        } else if (data.password && Array.isArray(data.password)) {
+          errorMessage = data.password[0]
         }
       } else if (error.message) {
         errorMessage = error.message // General network or other error
+      } else if (error.name === 'AxiosError') {
+        errorMessage = "Network error. Please check your connection and try again."
       }
 
       dispatch({
