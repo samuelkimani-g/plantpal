@@ -40,11 +40,13 @@ class MoodEngine:
         'journal_entry_neutral': 0.02,     # Writing neutral journal entry
         'journal_favorite': 0.1,           # Marking entry as favorite
         
-        # Music actions
-        'music_listen_happy': 0.12,        # Listening to happy music
-        'music_listen_sad': -0.08,         # Listening to sad music
-        'music_listen_energetic': 0.1,     # Listening to energetic music
-        'music_connect_spotify': 0.05,     # Connecting Spotify
+        # Music actions (enhanced for better responsiveness)
+        'music_listen_happy': 0.15,        # Listening to happy music (increased)
+        'music_listen_sad': -0.12,         # Listening to sad music (increased)
+        'music_listen_energetic': 0.12,    # Listening to energetic music (increased)
+        'music_listen_neutral': 0.03,      # Listening to neutral music (new)
+        'music_connect_spotify': 0.08,     # Connecting Spotify (increased)
+        'music_session_complete': 0.05,    # Completing a music session (new)
         
         # Plant care actions
         'water_plant': 0.08,               # Watering plant
@@ -146,13 +148,31 @@ class MoodEngine:
             elif sentiment < 0.3:
                 modified_impact -= 0.05
         
-        # Music mood
+        # Music mood (enhanced for better responsiveness)
         if 'music_mood' in action_data:
             music_mood = action_data['music_mood']
             if music_mood > 0.7:
-                modified_impact += 0.03
+                modified_impact += 0.08  # Increased from 0.03
+            elif music_mood > 0.6:
+                modified_impact += 0.05  # New tier
             elif music_mood < 0.3:
-                modified_impact -= 0.03
+                modified_impact -= 0.08  # Increased from 0.03
+            elif music_mood < 0.4:
+                modified_impact -= 0.05  # New tier
+        
+        # Listening duration bonus
+        if 'duration_minutes' in action_data:
+            duration = action_data['duration_minutes']
+            if duration > 30:
+                modified_impact += 0.03  # Bonus for longer listening sessions
+            elif duration > 15:
+                modified_impact += 0.02  # Small bonus for medium sessions
+        
+        # Track count bonus
+        if 'track_count' in action_data:
+            track_count = action_data['track_count']
+            if track_count > 10:
+                modified_impact += 0.02  # Bonus for listening to many tracks
         
         return modified_impact
     
@@ -254,3 +274,138 @@ class MoodEngine:
         except Exception as e:
             logger.error(f"Error calculating plant growth impact: {str(e)}")
             return 0 
+
+    @classmethod
+    def get_mood_feedback(cls, user) -> Dict:
+        """Get personalized mood feedback and suggestions"""
+        try:
+            current_mood = cls.get_current_mood(user)
+            mood_score = current_mood.get('mood_score', 0.5)
+            mood_type = current_mood.get('mood_type', 'neutral')
+            
+            # Get recent activities
+            plant = cls._get_user_plant(user)
+            if not plant:
+                return cls._get_default_feedback(mood_score, mood_type)
+            
+            # Analyze recent activities
+            recent_activities = cls._get_recent_activities(user)
+            
+            # Generate personalized feedback
+            feedback = {
+                'current_mood': {
+                    'score': mood_score,
+                    'type': mood_type,
+                    'emoji': cls.get_mood_emoji(mood_type),
+                    'description': cls._get_mood_description(mood_type)
+                },
+                'suggestions': cls._get_mood_suggestions(mood_score, recent_activities),
+                'recent_activities': recent_activities,
+                'mood_trend': cls._get_mood_trend(user)
+            }
+            
+            return feedback
+            
+        except Exception as e:
+            logger.error(f"Error getting mood feedback: {str(e)}")
+            return cls._get_default_feedback(0.5, 'neutral')
+    
+    @classmethod
+    def _get_mood_description(cls, mood_type: str) -> str:
+        """Get description for mood type"""
+        descriptions = {
+            'euphoric': 'You\'re feeling absolutely amazing! Your plant is thriving with your positive energy.',
+            'happy': 'You\'re in a great mood! Your plant is growing well with your happiness.',
+            'upbeat': 'You\'re feeling upbeat and positive. Your plant appreciates your energy!',
+            'energetic': 'You\'re full of energy! Your plant is responding to your vibrant mood.',
+            'positive': 'You\'re in a positive state. Your plant is growing steadily.',
+            'neutral': 'You\'re feeling balanced. Try some activities to boost your mood!',
+            'calm': 'You\'re feeling calm and peaceful. Your plant is doing okay.',
+            'melancholy': 'You seem a bit down. Your plant could use some positive energy.',
+            'sad': 'You\'re feeling sad. Your plant is wilting a bit - time for some self-care.',
+            'low': 'You\'re feeling quite low. Your plant needs your positive energy.',
+            'depressed': 'You\'re feeling very down. Your plant is struggling - please take care of yourself.'
+        }
+        return descriptions.get(mood_type, 'You\'re feeling balanced.')
+    
+    @classmethod
+    def _get_mood_suggestions(cls, mood_score: float, recent_activities: List) -> List[str]:
+        """Get personalized mood improvement suggestions"""
+        suggestions = []
+        
+        if mood_score < 0.4:
+            suggestions.extend([
+                "Try writing a positive journal entry",
+                "Listen to upbeat music",
+                "Complete a mindfulness exercise",
+                "Water your plant to feel accomplished",
+                "Try the AI chatbot for some positive interaction"
+            ])
+        elif mood_score < 0.6:
+            suggestions.extend([
+                "Write about something you're grateful for",
+                "Listen to energetic music",
+                "Try a breathing exercise",
+                "Visit the community garden",
+                "Create a memory seed from a happy moment"
+            ])
+        else:
+            suggestions.extend([
+                "Keep up the great mood!",
+                "Share your positivity by watering other plants",
+                "Write about what's making you happy",
+                "Try new music genres to explore",
+                "Help your plant grow even more!"
+            ])
+        
+        # Add activity-specific suggestions
+        if 'journal' not in recent_activities:
+            suggestions.append("Write a journal entry to track your mood")
+        if 'music' not in recent_activities:
+            suggestions.append("Listen to some music to boost your mood")
+        if 'mindfulness' not in recent_activities:
+            suggestions.append("Try a mindfulness exercise for inner peace")
+        
+        return suggestions[:5]  # Return top 5 suggestions
+    
+    @classmethod
+    def _get_recent_activities(cls, user) -> List[str]:
+        """Get list of recent user activities"""
+        try:
+            # This would typically query recent activity logs
+            # For now, return a basic list
+            return ['music', 'plant_care']  # Placeholder
+        except Exception as e:
+            logger.error(f"Error getting recent activities: {str(e)}")
+            return []
+    
+    @classmethod
+    def _get_mood_trend(cls, user) -> str:
+        """Get mood trend (improving, declining, stable)"""
+        try:
+            # This would typically analyze mood over time
+            # For now, return stable
+            return 'stable'
+        except Exception as e:
+            logger.error(f"Error getting mood trend: {str(e)}")
+            return 'stable'
+    
+    @classmethod
+    def _get_default_feedback(cls, mood_score: float, mood_type: str) -> Dict:
+        """Get default feedback when plant is not found"""
+        return {
+            'current_mood': {
+                'score': mood_score,
+                'type': mood_type,
+                'emoji': cls.get_mood_emoji(mood_type),
+                'description': cls._get_mood_description(mood_type)
+            },
+            'suggestions': [
+                "Create your first plant to start mood tracking",
+                "Try writing a journal entry",
+                "Listen to some music",
+                "Complete a mindfulness exercise"
+            ],
+            'recent_activities': [],
+            'mood_trend': 'stable'
+        } 

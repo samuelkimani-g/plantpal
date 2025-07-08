@@ -9,6 +9,20 @@ from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Avg, Count
 from django.db.models.functions import TruncDay
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from .models import Mood
+from .serializers import MoodSerializer
+from utils.enhanced_mood_system import EnhancedMoodSystem
+from utils.mood_logic import MoodEngine
+import logging
+
+logger = logging.getLogger(__name__)
 
 class MoodEntryViewSet(viewsets.ModelViewSet):
     """
@@ -79,3 +93,19 @@ class MoodAnalyticsView(APIView):
             "overall_average_score": overall_avg,
             "total_entries": moods.count()
         })
+
+class MoodFeedbackView(APIView):
+    """Get personalized mood feedback and suggestions"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get mood feedback and suggestions"""
+        try:
+            feedback = MoodEngine.get_mood_feedback(request.user)
+            return Response(feedback)
+        except Exception as e:
+            logger.error(f"Error getting mood feedback: {e}")
+            return Response(
+                {'error': 'Failed to get mood feedback'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
