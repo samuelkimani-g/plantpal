@@ -411,6 +411,34 @@ class CurrentTrackView(APIView):
             if current_data.get('item'):
                 track = spotify_service.save_track_with_features(current_data['item'])
             
+            # Update user's mood profile
+            try:
+                from utils.mood_logic import MoodEngine
+                
+                # Record music listening action based on mood
+                if track and track.computed_mood_score > 0.7:
+                    action_type = 'music_listen_happy'
+                elif track and track.computed_mood_score > 0.5:
+                    action_type = 'music_listen_energetic'
+                elif track and track.computed_mood_score > 0.3:
+                    action_type = 'music_listen_neutral'
+                else:
+                    action_type = 'music_listen_sad'
+                
+                # Record the action with additional mood data
+                MoodEngine.record_action(
+                    request.user,
+                    action_type,
+                    {
+                        'music_mood': track.computed_mood_score if track else 0.5,
+                        'track_name': track.name if track else 'Unknown Track',
+                        'artists': track.artists if track else []
+                    }
+                )
+                
+            except Exception as e:
+                logger.error(f"Error recording music mood action: {str(e)}")
+            
             serializer = CurrentTrackSerializer({
                 'track': track,
                 'is_playing': current_data.get('is_playing', False),
