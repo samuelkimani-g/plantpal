@@ -82,14 +82,20 @@ class JournalEntry(models.Model):
     
     def save(self, *args, **kwargs):
         """Override save to trigger sentiment analysis if needed"""
-        # If this is a new entry or text has changed, analyze sentiment
-        if not self.pk or 'update_fields' not in kwargs:
+        # Only run sentiment analysis if this is a new entry AND no mood was set
+        if not self.pk and not self.mood:
             from .utils import analyze_sentiment
             sentiment_data = analyze_sentiment(self.text)
             
             self.mood = sentiment_data['mood_type']
             self.mood_score = sentiment_data['mood_score']
             self.sentiment_confidence = sentiment_data['confidence']
+        elif not self.pk and self.mood:
+            # User provided a mood, so we need to calculate a mood score for it
+            from utils.mood_logic import MoodEngine
+            mood_score = MoodEngine.MOOD_TYPES.get(self.mood, {}).get('score', 0.5)
+            self.mood_score = mood_score
+            self.sentiment_confidence = 0.9  # High confidence for user-selected mood
         
         super().save(*args, **kwargs)
         
