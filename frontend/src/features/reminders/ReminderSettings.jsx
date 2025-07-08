@@ -88,9 +88,8 @@ const ReminderSettings = () => {
       const response = await reminderAPI.getReminders()
       
       if (response.data) {
-        const reminderData = Array.isArray(response.data) 
-          ? response.data[0] 
-          : response.data
+        // Backend returns { reminder: {...}, created: boolean }
+        const reminderData = response.data.reminder || response.data
         
         if (reminderData) {
           setReminder(reminderData)
@@ -124,7 +123,9 @@ const ReminderSettings = () => {
         response = await reminderAPI.createReminder(reminderForm)
       }
 
-      setReminder(response.data)
+      // Backend returns { message: "...", reminder: {...} }
+      const reminderData = response.data.reminder || response.data
+      setReminder(reminderData)
       setSuccess("Reminder settings saved successfully!")
       
       setTimeout(() => {

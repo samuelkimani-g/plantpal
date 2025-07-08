@@ -161,8 +161,7 @@ export const moodAPI = {
 export const reminderAPI = {
   getReminders: () => api.get("/api/reminders/"),
   createReminder: (reminderData) => api.post("/api/reminders/", reminderData),
-  getReminder: (id) => api.get(`/api/reminders/api/${id}/`),
-  updateReminder: (id, reminderData) => api.patch(`/api/reminders/api/${id}/`, reminderData),
+  updateReminder: (id, reminderData) => api.put("/api/reminders/", reminderData),
   deleteReminder: (id) => api.delete(`/api/reminders/api/${id}/`),
   // Additional reminder endpoints
   toggleReminder: () => api.post("/api/reminders/disable/"),
