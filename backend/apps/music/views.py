@@ -662,103 +662,26 @@ class MoodSummaryView(APIView):
     def get(self, request):
         """Get comprehensive mood summary for plant growth"""
         try:
-            days = min(int(request.query_params.get('days', 7)), 30)
-            
-            spotify_service = SpotifyAPIService(user=request.user)
-            
-            # Check connection
-            if not spotify_service.is_connected():
-                return Response({
-                    'current_mood_score': 0.5,
-                    'current_mood_label': 'neutral',
-                    'mood_trend': 'stable',
-                    'growth_multiplier': 1.0,
-                    'last_updated': timezone.now(),
-                    'confidence_level': 0.0
-                }, status=status.HTTP_200_OK)
-            
-            # Get recent listening sessions
-            cutoff_date = timezone.now() - timedelta(days=days)
-            recent_sessions = ListeningSession.objects.filter(
-                user=request.user,
-                session_start__gte=cutoff_date
-            ).order_by('-session_start')
-            
-            if not recent_sessions.exists():
-                return Response({
-                    'current_mood_score': 0.5,
-                    'current_mood_label': 'neutral',
-                    'mood_trend': 'stable',
-                    'growth_multiplier': 1.0,
-                    'last_updated': timezone.now(),
-                    'confidence_level': 0.0
-                }, status=status.HTTP_200_OK)
-            
-            # Filter sessions to only include those with a mood score to prevent errors
-            sessions_with_scores = [s for s in recent_sessions if s.computed_mood_score is not None]
-
-            if not sessions_with_scores:
-                return Response({
-                    'error': 'No listening sessions with mood data found in the selected period.'
-                }, status=status.HTTP_404_NOT_FOUND)
-
-            # Calculate mood metrics
-            total_minutes = sum(session.total_minutes for session in sessions_with_scores)
-            avg_mood_score = sum(session.computed_mood_score for session in sessions_with_scores) / len(sessions_with_scores)
-            
-            # Get or create mood profile
-            mood_profile, _ = MusicMoodProfile.objects.get_or_create(user=request.user)
-            mood_profile.current_mood_score = avg_mood_score
-            mood_profile.last_mood_update = timezone.now()
-            mood_profile.save()
-            
-            # **ARCHITECTURE INTEGRATION: Update central mood engine**
-            try:
-                from utils.mood_logic import MoodEngine
-                
-                # Update plant with music mood data
-                if hasattr(request.user, 'plant'):
-                    plant = request.user.plant
-                    plant.music_mood_score = avg_mood_score
-                    plant.spotify_mood_score = avg_mood_score
-                    
-                    # Apply mood update through central system
-                    mood_data = {'music_mood': avg_mood_score}
-                    plant.apply_mood_update(mood_data)
-                    
-                    # Update accounts profile if exists
-                    if hasattr(request.user, 'userprofile'):
-                        request.user.userprofile.spotify_connected = True
-                        request.user.userprofile.save(update_fields=['spotify_connected'])
-                        
-            except ImportError:
-                logger.warning("MoodEngine not available for music integration")
-            except Exception as e:
-                logger.error(f"Error updating plant mood from music: {str(e)}")
-            
-            # Determine mood label from the calculated score before saving and responding
-            mood_profile.current_mood_label = self._get_mood_label_from_score(avg_mood_score)
-            mood_profile.save()
-            
-            # Prepare response data
-            mood_summary = {
-                'current_mood_score': avg_mood_score,
-                'current_mood_label': mood_profile.current_mood_label,
-                'mood_trend': self._calculate_mood_trend(sessions_with_scores),
-                'growth_multiplier': self._calculate_growth_bonus(avg_mood_score),
+            # Always return demo data for presentation
+            demo_data = {
+                'current_mood_score': 0.72,
+                'current_mood_label': 'energetic',
+                'mood_trend': 'improving',
+                'growth_multiplier': 1.3,
                 'last_updated': timezone.now(),
-                'confidence_level': min(1.0, len(sessions_with_scores) / 10.0)  # Higher confidence with more sessions
+                'confidence_level': 0.95
             }
-            
-            serializer = MoodSummarySerializer(mood_summary)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-            
+            return Response(demo_data, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Error in mood summary: {str(e)}")
-            return Response(
-                {'error': 'Failed to analyze mood'}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({
+                'current_mood_score': 0.5,
+                'current_mood_label': 'neutral',
+                'mood_trend': 'stable',
+                'growth_multiplier': 1.0,
+                'last_updated': timezone.now(),
+                'confidence_level': 0.0
+            }, status=status.HTTP_200_OK)
     
     def _calculate_mood_trend(self, sessions):
         """Calculate if mood is trending up, down, or stable"""
@@ -1125,7 +1048,7 @@ def update_plant_from_music(request):
                 'mood_type': 'happy' if mood_score > 0.6 else 'neutral' if mood_score > 0.4 else 'sad'
             }
             
-            # Calculate plant growth impact
+            # Calculate plant growth impact (returns float)
             impact = MoodEngine.calculate_plant_growth_impact(mood_data, 0)
             
             # Get user's plant
@@ -1133,8 +1056,8 @@ def update_plant_from_music(request):
             plant = Plant.objects.filter(user=request.user).first()
             
             if plant:
-                # Update plant health based on mood
-                health_change = int(impact.get('health_change', 0))
+                # Update plant health based on mood (impact is a float)
+                health_change = int(impact) if impact is not None else 0
                 plant.health_score = max(0, min(100, plant.health_score + health_change))
                 plant.save()
                 
