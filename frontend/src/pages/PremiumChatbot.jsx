@@ -3,14 +3,21 @@ import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
-import { Loader2, Send, Bot, Sparkles } from 'lucide-react';
+import { Loader2, Send, Bot, Sparkles, Leaf, Heart, Brain } from 'lucide-react';
 import { chatbotAPI } from '../services/api';
 
 const PremiumChatbot = () => {
     const { user } = useAuth();
-    const [messages, setMessages] = useState([{ sender: 'bot', text: 'Welcome to your premium chatbot! How can I help you reflect today? You can also ask me about your plants!' }]);
+    const [messages, setMessages] = useState([
+        { 
+            sender: 'bot', 
+            text: `Hello ${user?.username || 'there'}! 🌱 I'm your PlantPal AI companion. I'm here to support you with emotional wellness and plant care. What's on your mind today?`,
+            timestamp: new Date()
+        }
+    ]);
     const [input, setInput] = useState('');
     const [isThinking, setIsThinking] = useState(false);
+    const [isTyping, setIsTyping] = useState(false);
     const messagesEndRef = useRef(null);
 
     useEffect(() => {
@@ -21,7 +28,11 @@ const PremiumChatbot = () => {
         e.preventDefault();
         if (!input.trim() || isThinking) return;
 
-        const userMessage = { sender: 'user', text: input.trim() };
+        const userMessage = { 
+            sender: 'user', 
+            text: input.trim(),
+            timestamp: new Date()
+        };
         const newMessages = [...messages, userMessage];
         setMessages(newMessages);
         setInput('');
@@ -29,54 +40,144 @@ const PremiumChatbot = () => {
 
         try {
             const response = await chatbotAPI.sendMessage(newMessages);
-            const botResponse = { sender: 'bot', text: response.data.reply };
+            const botResponse = { 
+                sender: 'bot', 
+                text: response.data.reply,
+                timestamp: new Date()
+            };
             setMessages(prev => [...prev, botResponse]);
         } catch (error) {
             console.error("Error with chatbot:", error);
-            const errorResponse = { sender: 'bot', text: error.response?.data?.error || "I'm having a little trouble thinking right now. Please try again in a moment." };
+            const errorResponse = { 
+                sender: 'bot', 
+                text: "I'm having a little trouble thinking right now. Please try again in a moment.",
+                timestamp: new Date()
+            };
             setMessages(prev => [...prev, errorResponse]);
         } finally {
             setIsThinking(false);
         }
     };
 
+    const formatTime = (timestamp) => {
+        return timestamp.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+        });
+    };
+
+    const getBotIcon = (message) => {
+        const text = message.text.toLowerCase();
+        if (text.includes('plant') || text.includes('leaf') || text.includes('water') || text.includes('soil')) {
+            return <Leaf className="h-6 w-6 text-green-600" />;
+        } else if (text.includes('feel') || text.includes('emotion') || text.includes('sad') || text.includes('happy')) {
+            return <Heart className="h-6 w-6 text-pink-600" />;
+        } else {
+            return <Brain className="h-6 w-6 text-blue-600" />;
+        }
+    };
+
     return (
         <div className="container mx-auto p-4 flex flex-col h-[calc(100vh-80px)]">
-            <Card className="flex-grow flex flex-col">
-                <CardHeader>
-                    <CardTitle className="flex items-center"><Sparkles className="h-5 w-5 mr-2 text-yellow-500" /> PlantPal AI Chat</CardTitle>
+            <Card className="flex-grow flex flex-col bg-gradient-to-br from-green-50 to-blue-50">
+                <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white">
+                    <CardTitle className="flex items-center">
+                        <Sparkles className="h-5 w-5 mr-2 text-yellow-300" /> 
+                        PlantPal AI Companion
+                    </CardTitle>
+                    <p className="text-sm text-green-100 mt-1">
+                        Your personal wellness & plant care assistant
+                    </p>
                 </CardHeader>
+                
                 <CardContent className="flex-grow overflow-y-auto p-4 space-y-4">
                     {messages.map((msg, index) => (
-                        <div key={index} className={`flex items-end gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            {msg.sender === 'bot' && <Bot className="h-8 w-8 text-green-600" />}
-                            <div className={`max-w-md p-3 rounded-lg ${msg.sender === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
-                                {msg.text}
+                        <div key={index} className={`flex items-end gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            {msg.sender === 'bot' && (
+                                <div className="flex-shrink-0">
+                                    {getBotIcon(msg)}
+                                </div>
+                            )}
+                            <div className={`max-w-md p-4 rounded-2xl shadow-sm ${
+                                msg.sender === 'user' 
+                                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
+                                    : 'bg-white text-gray-800 border border-gray-200'
+                            }`}>
+                                <p className="text-sm leading-relaxed">{msg.text}</p>
+                                <p className={`text-xs mt-2 ${
+                                    msg.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
+                                }`}>
+                                    {formatTime(msg.timestamp)}
+                                </p>
                             </div>
                         </div>
                     ))}
+                    
                     {isThinking && (
-                         <div className="flex items-end gap-2 justify-start">
-                            <Bot className="h-8 w-8 text-green-600" />
-                            <div className="max-w-md p-3 rounded-lg bg-gray-200 text-gray-800">
-                                <Loader2 className="h-5 w-5 animate-spin" />
+                        <div className="flex items-end gap-3 justify-start">
+                            <Brain className="h-6 w-6 text-blue-600 animate-pulse" />
+                            <div className="max-w-md p-4 rounded-2xl bg-white border border-gray-200">
+                                <div className="flex items-center space-x-1">
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                                </div>
                             </div>
                         </div>
                     )}
+                    
                     <div ref={messagesEndRef} />
                 </CardContent>
-                <div className="p-4 border-t">
-                    <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                
+                <div className="p-4 border-t bg-white">
+                    <form onSubmit={handleSendMessage} className="flex items-center gap-3">
                         <Input
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="Ask me anything about your day..."
+                            placeholder="Share your thoughts, ask about plants, or tell me how you're feeling..."
                             disabled={isThinking}
+                            className="flex-1 rounded-full border-2 focus:border-green-500"
                         />
-                        <Button type="submit" disabled={isThinking}>
-                            <Send className="h-5 w-5" />
+                        <Button 
+                            type="submit" 
+                            disabled={isThinking || !input.trim()}
+                            className="rounded-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
+                        >
+                            {isThinking ? (
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                                <Send className="h-5 w-5" />
+                            )}
                         </Button>
                     </form>
+                    
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setInput("I'm feeling a bit down today")}
+                            className="text-xs rounded-full"
+                        >
+                            😔 Feeling down
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setInput("My plant's leaves are turning yellow")}
+                            className="text-xs rounded-full"
+                        >
+                            🌿 Plant help
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setInput("I need some motivation")}
+                            className="text-xs rounded-full"
+                        >
+                            💪 Motivation
+                        </Button>
+                    </div>
                 </div>
             </Card>
         </div>
