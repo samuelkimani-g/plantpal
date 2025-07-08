@@ -82,20 +82,24 @@ class JournalEntry(models.Model):
     
     def save(self, *args, **kwargs):
         """Override save to trigger sentiment analysis if needed"""
-        # Only run sentiment analysis if this is a new entry AND no mood was set
-        if not self.pk and not self.mood:
-            from .utils import analyze_sentiment
-            sentiment_data = analyze_sentiment(self.text)
-            
-            self.mood = sentiment_data['mood_type']
-            self.mood_score = sentiment_data['mood_score']
-            self.sentiment_confidence = sentiment_data['confidence']
-        elif not self.pk and self.mood:
-            # User provided a mood, so we need to calculate a mood score for it
-            from utils.mood_logic import MoodEngine
-            mood_score = MoodEngine.MOOD_TYPES.get(self.mood, {}).get('score', 0.5)
-            self.mood_score = mood_score
-            self.sentiment_confidence = 0.9  # High confidence for user-selected mood
+        # Check if this is a new entry
+        is_new = not self.pk
+        
+        if is_new:
+            # If user provided a mood, use it and calculate score
+            if self.mood and self.mood != 'neutral':
+                from utils.mood_logic import MoodEngine
+                mood_score = MoodEngine.MOOD_TYPES.get(self.mood, {}).get('score', 0.5)
+                self.mood_score = mood_score
+                self.sentiment_confidence = 0.9  # High confidence for user-selected mood
+            # Only run sentiment analysis if no mood was set or mood is neutral
+            elif not self.mood or self.mood == 'neutral':
+                from .utils import analyze_sentiment
+                sentiment_data = analyze_sentiment(self.text)
+                
+                self.mood = sentiment_data['mood_type']
+                self.mood_score = sentiment_data['mood_score']
+                self.sentiment_confidence = sentiment_data['confidence']
         
         super().save(*args, **kwargs)
         
@@ -197,5 +201,5 @@ class JournalEntry(models.Model):
     @property
     def mood_emoji(self):
         """Get emoji representation of mood"""
-        from core.mood_engine import MoodEngine
+        from utils.mood_logic import MoodEngine
         return MoodEngine.get_mood_emoji(self.mood)
