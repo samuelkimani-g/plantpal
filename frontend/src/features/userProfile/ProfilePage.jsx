@@ -171,7 +171,7 @@ export default function ProfilePage() {
                 {user.first_name && user.last_name 
                   ? `${user.first_name} ${user.last_name}` 
                   : user.username}
-                {user?.userprofile?.is_premium && <Leaf className="h-6 w-6 text-amber-500" />}
+                {user?.is_premium && <Leaf className="h-6 w-6 text-amber-500" />}
               </h1>
               <p className="text-emerald-600 dark:text-emerald-400">@{user.username}</p>
               
@@ -373,13 +373,13 @@ export default function ProfilePage() {
                 Premium Membership
               </CardTitle>
               <CardDescription>
-                {user?.userprofile?.is_premium 
+                {user?.is_premium 
                   ? "You're a premium member! Enjoy exclusive features." 
                   : "Upgrade to premium for AI chat and exclusive features"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {user?.userprofile?.is_premium ? (
+              {user?.is_premium ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Badge className="bg-amber-100 text-amber-800 border-amber-300">

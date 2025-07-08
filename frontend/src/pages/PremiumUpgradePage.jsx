@@ -108,7 +108,7 @@ export default function PremiumUpgradePage() {
         </div>
 
         {/* Current Premium Status */}
-        {user?.userprofile?.is_premium && (
+        {user?.is_premium && (
           <Card className="mb-8 border-green-200 bg-green-50">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">

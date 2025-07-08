@@ -147,7 +147,7 @@ const Navigation = () => {
                 const Icon = item.icon
                 const isActive = location.pathname === item.path
                 
-                if (item.premiumRequired && !user?.userprofile?.is_premium) {
+                if (item.premiumRequired && !user?.is_premium) {
                     return null; // Don't show premium links to non-premium users
                 }
 
@@ -220,7 +220,7 @@ const Navigation = () => {
                     <CreditCard className="h-4 w-4 mr-2" />
                     Buy Leaves
                   </button>
-                  {!user?.userprofile?.is_premium && (
+                  {!user?.is_premium && (
                     <button
                       onClick={() => {
                         navigate("/profile")
