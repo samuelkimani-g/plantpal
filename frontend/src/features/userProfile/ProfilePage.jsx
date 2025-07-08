@@ -161,37 +161,34 @@ export default function ProfilePage() {
             <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900 rounded-full flex items-center justify-center border-4 border-emerald-200 dark:border-emerald-700">
               <User className="h-12 w-12 text-emerald-600 dark:text-emerald-400" />
             </div>
-            
             {/* User Name and Stats */}
             <div className="space-y-2">
               <h1 className="text-3xl font-bold text-emerald-800 dark:text-emerald-200 flex items-center justify-center gap-2">
-                {user.first_name && user.last_name 
-                  ? `${user.first_name} ${user.last_name}` 
+                {(user.first_name && user.last_name)
+                  ? `${user.first_name} ${user.last_name}`
                   : user.username}
                 {user?.is_premium && <Leaf className="h-6 w-6 text-amber-500" />}
               </h1>
               <p className="text-emerald-600 dark:text-emerald-400">@{user.username}</p>
-              
-              {/* Quick Stats */}
               <div className="flex items-center justify-center gap-6 mt-4">
                 <div className="text-center">
                   <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
                     <Leaf className="h-4 w-4" />
-                    <span className="font-semibold">{user.plantpal_leaves || 0}</span>
+                    <span className="font-semibold">{typeof user.plantpal_leaves === 'number' && !isNaN(user.plantpal_leaves) ? user.plantpal_leaves : 0}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">Leaves</p>
                 </div>
                 <div className="text-center">
                   <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
                     <Calendar className="h-4 w-4" />
-                    <span className="font-semibold">{new Date(user.date_joined).getFullYear()}</span>
+                    <span className="font-semibold">{user.date_joined ? new Date(user.date_joined).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not set'}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">Joined</p>
                 </div>
               </div>
             </div>
           </div>
-          <p className="text-emerald-600 dark:text-emerald-400">Manage your account and preferences</p>
+          <h2 className="text-lg font-semibold text-emerald-700 dark:text-emerald-200 mt-2 mb-1">Manage your account and preferences</h2>
         </div>
 
         {/* Messages */}
@@ -215,288 +212,213 @@ export default function ProfilePage() {
           </Alert>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Profile Information */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-emerald-600" />
-                    Personal Information
-                  </CardTitle>
-                  <CardDescription>Update your personal details and bio</CardDescription>
+        {/* Personal Information Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Personal Information
+            </CardTitle>
+            <CardDescription>Update your personal details and bio</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col md:flex-row md:gap-8 gap-4">
+              <div className="flex-1 space-y-2">
+                <Label>First Name</Label>
+                <p className="font-medium">{user.first_name || 'Not set'}</p>
+                <Label>Last Name</Label>
+                <p className="font-medium">{user.last_name || 'Not set'}</p>
+                <Label>Username</Label>
+                <p className="font-medium">{user.username}</p>
+                <Label>Email</Label>
+                <p className="font-medium">{user.email || 'Not set'}</p>
+              </div>
+              <div className="flex-1 space-y-2">
+                <Label>Bio</Label>
+                <p className="font-medium">{user.bio ? user.bio : 'No bio added yet'}</p>
+                <Label>Member Since</Label>
+                <p className="font-medium">{user.date_joined ? new Date(user.date_joined).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not set'}</p>
+              </div>
+            </div>
+            <div className="flex justify-end mt-4">
+              <Button variant="outline" onClick={() => setIsEditing(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Premium Membership */}
+        <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Leaf className="h-5 w-5 text-amber-600" />
+              Premium Membership
+            </CardTitle>
+            <CardDescription>
+              {user?.is_premium 
+                ? "You're a premium member! Enjoy exclusive features." 
+                : "Upgrade to premium for AI chat and exclusive features"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {user?.is_premium ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                    <Star className="h-3 w-3 mr-1" />
+                    Premium Active
+                  </Badge>
+                  {user?.userprofile?.premium_expiry_date && (
+                    <span className="text-sm text-muted-foreground">
+                      Expires: {new Date(user.userprofile.premium_expiry_date).toLocaleDateString()}
+                    </span>
+                  )}
                 </div>
-                {!isEditing && (
-                  <Button variant="outline" onClick={() => setIsEditing(true)} className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
+                <div className="space-y-2">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-amber-600" />
+                    Premium Features
+                  </h4>
+                  <ul className="text-sm space-y-1 text-muted-foreground">
+                    <li>• AI-powered chatbot for reflection and guidance</li>
+                    <li>• Advanced mood analytics</li>
+                    <li>• Priority support</li>
+                    <li>• Exclusive plant varieties</li>
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h4 className="font-medium">Go Premium!</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Unlock exclusive features with PlantPal Premium by purchasing directly with M-Pesa.
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => navigate('/premium-upgrade')}
+                  variant="outline"
+                  className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+                >
+                  <Leaf className="h-4 w-4 mr-2 text-amber-500" />
+                  View Premium Packages
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Account Security */}
+        <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-orange-600" />
+              Security & Privacy
+            </CardTitle>
+            <CardDescription>Manage your password and account settings</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Change Password */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Password</h4>
+                {!isChangingPassword && (
+                  <Button variant="outline" size="sm" onClick={() => setIsChangingPassword(true)}>
+                    Change Password
                   </Button>
                 )}
               </div>
-            </CardHeader>
-            <CardContent>
-              {isEditing ? (
-                <form onSubmit={handleProfileUpdate} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="first_name">First Name</Label>
-                      <Input
-                        id="first_name"
-                        value={profileData.first_name}
-                        onChange={(e) => setProfileData({ ...profileData, first_name: e.target.value })}
-                        placeholder="First name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="last_name">Last Name</Label>
-                      <Input
-                        id="last_name"
-                        value={profileData.last_name}
-                        onChange={(e) => setProfileData({ ...profileData, last_name: e.target.value })}
-                        placeholder="Last name"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profileData.email}
-                      onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                      placeholder="Email address"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea
-                      id="bio"
-                      value={profileData.bio}
-                      onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
-                      placeholder="Tell us about yourself..."
-                      rows={3}
-                    />
-                  </div>
+
+              {isChangingPassword ? (
+                <form onSubmit={handlePasswordChange} className="space-y-3">
+                  <Input
+                    type="password"
+                    placeholder="Current password"
+                    value={passwordData.current_password}
+                    onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
+                    required
+                  />
+                  <Input
+                    type="password"
+                    placeholder="New password"
+                    value={passwordData.new_password}
+                    onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
+                    required
+                  />
+                  <Input
+                    type="password"
+                    placeholder="Confirm new password"
+                    value={passwordData.confirm_password}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
+                    required
+                  />
                   <div className="flex gap-2">
-                    <Button type="submit" disabled={isLoading}>
+                    <Button type="submit" size="sm" disabled={isLoading}>
                       {isLoading ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <Loader2 className="h-3 w-3 mr-2 animate-spin" />
                       ) : (
-                        <Save className="h-4 w-4 mr-2" />
+                        <Save className="h-3 w-3 mr-2" />
                       )}
-                      Save Changes
+                      Update Password
                     </Button>
-                    <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
-                      <X className="h-4 w-4 mr-2" />
+                    <Button type="button" variant="outline" size="sm" onClick={() => setIsChangingPassword(false)}>
                       Cancel
                     </Button>
                   </div>
                 </form>
               ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm text-muted-foreground">First Name</Label>
-                      <p className="font-medium">{user.first_name || "Not set"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-muted-foreground">Last Name</Label>
-                      <p className="font-medium">{user.last_name || "Not set"}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Username</Label>
-                    <p className="font-medium">{user.username}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Email</Label>
-                    <p className="font-medium">{user.email}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Bio</Label>
-                    <p className="font-medium">{user.bio || "No bio added yet"}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Member Since</Label>
-                    <p className="font-medium">{new Date(user.date_joined).toLocaleDateString()}</p>
-                  </div>
-                </div>
+                <p className="text-sm text-muted-foreground">••••••••••••</p>
               )}
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Premium Membership */}
-          <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Leaf className="h-5 w-5 text-amber-600" />
-                Premium Membership
-              </CardTitle>
-              <CardDescription>
-                {user?.is_premium 
-                  ? "You're a premium member! Enjoy exclusive features." 
-                  : "Upgrade to premium for AI chat and exclusive features"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {user?.is_premium ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Badge className="bg-amber-100 text-amber-800 border-amber-300">
-                      <Star className="h-3 w-3 mr-1" />
-                      Premium Active
-                    </Badge>
-                    {user?.userprofile?.premium_expiry_date && (
-                      <span className="text-sm text-muted-foreground">
-                        Expires: {new Date(user.userprofile.premium_expiry_date).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-medium flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-amber-600" />
-                      Premium Features
-                    </h4>
-                    <ul className="text-sm space-y-1 text-muted-foreground">
-                      <li>• AI-powered chatbot for reflection and guidance</li>
-                      <li>• Advanced mood analytics</li>
-                      <li>• Priority support</li>
-                      <li>• Exclusive plant varieties</li>
-                    </ul>
-                  </div>
-                </div>
+            {/* Delete Account */}
+            <div className="space-y-4 pt-4 border-t border-destructive/20">
+              <div className="space-y-2">
+                <h4 className="font-medium text-destructive">Danger Zone</h4>
+                <p className="text-sm text-muted-foreground">
+                  Once you delete your account, there is no going back. Please be certain.
+                </p>
+              </div>
+
+              {!isDeletingAccount ? (
+                <Button variant="destructive" onClick={() => setIsDeletingAccount(true)} className="w-full">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Account
+                </Button>
               ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium">Go Premium!</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Unlock exclusive features with PlantPal Premium by purchasing directly with M-Pesa.
-                    </p>
+                <div className="space-y-3">
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      This action cannot be undone. All your plants, journal entries, and data will be permanently
+                      deleted.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteAccount}
+                      disabled={isLoading}
+                      className="flex-1"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Yes, Delete My Account
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsDeletingAccount(false)} className="flex-1">
+                      Cancel
+                    </Button>
                   </div>
-                  <Button 
-                    onClick={() => navigate('/premium-upgrade')}
-                    variant="outline"
-                    className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
-                  >
-                    <Leaf className="h-4 w-4 mr-2 text-amber-500" />
-                    View Premium Packages
-                  </Button>
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          {/* Account Security */}
-          <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-orange-600" />
-                Security & Privacy
-              </CardTitle>
-              <CardDescription>Manage your password and account settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Change Password */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium">Password</h4>
-                  {!isChangingPassword && (
-                    <Button variant="outline" size="sm" onClick={() => setIsChangingPassword(true)}>
-                      Change Password
-                    </Button>
-                  )}
-                </div>
-
-                {isChangingPassword ? (
-                  <form onSubmit={handlePasswordChange} className="space-y-3">
-                    <Input
-                      type="password"
-                      placeholder="Current password"
-                      value={passwordData.current_password}
-                      onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
-                      required
-                    />
-                    <Input
-                      type="password"
-                      placeholder="New password"
-                      value={passwordData.new_password}
-                      onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
-                      required
-                    />
-                    <Input
-                      type="password"
-                      placeholder="Confirm new password"
-                      value={passwordData.confirm_password}
-                      onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
-                      required
-                    />
-                    <div className="flex gap-2">
-                      <Button type="submit" size="sm" disabled={isLoading}>
-                        {isLoading ? (
-                          <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                        ) : (
-                          <Save className="h-3 w-3 mr-2" />
-                        )}
-                        Update Password
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setIsChangingPassword(false)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                ) : (
-                  <p className="text-sm text-muted-foreground">••••••••••••</p>
-                )}
-              </div>
-
-              {/* Delete Account */}
-              <div className="space-y-4 pt-4 border-t border-destructive/20">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-destructive">Danger Zone</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Once you delete your account, there is no going back. Please be certain.
-                  </p>
-                </div>
-
-                {!isDeletingAccount ? (
-                  <Button variant="destructive" onClick={() => setIsDeletingAccount(true)} className="w-full">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Account
-                  </Button>
-                ) : (
-                  <div className="space-y-3">
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        This action cannot be undone. All your plants, journal entries, and data will be permanently
-                        deleted.
-                      </AlertDescription>
-                    </Alert>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="destructive"
-                        onClick={handleDeleteAccount}
-                        disabled={isLoading}
-                        className="flex-1"
-                      >
-                        {isLoading ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4 mr-2" />
-                        )}
-                        Yes, Delete My Account
-                      </Button>
-                      <Button variant="outline" onClick={() => setIsDeletingAccount(false)} className="flex-1">
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
