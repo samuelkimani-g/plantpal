@@ -243,8 +243,21 @@ export const musicAPI = {
       case 'calm': return '😌';
       case 'sad': return '😢';
       case 'neutral': return '😐';
+      case 'euphoric': return '🤩';
+      case 'upbeat': return '😎';
+      case 'melancholy': return '😔';
+      case 'low': return '😞';
       default: return '❓';
     }
+  },
+  
+  getMoodColor: (score) => {
+    if (score === null || score === undefined) return '#6B7280'; // gray
+    if (score >= 0.8) return '#10B981'; // green
+    if (score >= 0.6) return '#3B82F6'; // blue
+    if (score >= 0.4) return '#F59E0B'; // yellow
+    if (score >= 0.2) return '#F97316'; // orange
+    return '#EF4444'; // red
   },
   
   calculatePlantGrowthBonus: (moodScore) => {
