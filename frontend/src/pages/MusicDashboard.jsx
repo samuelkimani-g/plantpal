@@ -137,6 +137,10 @@ const MusicDashboard = () => {
       const statsDataResult = results[1].status === 'fulfilled' ? results[1].value : null;
       const currentTrackResult = results[2].status === 'fulfilled' ? results[2].value : null;
 
+      console.log("🎵 DEBUG - Mood Data:", moodDataResult);
+      console.log("📊 DEBUG - Stats Data:", statsDataResult);
+      console.log("🎶 DEBUG - Current Track:", currentTrackResult);
+
       setMoodData(moodDataResult);
       setStatsData(statsDataResult);
       setCurrentTrack(currentTrackResult);
@@ -215,8 +219,11 @@ const MusicDashboard = () => {
   const renderMoodOverview = () => {
     if (!moodData) return null;
 
-    const moodColor = musicAPI.getMoodColor(moodData.overall_mood_score);
-    const moodEmoji = musicAPI.getMoodEmoji(moodData.overall_mood_label);
+    // Safe data extraction with fallbacks
+    const moodScore = moodData.overall_mood_score || moodData.overall_mood || 0.5;
+    const moodLabel = moodData.overall_mood_label || moodData.mood_label || 'neutral';
+    const moodColor = musicAPI.getMoodColor(moodScore);
+    const moodEmoji = musicAPI.getMoodEmoji(moodLabel);
 
     return (
       <Card>
@@ -234,10 +241,10 @@ const MusicDashboard = () => {
             <div className="text-6xl">{moodEmoji}</div>
             <div>
               <h3 className="text-2xl font-bold" style={{ color: moodColor }}>
-                {musicAPI.formatMoodScore(moodData.overall_mood_score)}
+                {musicAPI.formatMoodScore(moodScore)}
               </h3>
               <p className="text-gray-600">
-                {(moodData.overall_mood_score * 100).toFixed(0)}% mood score
+                {isNaN(moodScore) ? '50%' : (moodScore * 100).toFixed(0) + '%'} mood score
               </p>
             </div>
             
@@ -245,12 +252,12 @@ const MusicDashboard = () => {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <p className="font-medium">Sessions</p>
-                  <p className="text-2xl font-bold">{moodData.mood_breakdown.total_sessions}</p>
+                  <p className="text-2xl font-bold">{moodData.mood_breakdown.total_sessions || 0}</p>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <p className="font-medium">Listening Time</p>
                   <p className="text-2xl font-bold">
-                    {Math.round(moodData.mood_breakdown.total_listening_minutes / 60)}h
+                    {isNaN(moodData.mood_breakdown.total_listening_minutes) ? '0' : Math.round(moodData.mood_breakdown.total_listening_minutes / 60)}h
                   </p>
                 </div>
               </div>
@@ -301,47 +308,75 @@ const MusicDashboard = () => {
   };
 
   const renderCurrentTrack = () => {
-    if (!currentTrack?.track) return null;
+    if (!currentTrack?.track) {
+      return (
+        <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-dashed border-green-200">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2 text-green-700">
+              <Headphones className="h-5 w-5" />
+              <span>Now Playing</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <Music className="h-16 w-16 text-green-400 mx-auto mb-4" />
+              <p className="text-gray-600">No track currently playing</p>
+              <p className="text-sm text-gray-500 mt-2">Start playing music on Spotify to see it here</p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
 
     return (
-      <Card>
+      <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
+          <CardTitle className="flex items-center space-x-2 text-green-700">
             <Headphones className="h-5 w-5" />
             <span>Now Playing</span>
             {currentTrack.is_playing && (
-              <Badge variant="secondary" className="animate-pulse">Live</Badge>
+              <Badge variant="secondary" className="animate-pulse bg-green-500 text-white">Live</Badge>
             )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4">
             {currentTrack.track.album_image_url && (
               <img 
                 src={currentTrack.track.album_image_url} 
                 alt="Album" 
-                className="w-16 h-16 rounded-lg"
+                className="w-20 h-20 rounded-lg shadow-md"
               />
             )}
             <div className="flex-1">
-              <h4 className="font-medium">{currentTrack.track.name}</h4>
-              <p className="text-sm text-gray-600">
-                {currentTrack.track.artists?.join(', ')}
+              <h4 className="font-bold text-lg text-gray-900">{currentTrack.track.name}</h4>
+              <p className="text-gray-600 font-medium">
+                {Array.isArray(currentTrack.track.artists) ? currentTrack.track.artists.join(', ') : currentTrack.track.artists}
               </p>
+              <p className="text-sm text-gray-500">{currentTrack.track.album_name}</p>
               {currentTrack.track.mood_label && (
-                <div className="flex items-center space-x-1 mt-1">
-                  <span className="text-xs">
+                <div className="flex items-center space-x-2 mt-2">
+                  <span className="text-2xl">
                     {musicAPI.getMoodEmoji(currentTrack.track.mood_label)}
                   </span>
-                  <span className="text-xs text-gray-500 capitalize">
-                    {currentTrack.track.mood_label}
+                  <span className="text-sm font-medium text-gray-700 capitalize">
+                    {currentTrack.track.mood_label} mood
                   </span>
                 </div>
               )}
             </div>
-            {isUpdatingPlant && (
-              <Loader2 className="h-5 w-5 animate-spin text-green-600" />
-            )}
+            <div className="flex flex-col items-center space-y-2">
+              {currentTrack.is_playing && (
+                <div className="flex space-x-1">
+                  <div className="w-2 h-8 bg-green-500 rounded-full animate-pulse"></div>
+                  <div className="w-2 h-8 bg-green-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                  <div className="w-2 h-8 bg-green-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                </div>
+              )}
+              {isUpdatingPlant && (
+                <Loader2 className="h-6 w-6 animate-spin text-green-600" />
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -350,6 +385,11 @@ const MusicDashboard = () => {
 
   const renderListeningStats = () => {
     if (!statsData) return null;
+
+    // Safe data extraction with fallbacks
+    const totalTracks = statsData.total_tracks_played || statsData.tracks_played || 0;
+    const listeningTime = statsData.total_listening_time_minutes || statsData.listening_time_minutes || 0;
+    const topArtist = statsData.most_played_artist || statsData.top_artist || 'No data';
 
     return (
       <Card>
@@ -363,19 +403,19 @@ const MusicDashboard = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
               <Music className="h-6 w-6 text-blue-600 mx-auto mb-1" />
-              <p className="text-2xl font-bold text-blue-900">{statsData.total_tracks_played}</p>
+              <p className="text-2xl font-bold text-blue-900">{totalTracks}</p>
               <p className="text-sm text-blue-600">Tracks Played</p>
             </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
               <Timer className="h-6 w-6 text-green-600 mx-auto mb-1" />
               <p className="text-2xl font-bold text-green-900">
-                {Math.round(statsData.total_listening_time_minutes / 60)}h
+                {isNaN(listeningTime) ? '0' : Math.round(listeningTime / 60)}h
               </p>
               <p className="text-sm text-green-600">Listening Time</p>
             </div>
             <div className="text-center p-3 bg-purple-50 rounded-lg col-span-2">
               <Star className="h-6 w-6 text-purple-600 mx-auto mb-1" />
-              <p className="font-medium text-purple-900">{statsData.most_played_artist}</p>
+              <p className="font-medium text-purple-900">{topArtist}</p>
               <p className="text-sm text-purple-600">Top Artist</p>
             </div>
           </div>
@@ -492,16 +532,23 @@ const MusicDashboard = () => {
       </div>
 
       {/* Main Dashboard */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 space-y-6">
-          {renderMoodOverview()}
+      <div className="space-y-6">
+        {/* Current Track - Prominent Display */}
+        <div className="w-full">
           {renderCurrentTrack()}
         </div>
-        
-        <div className="lg:col-span-2 space-y-6">
-          {renderTopMoods()}
-          {renderListeningStats()}
-          {renderRecommendations()}
+
+        {/* Mood Overview and Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 space-y-6">
+            {renderMoodOverview()}
+          </div>
+          
+          <div className="lg:col-span-2 space-y-6">
+            {renderTopMoods()}
+            {renderListeningStats()}
+            {renderRecommendations()}
+          </div>
         </div>
       </div>
 
