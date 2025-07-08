@@ -6,8 +6,8 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 import logging
 
-from .models import Plant, PlantLog, MemorySeed, FantasyPlantParams
-from .serializers import PlantSerializer, PlantLogSerializer, MemorySeedSerializer, FantasyPlantParamsSerializer
+from .models import Plant, PlantLog, MemorySeed
+from .serializers import PlantSerializer, PlantLogSerializer, MemorySeedSerializer
 from .services import PlantGrowthService, FirestoreService
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
@@ -17,8 +17,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from .models import Plant, PlantLog, MemorySeed, FantasyPlantParams
-from .serializers import PlantSerializer, PlantLogSerializer, MemorySeedSerializer, FantasyPlantParamsSerializer
+from .models import Plant, PlantLog, MemorySeed
+from .serializers import PlantSerializer, PlantLogSerializer, MemorySeedSerializer
 from utils.enhanced_mood_system import EnhancedMoodSystem
 import logging
 
@@ -464,18 +464,7 @@ class MemorySeedView(APIView):
         )
         return Response(MemorySeedSerializer(seed).data, status=status.HTTP_201_CREATED)
 
-class FantasyParamsView(APIView):
-    permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        plant = Plant.objects.filter(user=request.user).first()
-        if not plant:
-            return Response({"error": "No plant found."}, status=status.HTTP_404_NOT_FOUND)
-        mood_history = request.data.get('mood_history')
-        theme = request.data.get('theme')
-        from .services import PlantGrowthService
-        params = PlantGrowthService.update_fantasy_params(plant, mood_history=mood_history, theme=theme)
-        return Response({"fantasy_params": params})
 
 class MindfulnessRewardView(APIView):
     permission_classes = [IsAuthenticated]
