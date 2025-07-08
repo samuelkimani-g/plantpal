@@ -189,6 +189,23 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'apps.accounts.serializers.CustomTokenObtainPairSerializer',
 }
 
+# DJOSER settings
+DJOSER = {
+    'SERIALIZERS': {
+        'user': 'apps.accounts.serializers.UserSerializer',
+        'current_user': 'apps.accounts.serializers.UserSerializer',
+        'user_create': 'apps.accounts.serializers.UserCreateSerializer',
+    },
+    'LOGIN_FIELD': 'email',  # Use email for login instead of username
+    'USER_CREATE_PASSWORD_RETYPE': True,
+    'USERNAME_CHANGED_EMAIL_CONFIRMATION': False,
+    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': False,
+    'SEND_CONFIRMATION_EMAIL': False,
+    'SEND_ACTIVATION_EMAIL': False,
+    'SET_USERNAME_RETYPE': False,
+    'SET_PASSWORD_RETYPE': True,
+}
+
 # Database
 DATABASES = {
     'default': {

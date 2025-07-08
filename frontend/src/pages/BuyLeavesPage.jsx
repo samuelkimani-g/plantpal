@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { paymentsAPI } from "../services/api";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Loader2, Leaf, CheckCircle2, AlertTriangle, Phone, CreditCard, Info } from "lucide-react";
+import { Leaf, CreditCard, Phone, CheckCircle2, AlertTriangle, Loader2, Info, Sparkles } from "lucide-react";
 
 export default function BuyLeavesPage() {
   const [packages, setPackages] = useState([]);
@@ -379,10 +379,14 @@ export default function BuyLeavesPage() {
                   <div key={tx.id} className="p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <Leaf className="h-5 w-5 text-emerald-500" />
+                        {tx.transaction_type === 'PREMIUM' 
+                          ? <Sparkles className="h-5 w-5 text-amber-500" />
+                          : <Leaf className="h-5 w-5 text-emerald-500" />}
                         <div>
                           <div className="font-medium text-gray-900 dark:text-gray-100">
-                            {tx.leaves} Leaves
+                            {tx.transaction_type === 'PREMIUM' 
+                              ? `${tx.premium_days} Days Premium` 
+                              : `${tx.leaves} Leaves`}
                           </div>
                           <div className="text-sm text-gray-500">
                             KES {tx.amount} • {formatPhoneNumber(tx.phone_number)}
