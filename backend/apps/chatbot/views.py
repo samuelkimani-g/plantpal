@@ -16,72 +16,75 @@ class ChatbotView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        if not request.user.is_premium:
-            return Response(
-                {"error": "This feature is for premium users only."},
-                status=403
-            )
-
-        messages = request.data.get('messages', [])
-        if not messages:
-            return Response({"error": "No messages provided."}, status=400)
-
         try:
+            # Check premium status
+            if not request.user.is_premium:
+                return Response(
+                    {"error": "This feature is for premium users only."},
+                    status=403
+                )
+
+            messages = request.data.get('messages', [])
+            if not messages:
+                return Response({"error": "No messages provided."}, status=400)
+
             # Get the last user message
             last_user_message = messages[-1]['text']
             logger.info(f"Processing chatbot message: {last_user_message}")
             
-            # Create context about the user
-            user_context = f"""
-            You are PlantPal AI, a compassionate and intelligent chatbot designed to help users with:
-            1. Mental health and emotional support
-            2. Plant care advice and guidance
-            3. Mindfulness and wellness practices
-            
-            The user's name is {request.user.username or request.user.email}.
-            
-            Previous conversation context:
-            {self._format_conversation_history(messages)}
-            
-            Respond as a warm, empathetic friend who:
-            - Shows genuine care and understanding
-            - Asks thoughtful follow-up questions
-            - Provides practical advice when appropriate
-            - Maintains a positive, supportive tone
-            - Can switch between emotional support and plant care seamlessly
-            
-            Keep responses conversational, helpful, and under 150 words.
-            """
+            # Always provide a response, even if AI fails
+            try:
+                # Check if API key is available
+                api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+                if api_key:
+                    # Try AI response first
+                    user_context = f"""
+                    You are PlantPal AI, a compassionate and intelligent chatbot designed to help users with:
+                    1. Mental health and emotional support
+                    2. Plant care advice and guidance
+                    3. Mindfulness and wellness practices
+                    
+                    The user's name is {request.user.username or request.user.email}.
+                    
+                    Previous conversation context:
+                    {self._format_conversation_history(messages)}
+                    
+                    Respond as a warm, empathetic friend who:
+                    - Shows genuine care and understanding
+                    - Asks thoughtful follow-up questions
+                    - Provides practical advice when appropriate
+                    - Maintains a positive, supportive tone
+                    - Can switch between emotional support and plant care seamlessly
+                    
+                    Keep responses conversational, helpful, and under 150 words.
+                    """
 
-            # Check if API key is available
-            api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
-            if not api_key:
-                logger.warning("No Google API key found, using fallback responses")
-                ai_response = self._get_fallback_response(last_user_message, messages)
-            else:
-                # Generate response using Google AI
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                response = model.generate_content(user_context + f"\n\nUser: {last_user_message}\n\nPlantPal AI:")
-                
-                # Extract the response text
-                ai_response = response.text.strip()
-                logger.info(f"AI generated response: {ai_response[:100]}...")
-                
-                # If no response generated, fall back to a thoughtful default
-                if not ai_response:
-                    logger.warning("AI returned empty response, using fallback")
-                    ai_response = self._get_fallback_response(last_user_message, messages)
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    response = model.generate_content(user_context + f"\n\nUser: {last_user_message}\n\nPlantPal AI:")
+                    
+                    ai_response = response.text.strip()
+                    if ai_response:
+                        logger.info(f"AI generated response: {ai_response[:100]}...")
+                        return Response({"reply": ai_response})
+                    else:
+                        logger.warning("AI returned empty response, using fallback")
+                else:
+                    logger.warning("No Google API key found, using fallback responses")
+                    
+            except Exception as ai_error:
+                logger.error(f"AI error: {ai_error}")
+                # Continue to fallback response
             
-            logger.info(f"Sending response: {ai_response[:100]}...")
-            return Response({"reply": ai_response})
+            # Fallback response - always works
+            fallback_response = self._get_fallback_response(last_user_message, messages)
+            logger.info(f"Using fallback response: {fallback_response[:100]}...")
+            return Response({"reply": fallback_response})
             
         except Exception as e:
-            logger.error(f"Error in chatbot: {e}")
-            # Fallback response if AI fails
-            fallback_response = self._get_fallback_response(messages[-1]['text'] if messages else "", messages)
-            logger.info(f"Using fallback response: {fallback_response[:100]}...")
+            logger.error(f"Critical error in chatbot: {e}")
+            # Last resort - always return something helpful
             return Response({
-                "reply": fallback_response
+                "reply": "I'm here to listen and support you. What's on your mind today?"
             })
 
     def _format_conversation_history(self, messages):

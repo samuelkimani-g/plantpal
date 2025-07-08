@@ -39,42 +39,49 @@ const PremiumChatbot = () => {
         setIsThinking(true);
 
         try {
+            console.log('Sending message to chatbot:', userMessage.text);
             const response = await chatbotAPI.sendMessage(newMessages);
+            console.log('Raw chatbot response:', response);
             
-            // Add better error handling and debugging
-            console.log('Chatbot response:', response);
+            // Simplified response handling
+            let botText = "I'm here to listen and support you. What's on your mind?";
             
-            if (!response || !response.data) {
-                throw new Error('Invalid response structure');
+            if (response && response.data && response.data.reply) {
+                botText = response.data.reply;
+            } else if (response && response.data && typeof response.data === 'string') {
+                botText = response.data;
+            } else if (response && typeof response === 'string') {
+                botText = response;
             }
+            
+            console.log('Bot response text:', botText);
             
             const botResponse = { 
                 sender: 'bot', 
-                text: response.data.reply || 'I received your message but had trouble processing it. Could you try again?',
+                text: botText,
                 timestamp: new Date()
             };
             setMessages(prev => [...prev, botResponse]);
         } catch (error) {
-            console.error("Error with chatbot:", error);
+            console.error("Chatbot error details:", {
+                error: error,
+                message: error.message,
+                response: error.response,
+                status: error.response?.status,
+                data: error.response?.data
+            });
             
-            // Provide more specific error messages based on the error type
-            let errorMessage = "I'm having a little trouble thinking right now. Please try again in a moment.";
+            // Always provide a helpful response
+            let errorMessage = "I'm here to listen and support you. What's on your mind?";
             
-            if (error.response) {
-                // Server responded with error status
-                if (error.response.status === 403) {
-                    errorMessage = "This feature requires premium access. Please upgrade your account.";
-                } else if (error.response.status === 500) {
-                    errorMessage = "I'm experiencing some technical difficulties. Please try again in a moment.";
-                } else if (error.response.data && error.response.data.error) {
-                    errorMessage = error.response.data.error;
-                }
-            } else if (error.request) {
-                // Network error
-                errorMessage = "I'm having trouble connecting right now. Please check your internet connection and try again.";
+            if (error.response?.status === 403) {
+                errorMessage = "This feature requires premium access. Please upgrade your account.";
+            } else if (error.response?.status === 500) {
+                errorMessage = "I'm experiencing some technical difficulties, but I'm still here to listen. What would you like to talk about?";
+            } else if (error.response?.data?.error) {
+                errorMessage = error.response.data.error;
             } else if (error.message) {
-                // Other error
-                errorMessage = "Something went wrong. Please try again.";
+                errorMessage = "I'm having trouble connecting right now, but I'm here to listen. What's on your mind?";
             }
             
             const errorResponse = { 
