@@ -29,6 +29,7 @@ class ChatbotView(APIView):
         try:
             # Get the last user message
             last_user_message = messages[-1]['text']
+            logger.info(f"Processing chatbot message: {last_user_message}")
             
             # Create context about the user
             user_context = f"""
@@ -52,24 +53,35 @@ class ChatbotView(APIView):
             Keep responses conversational, helpful, and under 150 words.
             """
 
-            # Generate response using Google AI
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(user_context + f"\n\nUser: {last_user_message}\n\nPlantPal AI:")
-            
-            # Extract the response text
-            ai_response = response.text.strip()
-            
-            # If no response generated, fall back to a thoughtful default
-            if not ai_response:
+            # Check if API key is available
+            api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+            if not api_key:
+                logger.warning("No Google API key found, using fallback responses")
                 ai_response = self._get_fallback_response(last_user_message, messages)
+            else:
+                # Generate response using Google AI
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                response = model.generate_content(user_context + f"\n\nUser: {last_user_message}\n\nPlantPal AI:")
+                
+                # Extract the response text
+                ai_response = response.text.strip()
+                logger.info(f"AI generated response: {ai_response[:100]}...")
+                
+                # If no response generated, fall back to a thoughtful default
+                if not ai_response:
+                    logger.warning("AI returned empty response, using fallback")
+                    ai_response = self._get_fallback_response(last_user_message, messages)
             
+            logger.info(f"Sending response: {ai_response[:100]}...")
             return Response({"reply": ai_response})
             
         except Exception as e:
             logger.error(f"Error in chatbot: {e}")
             # Fallback response if AI fails
+            fallback_response = self._get_fallback_response(messages[-1]['text'] if messages else "", messages)
+            logger.info(f"Using fallback response: {fallback_response[:100]}...")
             return Response({
-                "reply": self._get_fallback_response(messages[-1]['text'] if messages else "", messages)
+                "reply": fallback_response
             })
 
     def _format_conversation_history(self, messages):

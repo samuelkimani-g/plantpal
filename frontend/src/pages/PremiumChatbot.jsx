@@ -40,17 +40,46 @@ const PremiumChatbot = () => {
 
         try {
             const response = await chatbotAPI.sendMessage(newMessages);
+            
+            // Add better error handling and debugging
+            console.log('Chatbot response:', response);
+            
+            if (!response || !response.data) {
+                throw new Error('Invalid response structure');
+            }
+            
             const botResponse = { 
                 sender: 'bot', 
-                text: response.data.reply,
+                text: response.data.reply || 'I received your message but had trouble processing it. Could you try again?',
                 timestamp: new Date()
             };
             setMessages(prev => [...prev, botResponse]);
         } catch (error) {
             console.error("Error with chatbot:", error);
+            
+            // Provide more specific error messages based on the error type
+            let errorMessage = "I'm having a little trouble thinking right now. Please try again in a moment.";
+            
+            if (error.response) {
+                // Server responded with error status
+                if (error.response.status === 403) {
+                    errorMessage = "This feature requires premium access. Please upgrade your account.";
+                } else if (error.response.status === 500) {
+                    errorMessage = "I'm experiencing some technical difficulties. Please try again in a moment.";
+                } else if (error.response.data && error.response.data.error) {
+                    errorMessage = error.response.data.error;
+                }
+            } else if (error.request) {
+                // Network error
+                errorMessage = "I'm having trouble connecting right now. Please check your internet connection and try again.";
+            } else if (error.message) {
+                // Other error
+                errorMessage = "Something went wrong. Please try again.";
+            }
+            
             const errorResponse = { 
                 sender: 'bot', 
-                text: "I'm having a little trouble thinking right now. Please try again in a moment.",
+                text: errorMessage,
                 timestamp: new Date()
             };
             setMessages(prev => [...prev, errorResponse]);
