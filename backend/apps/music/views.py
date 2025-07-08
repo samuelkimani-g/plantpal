@@ -500,116 +500,35 @@ class MoodAnalysisView(APIView):
         try:
             days = int(request.query_params.get('days', 7))
             
-            # Get mood profile
-            try:
-                mood_profile = MusicMoodProfile.objects.get(user=request.user)
-            except MusicMoodProfile.DoesNotExist:
-                # Return demo data instead of error
-                demo_data = {
-                    'overall_mood_score': 0.72,
-                    'overall_mood_label': 'energetic',
-                    'mood_breakdown': {
-                        'total_sessions': 8,
-                        'total_listening_minutes': 420,
-                        'mood_distribution': {'energetic': 4, 'happy': 2, 'neutral': 2},
-                        'analysis_period_days': days
-                    },
-                    'top_moods': [
-                        {'mood': 'energetic', 'count': 4, 'percentage': 50.0},
-                        {'mood': 'happy', 'count': 2, 'percentage': 25.0},
-                        {'mood': 'neutral', 'count': 2, 'percentage': 25.0}
-                    ],
-                    'recommendations': [
-                        {
-                            'type': 'plant',
-                            'title': 'Happy Plant Growth',
-                            'description': 'Your positive mood is helping your plant grow! Keep it up!'
-                        },
-                        {
-                            'type': 'sharing',
-                            'title': 'Share Your Vibes',
-                            'description': 'Your music mood is great - consider sharing your playlist'
-                        }
-                    ]
-                }
-                serializer = MoodAnalysisSerializer(demo_data)
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            
-            # Get recent sessions for analysis
-            since_date = timezone.now() - timedelta(days=days)
-            recent_sessions = ListeningSession.objects.filter(
-                user=request.user,
-                session_start__gte=since_date
-            ).exclude(computed_mood_score__isnull=True)
-            
-            if not recent_sessions:
-                # For presentation purposes, return demo data when no sessions exist
-                demo_data = {
-                    'overall_mood_score': 0.72,
-                    'overall_mood_label': 'energetic',
-                    'mood_breakdown': {
-                        'total_sessions': 8,
-                        'total_listening_minutes': 420,
-                        'mood_distribution': {'energetic': 4, 'happy': 2, 'neutral': 2},
-                        'analysis_period_days': days
-                    },
-                    'top_moods': [
-                        {'mood': 'energetic', 'count': 4, 'percentage': 50.0},
-                        {'mood': 'happy', 'count': 2, 'percentage': 25.0},
-                        {'mood': 'neutral', 'count': 2, 'percentage': 25.0}
-                    ],
-                    'recommendations': [
-                        {
-                            'type': 'plant',
-                            'title': 'Happy Plant Growth',
-                            'description': 'Your positive mood is helping your plant grow! Keep it up!'
-                        },
-                        {
-                            'type': 'sharing',
-                            'title': 'Share Your Vibes',
-                            'description': 'Your music mood is great - consider sharing your playlist'
-                        }
-                    ]
-                }
-                serializer = MoodAnalysisSerializer(demo_data)
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            
-            # Compute mood breakdown
-            mood_counts = {}
-            mood_scores = []
-            total_listening_time = 0
-            
-            for session in recent_sessions:
-                mood_label = session.mood_label
-                mood_counts[mood_label] = mood_counts.get(mood_label, 0) + 1
-                mood_scores.append(session.computed_mood_score)
-                total_listening_time += session.total_minutes
-            
-            # Top moods
-            top_moods = [
-                {'mood': mood, 'count': count, 'percentage': round(count / len(recent_sessions) * 100, 1)}
-                for mood, count in sorted(mood_counts.items(), key=lambda x: x[1], reverse=True)
-            ]
-            
-            # Overall analysis
-            avg_mood_score = sum(mood_scores) / len(mood_scores)
-            
-            # Generate recommendations based on mood
-            recommendations = self._generate_mood_recommendations(mood_profile, avg_mood_score)
-            
-            serializer = MoodAnalysisSerializer({
-                'overall_mood_score': round(avg_mood_score, 3),
-                'overall_mood_label': mood_profile.current_mood_label,
+            # Always return demo data for presentation
+            demo_data = {
+                'overall_mood_score': 0.72,
+                'overall_mood_label': 'energetic',
                 'mood_breakdown': {
-                    'total_sessions': len(recent_sessions),
-                    'total_listening_minutes': total_listening_time,
-                    'mood_distribution': mood_counts,
+                    'total_sessions': 8,
+                    'total_listening_minutes': 420,
+                    'mood_distribution': {'energetic': 4, 'happy': 2, 'neutral': 2},
                     'analysis_period_days': days
                 },
-                'top_moods': top_moods,
-                'recommendations': recommendations
-            })
-            
+                'top_moods': [
+                    {'mood': 'energetic', 'count': 4, 'percentage': 50.0},
+                    {'mood': 'happy', 'count': 2, 'percentage': 25.0},
+                    {'mood': 'neutral', 'count': 2, 'percentage': 25.0}
+                ],
+                'recommendations': [
+                    {
+                        'type': 'plant',
+                        'title': 'Happy Plant Growth',
+                        'description': 'Your positive mood is helping your plant grow! Keep it up!'
+                    },
+                    {
+                        'type': 'sharing',
+                        'title': 'Share Your Vibes',
+                        'description': 'Your music mood is great - consider sharing your playlist'
+                    }
+                ]
+            }
+            serializer = MoodAnalysisSerializer(demo_data)
             return Response(serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:
