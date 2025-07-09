@@ -228,13 +228,10 @@ const MusicDashboard = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Brain className="h-5 w-5" />
-            <span>Mood Overview</span>
-            <Badge variant="secondary" className="ml-auto">
-              Last {selectedPeriod} days
-            </Badge>
-          </CardTitle>
+                  <CardTitle className="flex items-center space-x-2">
+          <Brain className="h-5 w-5" />
+          <span>Mood Overview</span>
+        </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center space-y-4">
@@ -512,21 +509,13 @@ const MusicDashboard = () => {
           </div>
         </div>
         <div className="flex space-x-2">
-          <select 
-            value={selectedPeriod} 
-            onChange={(e) => setSelectedPeriod(Number(e.target.value))}
-            className="px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value={7}>Last 7 days</option>
-            <option value={14}>Last 14 days</option>
-            <option value={30}>Last 30 days</option>
-          </select>
           <Button onClick={handleSync} variant="outline" disabled={loading}>
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
+            Sync
           </Button>
         </div>
       </div>
