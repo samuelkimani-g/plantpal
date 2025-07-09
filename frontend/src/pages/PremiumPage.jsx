@@ -75,10 +75,7 @@ const PremiumPage = () => {
     setStatus(null)
 
     try {
-      const response = await paymentsAPI.initiatePremiumPayment({
-        package_id: selectedPackage.id,
-        phone_number: phone
-      })
+      const response = await paymentsAPI.initiatePremiumPayment(selectedPackage.id, phone)
 
       setStatus({
         success: true,
