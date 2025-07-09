@@ -500,33 +500,65 @@ class MoodAnalysisView(APIView):
         try:
             days = int(request.query_params.get('days', 7))
             
-            # Generate dynamic mood data based on current time and user activity
-            current_hour = timezone.now().hour
-            current_minute = timezone.now().minute
+            # Get user's actual listening data from the last N days
+            from_date = timezone.now() - timedelta(days=days)
             
-            # Create dynamic mood patterns based on time of day
-            if 6 <= current_hour < 12:  # Morning
-                base_mood_score = 0.65 + (current_minute / 60) * 0.1  # Gradually improves
-                dominant_mood = 'energetic'
-                mood_distribution = {'energetic': 5, 'happy': 2, 'neutral': 1, 'sad': 0}
-            elif 12 <= current_hour < 18:  # Afternoon
-                base_mood_score = 0.55 + (current_minute / 60) * 0.05  # Stable with slight variation
-                dominant_mood = 'happy'
-                mood_distribution = {'energetic': 3, 'happy': 4, 'neutral': 1, 'sad': 0}
-            elif 18 <= current_hour < 22:  # Evening
-                base_mood_score = 0.45 + (current_minute / 60) * 0.08  # Evening vibes
-                dominant_mood = 'calm'
-                mood_distribution = {'energetic': 2, 'happy': 3, 'neutral': 2, 'sad': 1}
-            else:  # Night
-                base_mood_score = 0.35 + (current_minute / 60) * 0.06  # Night mood
-                dominant_mood = 'neutral'
-                mood_distribution = {'energetic': 1, 'happy': 2, 'neutral': 3, 'sad': 2}
+            # Get user's track history with mood data
+            track_history = UserTrackHistory.objects.filter(
+                user=request.user,
+                played_at__gte=from_date
+            ).select_related('track').order_by('-played_at')
             
-            # Add some randomness to make it more dynamic
-            import random
-            random.seed(current_hour * 60 + current_minute)  # Seed based on time for consistent randomness
-            mood_variation = random.uniform(-0.1, 0.1)
-            base_mood_score = max(0.1, min(0.9, base_mood_score + mood_variation))
+            # Get current track to influence overall mood
+            current_track = None
+            try:
+                spotify_service = SpotifyAPIService(user=request.user)
+                current_data = spotify_service.get_current_track()
+                if current_data and current_data.get('item'):
+                    current_track = spotify_service.save_track_with_features(current_data['item'])
+            except Exception as e:
+                logger.warning(f"Could not get current track: {str(e)}")
+            
+            # Analyze mood from actual listening data
+            mood_scores = []
+            mood_distribution = {'energetic': 0, 'happy': 0, 'neutral': 0, 'calm': 0, 'sad': 0, 'very sad': 0}
+            
+            # Process track history
+            for history in track_history:
+                track = history.track
+                if track and track.computed_mood_score is not None:
+                    mood_scores.append(track.computed_mood_score)
+                    mood_label = track.mood_label or self._get_mood_label_from_score(track.computed_mood_score)
+                    if mood_label in mood_distribution:
+                        mood_distribution[mood_label] += 1
+            
+            # Add current track to analysis if it exists
+            if current_track and current_track.computed_mood_score is not None:
+                mood_scores.append(current_track.computed_mood_score)
+                current_mood_label = current_track.mood_label or self._get_mood_label_from_score(current_track.computed_mood_score)
+                if current_mood_label in mood_distribution:
+                    mood_distribution[current_mood_label] += 1
+            
+            # Calculate overall mood score
+            if mood_scores:
+                overall_mood_score = sum(mood_scores) / len(mood_scores)
+                # Weight current track more heavily if it exists
+                if current_track and current_track.computed_mood_score is not None:
+                    overall_mood_score = (overall_mood_score * 0.7) + (current_track.computed_mood_score * 0.3)
+            else:
+                # Fallback to time-based mood if no data
+                current_hour = timezone.now().hour
+                if 6 <= current_hour < 12:
+                    overall_mood_score = 0.65
+                elif 12 <= current_hour < 18:
+                    overall_mood_score = 0.55
+                elif 18 <= current_hour < 22:
+                    overall_mood_score = 0.45
+                else:
+                    overall_mood_score = 0.35
+            
+            # Get dominant mood
+            dominant_mood = max(mood_distribution.items(), key=lambda x: x[1])[0] if any(mood_distribution.values()) else 'neutral'
             
             # Calculate total sessions and percentages
             total_sessions = sum(mood_distribution.values())
@@ -543,19 +575,26 @@ class MoodAnalysisView(APIView):
             # Sort by count (descending)
             top_moods.sort(key=lambda x: x['count'], reverse=True)
             
-            # Generate dynamic recommendations based on mood
-            recommendations = self._generate_dynamic_recommendations(base_mood_score, dominant_mood)
+            # Generate recommendations based on actual mood
+            recommendations = self._generate_dynamic_recommendations(overall_mood_score, dominant_mood)
             
-            # Calculate total listening time (dynamic based on time)
-            base_listening_minutes = 300 + (current_hour * 10) + (current_minute * 0.5)
-            total_listening_minutes = int(base_listening_minutes + random.uniform(-50, 50))
+            # Calculate total listening time from actual data
+            total_listening_minutes = sum(
+                history.track.duration_ms / 60000 
+                for history in track_history 
+                if history.track and history.track.duration_ms
+            )
+            
+            # Add current track duration if playing
+            if current_track and current_track.duration_ms:
+                total_listening_minutes += current_track.duration_ms / 60000
             
             dynamic_data = {
-                'overall_mood_score': round(base_mood_score, 2),
+                'overall_mood_score': round(overall_mood_score, 2),
                 'overall_mood_label': dominant_mood,
                 'mood_breakdown': {
                     'total_sessions': total_sessions,
-                    'total_listening_minutes': total_listening_minutes,
+                    'total_listening_minutes': int(total_listening_minutes),
                     'mood_distribution': mood_distribution,
                     'analysis_period_days': days
                 },
@@ -611,11 +650,17 @@ class MoodAnalysisView(APIView):
                 'title': 'Happy Plant Growth',
                 'description': 'Your positive mood is helping your plant grow! Keep it up!'
             })
-        elif mood_score < 0.4:
+        elif mood_score < 0.3:
             recommendations.append({
                 'type': 'uplift',
                 'title': 'Mood Boost Needed',
                 'description': 'Try some upbeat music to lift your spirits and help your plant thrive.'
+            })
+        elif mood_score < 0.4:
+            recommendations.append({
+                'type': 'support',
+                'title': 'Gentle Support',
+                'description': 'Your plant understands. Try some calming music to help both of you feel better.'
             })
         else:
             recommendations.append({
@@ -648,6 +693,23 @@ class MoodAnalysisView(APIView):
         recommendations.append(random.choice(random_recommendations))
         
         return recommendations[:3]  # Return top 3 recommendations
+
+    def _get_mood_label_from_score(self, mood_score):
+        """Convert mood score to label"""
+        if mood_score > 0.7:
+            return 'happy'
+        elif mood_score > 0.6:
+            return 'energetic'
+        elif mood_score > 0.4:
+            return 'neutral'
+        elif mood_score > 0.3:
+            return 'calm'
+        elif mood_score > 0.25:
+            return 'sad'
+        elif mood_score > 0.15:
+            return 'very sad'
+        else:
+            return 'very sad'
 
     def _generate_mood_recommendations(self, mood_profile, avg_mood_score):
         """Generate recommendations based on mood analysis"""
