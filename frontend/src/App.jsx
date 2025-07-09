@@ -230,7 +230,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route
+              {/* <Route
                 path="/shop"
                 element={
                   <ProtectedRoute>
@@ -239,7 +239,7 @@ function App() {
                     </Layout>
                   </ProtectedRoute>
                 }
-              />
+              /> */}
               <Route
                 path="/premium"
                 element={

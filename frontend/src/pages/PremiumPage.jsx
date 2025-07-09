@@ -30,8 +30,8 @@ const PremiumPage = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [premiumPackages, setPremiumPackages] = useState([])
-  const [storeItems, setStoreItems] = useState([])
-  const [inventory, setInventory] = useState([])
+  // const [storeItems, setStoreItems] = useState([])
+  // const [inventory, setInventory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedPackage, setSelectedPackage] = useState(null)
@@ -41,7 +41,7 @@ const PremiumPage = () => {
 
   useEffect(() => {
     loadPremiumData()
-    loadStoreData()
+    // loadStoreData()
   }, [])
 
   const loadPremiumData = async () => {
@@ -54,20 +54,20 @@ const PremiumPage = () => {
     }
   }
 
-  const loadStoreData = async () => {
-    try {
-      const [itemsRes, inventoryRes] = await Promise.all([
-        paymentsAPI.getStoreItems(),
-        paymentsAPI.getInventory()
-      ])
-      setStoreItems(Array.isArray(itemsRes.data) ? itemsRes.data : [])
-      setInventory(Array.isArray(inventoryRes.data) ? inventoryRes.data : [])
-    } catch (err) {
-      console.error('Failed to load store data:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // const loadStoreData = async () => {
+  //   try {
+  //     const [itemsRes, inventoryRes] = await Promise.all([
+  //       paymentsAPI.getStoreItems(),
+  //       paymentsAPI.getInventory()
+  //   ])
+  //   setStoreItems(Array.isArray(itemsRes.data) ? itemsRes.data : [])
+  //   setInventory(Array.isArray(inventoryRes.data) ? inventoryRes.data : [])
+  // } catch (err) {
+  //   console.error('Failed to load store data:', err)
+  // } finally {
+  //   setLoading(false)
+  // }
+  // }
 
   const handlePremiumPurchase = async () => {
     if (!selectedPackage || !phone) return
@@ -98,17 +98,17 @@ const PremiumPage = () => {
     }
   }
 
-  const handleStoreItemPurchase = async (item) => {
-    try {
-      await paymentsAPI.purchaseStoreItem(item.id)
-      // Reload inventory after purchase
-      loadStoreData()
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to purchase item.')
-    }
-  }
+  // const handleStoreItemPurchase = async (item) => {
+  //   try {
+  //     await paymentsAPI.purchaseStoreItem(item.id)
+  //     // Reload inventory after purchase
+  //     loadStoreData()
+  //   } catch (err) {
+  //     alert(err.response?.data?.error || 'Failed to purchase item.')
+  //   }
+  // }
 
-  const isOwned = (itemId) => Array.isArray(inventory) ? inventory.some(inv => inv.item.id === itemId) : false
+  // const isOwned = (itemId) => Array.isArray(inventory) ? inventory.some(inv => inv.item.id === itemId) : false
 
   const formatPhoneNumber = (phoneNumber) => {
     if (!phoneNumber) return ''
@@ -121,52 +121,52 @@ const PremiumPage = () => {
     return phoneNumber
   }
 
-  const renderStoreSection = (itemType, title, icon) => {
-    const Icon = icon
-    const filteredItems = Array.isArray(storeItems) ? storeItems.filter(item => item.item_type === itemType) : []
+  // const renderStoreSection = (itemType, title, icon) => {
+  //   const Icon = icon
+  //   const filteredItems = Array.isArray(storeItems) ? storeItems.filter(item => item.item_type === itemType) : []
     
-    if (filteredItems.length === 0) {
-      return (
-        <div className="text-center py-8">
-          <Icon className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-          <p className="text-gray-500">No {title.toLowerCase()} available right now.</p>
-        </div>
-      )
-    }
+  //   if (filteredItems.length === 0) {
+  //     return (
+  //       <div className="text-center py-8">
+  //         <Icon className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+  //       <p className="text-gray-500">No {title.toLowerCase()} available right now.</p>
+  //     </div>
+  //   )
+  // }
 
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredItems.map((item) => (
-          <Card key={item.id} className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-4">
-              <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
-                <Store className="h-8 w-8 text-gray-400" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-1">{item.name}</h3>
-              <p className="text-sm text-gray-600 mb-3">{item.description}</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <Leaf className="h-4 w-4 text-emerald-500" />
-                  <span className="font-medium text-emerald-700">{item.price} Leaves</span>
-                </div>
-                {isOwned(item.id) ? (
-                  <Badge variant="success">Owned</Badge>
-                ) : (
-                  <Button
-                    size="sm"
-                    onClick={() => handleStoreItemPurchase(item)}
-                    className="bg-emerald-500 hover:bg-emerald-600"
-                  >
-                    Buy
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    )
-  }
+  //   return (
+  //     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  //       {filteredItems.map((item) => (
+  //         <Card key={item.id} className="hover:shadow-lg transition-shadow">
+  //           <CardContent className="p-4">
+  //             <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
+  //               <Store className="h-8 w-8 text-gray-400" />
+  //             </div>
+  //             <h3 className="font-semibold text-gray-900 mb-1">{item.name}</h3>
+  //             <p className="text-sm text-gray-600 mb-3">{item.description}</p>
+  //             <div className="flex items-center justify-between">
+  //               <div className="flex items-center gap-1">
+  //                 <Leaf className="h-4 w-4 text-emerald-500" />
+  //                 <span className="font-medium text-emerald-700">{item.price} Leaves</span>
+  //               </div>
+  //               {isOwned(item.id) ? (
+  //                 <Badge variant="success">Owned</Badge>
+  //               ) : (
+  //                 <Button
+  //                   size="sm"
+  //                   onClick={() => handleStoreItemPurchase(item)}
+  //                   className="bg-emerald-500 hover:bg-emerald-600"
+  //                 >
+  //                   Buy
+  //                 </Button>
+  //               )}
+  //             </div>
+  //           </CardContent>
+  //         </Card>
+  //       ))}
+  //     </div>
+  //   )
+  // }
 
   if (loading) {
     return (
@@ -216,10 +216,10 @@ const PremiumPage = () => {
             <Zap className="h-4 w-4" />
             Analytics
           </TabsTrigger>
-          <TabsTrigger value="store" className="flex items-center gap-2">
+          {/* <TabsTrigger value="store" className="flex items-center gap-2">
             <ShoppingBag className="h-4 w-4" />
             Store
-          </TabsTrigger>
+          </TabsTrigger> */}
           <TabsTrigger value="transactions" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             Transactions
@@ -265,7 +265,7 @@ const PremiumPage = () => {
             </Card>
 
             {/* Premium Store Access */}
-            <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100">
+            {/* <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingBag className="h-5 w-5 text-emerald-600" />
@@ -288,7 +288,7 @@ const PremiumPage = () => {
                   Browse Store
                 </Button>
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Advanced Analytics */}
             <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100">
@@ -622,7 +622,7 @@ const PremiumPage = () => {
         </TabsContent>
 
         {/* Store Tab */}
-        <TabsContent value="store" className="space-y-6">
+        {/* <TabsContent value="store" className="space-y-6">
           <div className="grid grid-cols-1 gap-6">
             <Card>
               <CardHeader>
@@ -660,7 +660,7 @@ const PremiumPage = () => {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        </TabsContent> */}
 
         {/* Transactions Tab */}
         <TabsContent value="transactions" className="space-y-6">
