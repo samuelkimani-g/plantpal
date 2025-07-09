@@ -247,6 +247,8 @@ export const musicAPI = {
       case 'upbeat': return '😎';
       case 'melancholy': return '😔';
       case 'low': return '😞';
+      case 'positive': return '😊';
+      case 'positive mood': return '😊';
       default: return '❓';
     }
   },
