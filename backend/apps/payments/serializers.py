@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from apps.plants.models import Plant
 
 class PublicPlantUserSerializer(serializers.ModelSerializer):
-    is_premium = serializers.BooleanField(source='userprofile.is_premium', read_only=True)
+    is_premium = serializers.BooleanField(read_only=True)
     class Meta:
         model = User
         fields = ['id', 'username', 'is_premium']
