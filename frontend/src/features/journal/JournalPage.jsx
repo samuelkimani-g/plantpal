@@ -357,12 +357,12 @@ const JournalPage = () => {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
-                          <span className={`text-2xl ${getMoodColor(entry.mood_type)}`}>
-                            {getMoodEmoji(entry.mood_type)}
+                          <span className={`text-2xl ${getMoodColor(entry.mood)}`}>
+                            {getMoodEmoji(entry.mood)}
                           </span>
                           <div>
                             <Badge variant="outline" className="capitalize">
-                              {entry.mood_type || 'neutral'}
+                              {entry.mood || 'neutral'}
                             </Badge>
                             <p className="text-sm text-muted-foreground mt-1">
                               {new Date(entry.created_at).toLocaleDateString()}
