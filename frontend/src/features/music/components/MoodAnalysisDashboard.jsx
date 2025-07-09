@@ -23,16 +23,16 @@ const MoodAnalysisDashboard = ({ isConnected }) => {
       loadStatsData();
       loadCurrentTrack();
     }
-  }, [isConnected, selectedPeriod]);
+  }, [isConnected]);
 
-  // Auto-refresh current track and mood data every 30 seconds
+  // Auto-refresh current track and mood data every 10 seconds
   useEffect(() => {
     if (!isConnected) return;
 
     const interval = setInterval(() => {
       loadCurrentTrack();
       loadMoodData(); // Refresh mood data to reflect current track changes
-    }, 30000); // 30 seconds
+    }, 10000); // 10 seconds
 
     return () => clearInterval(interval);
   }, [isConnected]);
@@ -148,13 +148,10 @@ const MoodAnalysisDashboard = ({ isConnected }) => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Brain className="h-5 w-5" />
-            <span>Mood Overview</span>
-            <Badge variant="secondary" className="ml-auto">
-              Last {selectedPeriod} days
-            </Badge>
-          </CardTitle>
+                  <CardTitle className="flex items-center space-x-2">
+          <Brain className="h-5 w-5" />
+          <span>Mood Overview</span>
+        </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center space-y-4">
@@ -345,15 +342,6 @@ const MoodAnalysisDashboard = ({ isConnected }) => {
           <p className="text-gray-600">Insights from your Spotify listening habits</p>
         </div>
         <div className="flex space-x-2">
-          <select 
-            value={selectedPeriod} 
-            onChange={(e) => setSelectedPeriod(Number(e.target.value))}
-            className="px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value={7}>Last 7 days</option>
-            <option value={14}>Last 14 days</option>
-            <option value={30}>Last 30 days</option>
-          </select>
           <Button onClick={handleRefresh} variant="outline" disabled={loading}>
             <RefreshCw className="h-4 w-4" />
           </Button>
