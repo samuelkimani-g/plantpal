@@ -618,23 +618,20 @@ const MindfulnessPage = () => {
                 <CardContent className="space-y-6">
                   {/* Time Selection */}
                   <div className="space-y-3">
-                    <label className="text-sm font-medium">Choose Duration:</label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <label className="text-sm font-semibold mb-2 block">Choose Duration:</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {meditationTimes.map((time) => (
                         <button
                           key={time.value}
                           onClick={() => setSelectedMeditationTime(time.value)}
-                          className={`p-3 text-left rounded-lg border transition-all ${
-                            selectedMeditationTime === time.value
-                              ? "border-purple-500 bg-purple-50"
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
+                          className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400
+                            ${selectedMeditationTime === time.value
+                              ? 'border-purple-600 bg-purple-50 scale-105 ring-2 ring-purple-300'
+                              : 'border-gray-200 bg-white hover:border-purple-300'}
+                          `}
                         >
-                          <div className="font-medium text-sm">{time.label}</div>
-                          <div className="text-xs text-muted-foreground">{time.description}</div>
-                          // ... existing code ...
-
-                          <div className="text-xs text-muted-foreground">{time.description}</div>
+                          <span className="text-lg font-bold text-purple-700">{time.label}</span>
+                          <span className="text-xs text-muted-foreground mt-1">{time.description}</span>
                         </button>
                       ))}
                     </div>
