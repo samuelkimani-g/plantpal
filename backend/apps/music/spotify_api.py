@@ -744,22 +744,18 @@ class SpotifyAPIService:
             track_name = track_data.get('name', '').lower()
             
             # Positive/energetic keywords
-            positive_words = ['happy', 'joy', 'love', 'dance', 'party', 'fun', 'good', 'great', 'amazing', 'awesome', 'fire', 'lit', 'banger']
+            positive_words = ['happy', 'joy', 'love', 'dance', 'party', 'fun', 'good', 'great', 'amazing', 'awesome', 'fire', 'lit', 'banger', 'upbeat', 'energetic', 'vibrant']
             for word in positive_words:
                 if word in track_name:
                     score += 0.15  # Significant boost for positive words
             
-            # Negative/sad keywords
-            negative_words = ['sad', 'cry', 'pain', 'hurt', 'lonely', 'depressed', 'angry', 'hate', 'death', 'die', 'kill']
+            # Negative/sad keywords (expanded list)
+            negative_words = ['sad', 'cry', 'pain', 'hurt', 'lonely', 'depressed', 'angry', 'hate', 'death', 'die', 'kill', 'sad!', 'sadness', 'tears', 'grief', 'sorrow', 'melancholy', 'blue', 'down', 'low', 'dark', 'nightmare', 'hell', 'devil', 'evil', 'bad', 'wrong', 'broken', 'lost', 'alone', 'empty', 'void', 'numb', 'cold', 'dead', 'suicide', 'bleeding', 'blood', 'wound', 'scar', 'cut', 'slit', 'knife', 'gun', 'bullet', 'poison', 'overdose', 'overdosed']
             for word in negative_words:
                 if word in track_name:
-                    score -= 0.15  # Significant reduction for negative words
+                    score -= 0.25  # Stronger reduction for negative words
             
-            # Hip-hop specific analysis (Big Poppa is hip-hop)
-            if any(word in track_name for word in ['poppa', 'big', 'notorious', 'hip', 'rap']):
-                score += 0.2  # Hip-hop tracks tend to be more energetic/confident
-            
-            # Artist analysis
+            # Artist analysis (expanded)
             artists = [artist.get('name', '').lower() for artist in track_data.get('artists', [])]
             for artist in artists:
                 if 'notorious' in artist or 'big' in artist:
@@ -768,11 +764,21 @@ class SpotifyAPIService:
                     score += 0.05  # The Weeknd has mixed moods
                 elif 'kanye' in artist:
                     score += 0.08  # Kanye tracks are often confident
+                elif 'xxxtentacion' in artist or 'x' in artist:
+                    score -= 0.2  # XXXTENTACION is known for sad/dark music
+                elif 'juice' in artist and 'wrld' in artist:
+                    score -= 0.15  # Juice WRLD has many sad songs
+                elif 'lil' in artist and 'peep' in artist:
+                    score -= 0.2  # Lil Peep was known for sad/emo music
+                elif 'billie' in artist and 'eilish' in artist:
+                    score -= 0.1  # Billie Eilish has many melancholic songs
             
             # Album analysis
             album_name = track_data.get('album', {}).get('name', '').lower()
             if 'ready to die' in album_name:
                 score += 0.1  # Ready to Die is a confident album
+            elif 'sad' in album_name or 'depression' in album_name or 'pain' in album_name:
+                score -= 0.15  # Sad album names indicate sad content
             
             # Popularity influence (very sensitive)
             popularity = track_data.get('popularity', 50)
@@ -812,10 +818,12 @@ class SpotifyAPIService:
             return 'neutral'
         elif mood_score >= 0.3:
             return 'calm'
-        elif mood_score >= 0.2:
+        elif mood_score >= 0.25:
             return 'melancholy'
-        else:
+        elif mood_score >= 0.15:
             return 'sad'
+        else:
+            return 'very sad'
 
     def get_mood_description(self, mood_score):
         """Convert mood score to descriptive label"""

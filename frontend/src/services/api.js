@@ -242,6 +242,7 @@ export const musicAPI = {
       case 'energetic': return '⚡';
       case 'calm': return '😌';
       case 'sad': return '😢';
+      case 'very sad': return '😭';
       case 'neutral': return '😐';
       case 'euphoric': return '🤩';
       case 'upbeat': return '😎';
