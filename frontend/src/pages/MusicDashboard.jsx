@@ -45,7 +45,7 @@ const MusicDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState(7);
   const [isProcessingCallback, setIsProcessingCallback] = useState(false);
   const [isUpdatingPlant, setIsUpdatingPlant] = useState(false);
-  const [leaves, setLeaves] = useState(0);
+  // const [leaves, setLeaves] = useState(0);
 
   // Handle Spotify OAuth callback
   useEffect(() => {
@@ -449,9 +449,9 @@ const MusicDashboard = () => {
     );
   };
 
-  useEffect(() => {
-    paymentsAPI.getLeaves().then((res) => setLeaves(res.data.leaves));
-  }, []);
+  // useEffect(() => {
+  //   paymentsAPI.getLeaves().then((res) => setLeaves(res.data.leaves));
+  // }, []);
 
   if (isProcessingCallback) {
     return (
@@ -503,10 +503,10 @@ const MusicDashboard = () => {
       {/* Header Controls */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-white dark:bg-emerald-950 rounded-lg px-3 py-2 shadow">
+          {/* <div className="flex items-center gap-2 bg-white dark:bg-emerald-950 rounded-lg px-3 py-2 shadow">
             <Leaf className="h-5 w-5 text-emerald-400" />
             <span className="font-bold text-emerald-700 dark:text-emerald-100">{leaves} Leaves</span>
-          </div>
+          </div> */}
         </div>
         <div className="flex space-x-2">
           <Button onClick={handleSync} variant="outline" disabled={loading}>
