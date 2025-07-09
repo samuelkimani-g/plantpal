@@ -91,7 +91,7 @@ const Navigation = () => {
     { name: "Mindfulness", path: "/mindfulness", icon: Heart },
     // { name: "Public Garden", path: "/public-garden", icon: Users },
     { name: "Music", path: "/music", icon: Music },
-    // { name: "Premium", path: "/premium", icon: Crown },
+    { name: "Premium", path: "/premium", icon: Crown },
   ]
 
   // Premium-only items (shown in dropdown or premium page)
@@ -236,7 +236,7 @@ const Navigation = () => {
                   */}
 
                   
-                  {/* Premium Features - Commented out
+                  {/* Premium Features */}
                   {user?.is_premium ? (
                     <>
                       <hr className="my-1" />
@@ -270,7 +270,6 @@ const Navigation = () => {
                       Upgrade to Premium
                     </button>
                   )}
-                  */}
                   
                   <hr className="my-1" />
                   <button
@@ -322,7 +321,7 @@ const Navigation = () => {
               
 
               
-              {/* Premium Features in mobile menu - Commented out
+              {/* Premium Features in mobile menu */}
               {user?.is_premium && (
                 <>
                   <div className="px-4 py-2 text-xs font-medium text-amber-600 bg-amber-50 rounded-md">Premium Features</div>
@@ -347,7 +346,6 @@ const Navigation = () => {
                   })}
                 </>
               )}
-              */}
             </div>
           </div>
         )}
