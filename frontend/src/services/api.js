@@ -23,6 +23,8 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
       console.log("🔑 API Request: Auth token added")
+    } else {
+      console.log("⚠️ API Request: No auth token found")
     }
     console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`)
     return config
@@ -69,21 +71,43 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refresh_token');
         if (!refreshToken) {
+            console.log("❌ No refresh token found, redirecting to login");
             localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
             window.location.href = '/login';
             return Promise.reject(error);
         }
+        
+        console.log("🔄 Attempting token refresh...");
         const response = await axios.post(`${API_BASE_URL}/api/auth/jwt/refresh/`, { refresh: refreshToken });
         const { access } = response.data;
+        
+        if (!access) {
+            throw new Error("No access token received from refresh");
+        }
+        
+        console.log("✅ Token refresh successful");
         localStorage.setItem('access_token', access);
         api.defaults.headers.common['Authorization'] = 'Bearer ' + access;
         originalRequest.headers['Authorization'] = 'Bearer ' + access;
         return api(originalRequest);
       } catch (refreshError) {
-        console.error("Token refresh failed:", refreshError);
+        console.error("❌ Token refresh failed:", refreshError);
+        console.error("Refresh error details:", {
+          status: refreshError.response?.status,
+          data: refreshError.response?.data,
+          message: refreshError.message
+        });
+        
+        // Clear all auth data and redirect to login
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
-        window.location.href = '/login';
+        localStorage.removeItem("user");
+        
+        // Only redirect if we're not already on the login page
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }
