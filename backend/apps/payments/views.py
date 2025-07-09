@@ -475,18 +475,17 @@ class WaterPurchaseView(APIView):
         leaves_per_water = 10  # Cost: 10 leaves per water
         
         total_cost = water_amount * leaves_per_water
-        user_profile = request.user.userprofile
+        user = request.user
         
         # Check if user has enough leaves
-        if user_profile.plantpal_leaves < total_cost:
+        if user.plantpal_leaves < total_cost:
             return Response({
-                'error': f'Not enough leaves. You need {total_cost} leaves but have {user_profile.plantpal_leaves}'
+                'error': f'Not enough leaves. You need {total_cost} leaves but have {user.plantpal_leaves}'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Deduct leaves and add water
-        user_profile.plantpal_leaves -= total_cost
-        user_profile.water_count += water_amount
-        user_profile.save()
+        # Deduct leaves from user
+        user.plantpal_leaves -= total_cost
+        user.save()
         
         # Record mood impact (spending leaves has slight negative impact)
         mood_result = EnhancedMoodSystem.record_action(
@@ -500,8 +499,7 @@ class WaterPurchaseView(APIView):
         return Response({
             'water_purchased': water_amount,
             'leaves_spent': total_cost,
-            'remaining_leaves': user_profile.plantpal_leaves,
-            'total_water': user_profile.water_count,
+            'remaining_leaves': user.plantpal_leaves,
             'mood_impact': mood_result
         })
 
@@ -628,7 +626,7 @@ class StoreItemsView(APIView):
                     'price': item.price,
                     'item_type': item.item_type,
                     'image_url': item.image_url if hasattr(item, 'image_url') else None,
-                    'is_available': item.is_available
+                    'is_available': item.is_active  # Use is_active instead of is_available
                 })
             
             return Response({
@@ -637,4 +635,36 @@ class StoreItemsView(APIView):
             })
         except Exception as e:
             logger.error(f"Error getting store items: {e}")
-            return Response({'error': 'Failed to get store items'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+            return Response({'error': 'Failed to get store items'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class UserInventoryView(APIView):
+    """View for getting user's inventory"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get user's inventory items"""
+        try:
+            from apps.store.models import UserInventory
+            inventory_items = UserInventory.objects.filter(user=request.user)
+            
+            items_data = []
+            for inventory_item in inventory_items:
+                item = inventory_item.item
+                items_data.append({
+                    'id': inventory_item.id,
+                    'item_id': item.id,
+                    'name': item.name,
+                    'description': item.description,
+                    'item_type': item.item_type,
+                    'image_url': item.image_url if hasattr(item, 'image_url') else None,
+                    'equipped': inventory_item.equipped,
+                    'is_premium_only': item.is_premium_only
+                })
+            
+            return Response({
+                'inventory': items_data,
+                'total_items': len(items_data)
+            })
+        except Exception as e:
+            logger.error(f"Error getting user inventory: {e}")
+            return Response({'error': 'Failed to get inventory'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

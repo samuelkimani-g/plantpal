@@ -44,7 +44,7 @@ export default function BuyLeavesPage() {
         // Don't set error for this, just keep leaves at 0
       });
 
-    paymentsAPI.getTransactions()
+    paymentsAPI.getTransactionHistory()
       .then((res) => {
         console.log("✅ Transactions loaded:", res.data);
         setTransactions(Array.isArray(res.data) ? res.data : []);
@@ -85,7 +85,7 @@ export default function BuyLeavesPage() {
       setTimeout(() => {
         Promise.all([
           paymentsAPI.getLeaves().then((res) => setLeaves(res.data.leaves)),
-          paymentsAPI.getTransactions().then((res) => setTransactions(res.data)),
+          paymentsAPI.getTransactionHistory().then((res) => setTransactions(res.data)),
         ]);
       }, 2000);
       

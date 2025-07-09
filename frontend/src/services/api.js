@@ -294,6 +294,10 @@ export const paymentsAPI = {
   purchasePremium: (paymentData) => api.post("/api/payments/premium/", paymentData),
   purchaseLeaves: (packageData) => api.post("/api/payments/packages/", packageData),
   
+  // Payment initiation
+  initiatePayment: (packageId, phoneNumber) => api.post("/api/payments/packages/buy/", { package_id: packageId, phone_number: phoneNumber }),
+  initiatePremiumPayment: (packageId, phoneNumber) => api.post("/api/payments/premium/", { package_id: packageId, phone_number: phoneNumber }),
+  
   // Water purchase
   purchaseWater: (waterAmount) => api.post("/api/payments/water/purchase/", { water_amount: waterAmount }),
   
@@ -301,6 +305,8 @@ export const paymentsAPI = {
   getTransactionStatus: () => api.get("/api/payments/transactions/status/"),
   getTransactionHistory: () => api.get("/api/payments/transactions/"),
   completePendingTransactions: () => api.post("/api/payments/transactions/complete-pending/"),
+  completeTransaction: (transactionId) => api.post("/api/payments/transactions/complete/", { transaction_id: transactionId }),
+  completeAllPending: () => api.post("/api/payments/transactions/complete-pending/"),
   
   // Public garden and social features
   getGarden: (query = "") => api.get(`/api/payments/garden/${query ? `?${query}` : ""}`),
