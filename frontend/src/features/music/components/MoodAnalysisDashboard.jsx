@@ -25,6 +25,18 @@ const MoodAnalysisDashboard = ({ isConnected }) => {
     }
   }, [isConnected, selectedPeriod]);
 
+  // Auto-refresh current track and mood data every 30 seconds
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const interval = setInterval(() => {
+      loadCurrentTrack();
+      loadMoodData(); // Refresh mood data to reflect current track changes
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [isConnected]);
+
   const loadMoodData = async () => {
     try {
       setLoading(true);
@@ -342,12 +354,16 @@ const MoodAnalysisDashboard = ({ isConnected }) => {
             <option value={14}>Last 14 days</option>
             <option value={30}>Last 30 days</option>
           </select>
+          <Button onClick={handleRefresh} variant="outline" disabled={loading}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
           <Button onClick={handleSync} variant="outline" disabled={loading}>
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
+            Sync
           </Button>
         </div>
       </div>

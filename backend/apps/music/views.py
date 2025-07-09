@@ -526,11 +526,26 @@ class MoodAnalysisView(APIView):
             # Process track history
             for history in track_history:
                 track = history.track
-                if track and track.computed_mood_score is not None:
-                    mood_scores.append(track.computed_mood_score)
-                    mood_label = track.mood_label or self._get_mood_label_from_score(track.computed_mood_score)
-                    if mood_label in mood_distribution:
-                        mood_distribution[mood_label] += 1
+                if track:
+                    # If track doesn't have mood data, calculate it now
+                    if track.computed_mood_score is None:
+                        # Use text-based analysis for tracks without audio features
+                        track_data = {
+                            'name': track.name,
+                            'artists': [{'name': artist} for artist in track.artists],
+                            'album': {'name': track.album_name},
+                            'duration_ms': track.duration_ms,
+                            'popularity': track.popularity
+                        }
+                        track.computed_mood_score = self._calculate_text_based_mood_score(track_data)
+                        track.mood_label = self._get_mood_label_from_score(track.computed_mood_score)
+                        track.save()
+                    
+                    if track.computed_mood_score is not None:
+                        mood_scores.append(track.computed_mood_score)
+                        mood_label = track.mood_label or self._get_mood_label_from_score(track.computed_mood_score)
+                        if mood_label in mood_distribution:
+                            mood_distribution[mood_label] += 1
             
             # Add current track to analysis if it exists
             if current_track and current_track.computed_mood_score is not None:
@@ -693,6 +708,75 @@ class MoodAnalysisView(APIView):
         recommendations.append(random.choice(random_recommendations))
         
         return recommendations[:3]  # Return top 3 recommendations
+
+    def _calculate_text_based_mood_score(self, track_data):
+        """Calculate mood score based on track information (reuse from TopTracksView)"""
+        try:
+            score = 0.5  # Base neutral score
+            
+            # Track name analysis (very sensitive)
+            track_name = track_data.get('name', '').lower()
+            
+            # Positive/energetic keywords
+            positive_words = ['happy', 'joy', 'love', 'dance', 'party', 'fun', 'good', 'great', 'amazing', 'awesome', 'fire', 'lit', 'banger', 'upbeat', 'energetic', 'vibrant']
+            for word in positive_words:
+                if word in track_name:
+                    score += 0.15  # Significant boost for positive words
+            
+            # Negative/sad keywords (expanded list)
+            negative_words = ['sad', 'cry', 'pain', 'hurt', 'lonely', 'depressed', 'angry', 'hate', 'death', 'die', 'kill', 'sad!', 'sadness', 'tears', 'grief', 'sorrow', 'melancholy', 'blue', 'down', 'low', 'dark', 'nightmare', 'hell', 'devil', 'evil', 'bad', 'wrong', 'broken', 'lost', 'alone', 'empty', 'void', 'numb', 'cold', 'dead', 'suicide', 'bleeding', 'blood', 'wound', 'scar', 'cut', 'slit', 'knife', 'gun', 'bullet', 'poison', 'overdose', 'overdosed']
+            for word in negative_words:
+                if word in track_name:
+                    score -= 0.25  # Stronger reduction for negative words
+            
+            # Artist analysis (expanded)
+            artists = [artist.get('name', '').lower() for artist in track_data.get('artists', [])]
+            for artist in artists:
+                if 'notorious' in artist or 'big' in artist:
+                    score += 0.1  # Biggie tracks are confident/energetic
+                elif 'weeknd' in artist:
+                    score += 0.05  # The Weeknd has mixed moods
+                elif 'kanye' in artist:
+                    score += 0.08  # Kanye tracks are often confident
+                elif 'xxxtentacion' in artist or 'x' in artist:
+                    score -= 0.2  # XXXTENTACION is known for sad/dark music
+                elif 'juice' in artist and 'wrld' in artist:
+                    score -= 0.15  # Juice WRLD has many sad songs
+                elif 'lil' in artist and 'peep' in artist:
+                    score -= 0.2  # Lil Peep was known for sad/emo music
+                elif 'billie' in artist and 'eilish' in artist:
+                    score -= 0.1  # Billie Eilish has many melancholic songs
+            
+            # Album analysis
+            album_name = track_data.get('album', {}).get('name', '').lower()
+            if 'ready to die' in album_name:
+                score += 0.1  # Ready to Die is a confident album
+            elif 'sad' in album_name or 'depression' in album_name or 'pain' in album_name:
+                score -= 0.15  # Sad album names indicate sad content
+            
+            # Popularity influence (very sensitive)
+            popularity = track_data.get('popularity', 50)
+            if popularity > 80:
+                score += 0.1  # Very popular tracks often have positive energy
+            elif popularity < 30:
+                score -= 0.05  # Less popular tracks might be more niche/moody
+            
+            # Duration influence (very sensitive)
+            duration_ms = track_data.get('duration_ms', 180000)
+            duration_minutes = duration_ms / 60000
+            if duration_minutes > 4:
+                score += 0.05  # Longer tracks often have more complex moods
+            elif duration_minutes < 2:
+                score += 0.03  # Short tracks are often punchy/energetic
+            
+            # Ensure score is within bounds
+            score = max(0.0, min(1.0, score))
+            
+            return round(score, 3)
+            
+        except Exception as e:
+            logger.error(f"Error calculating text-based mood score: {str(e)}")
+            return 0.5
 
     def _get_mood_label_from_score(self, mood_score):
         """Convert mood score to label"""
