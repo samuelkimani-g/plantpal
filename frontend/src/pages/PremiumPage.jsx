@@ -335,8 +335,8 @@ const PremiumPage = () => {
                       <p>• Select a premium package below</p>
                       <p>• Enter your M-Pesa phone number</p>
                       <p>• You'll receive a PIN prompt on your phone</p>
-                      <p>• Payment goes to <strong>0707 953 603</strong></p>
-                      <p>• Premium access is activated automatically</p>
+                      {/* <p>• Payment goes to <strong>0707 953 603</strong></p> */}
+                      <p>• comfirm yor premium access</p>
                     </div>
                   </div>
                 </div>

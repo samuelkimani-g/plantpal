@@ -66,7 +66,14 @@ const MoodAnalysisDashboard = ({ isConnected }) => {
   const handleSync = async () => {
     try {
       setLoading(true);
-      await musicAPI.syncListeningData();
+      const response = await musicAPI.syncListeningData();
+      
+      // Show success message if plant was updated
+      if (response?.data?.plant_updated) {
+        console.log('🎵 Music sync affected your plant!', response.data);
+        // You could add a toast notification here
+      }
+      
       // Reload data after sync
       await loadMoodData();
       await loadStatsData();

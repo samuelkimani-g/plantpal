@@ -167,7 +167,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center gap-2 text-muted-foreground">
             <Leaf className="h-5 w-5 text-primary" />
-            <span>© 2024 PlantPal. Grow through what you go through.</span>
+            <span>© 2025 PlantPal. Grow through what you go through.</span>
           </div>
         </div>
       </footer>

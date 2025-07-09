@@ -507,13 +507,14 @@ class MoodAnalysisView(APIView):
                 'mood_breakdown': {
                     'total_sessions': 8,
                     'total_listening_minutes': 420,
-                    'mood_distribution': {'energetic': 4, 'happy': 2, 'neutral': 2},
+                    'mood_distribution': {'energetic': 4, 'happy': 2, 'neutral': 1, 'sad': 1},
                     'analysis_period_days': days
                 },
                 'top_moods': [
                     {'mood': 'energetic', 'count': 4, 'percentage': 50.0},
                     {'mood': 'happy', 'count': 2, 'percentage': 25.0},
-                    {'mood': 'neutral', 'count': 2, 'percentage': 25.0}
+                    {'mood': 'neutral', 'count': 1, 'percentage': 12.5},
+                    {'mood': 'sad', 'count': 1, 'percentage': 12.5}
                 ],
                 'recommendations': [
                     {
@@ -797,7 +798,7 @@ class MoodAnalysisSettingsView(APIView):
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def sync_listening_data(request):
-    """Manually sync listening data from Spotify"""
+    """Manually sync listening data from Spotify and update plant"""
     try:
         spotify_service = SpotifyAPIService(user=request.user)
         tracks_processed = spotify_service.analyze_and_save_listening_data()
@@ -808,14 +809,77 @@ def sync_listening_data(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        return Response(
-            {
+        # Update plant based on music mood
+        try:
+            from utils.mood_logic import MoodEngine
+            from apps.plants.models import Plant
+            
+            # Get user's plant
+            plant = Plant.objects.filter(user=request.user).first()
+            
+            if plant:
+                # Calculate average mood from recent sessions
+                from .models import ListeningSession
+                recent_sessions = ListeningSession.objects.filter(
+                    user=request.user
+                ).order_by('-session_start')[:5]  # Last 5 sessions
+                
+                if recent_sessions:
+                    avg_mood_score = sum(s.computed_mood_score for s in recent_sessions if s.computed_mood_score) / len(recent_sessions)
+                    
+                    # Create mood data for plant update
+                    mood_data = {
+                        'mood_score': avg_mood_score,
+                        'mood_type': 'happy' if avg_mood_score > 0.6 else 'neutral' if avg_mood_score > 0.4 else 'sad'
+                    }
+                    
+                    # Calculate plant growth impact
+                    impact = MoodEngine.calculate_plant_growth_impact(mood_data, plant.growth_points)
+                    
+                    # Apply growth points if there's a change
+                    if impact != 0:
+                        plant.add_growth_points(
+                            int(impact), 
+                            source=f"music_mood_sync_{mood_data['mood_type']}"
+                        )
+                    
+                    # Update music mood score
+                    plant.music_mood_score = avg_mood_score
+                    plant.save()
+                    
+                    logger.info(f"Plant {plant.name} updated from music sync: mood_score={avg_mood_score}, impact={impact}")
+                    
+                    return Response({
+                        'success': True,
+                        'message': f'Processed {tracks_processed} tracks and updated plant mood',
+                        'tracks_processed': tracks_processed,
+                        'plant_updated': True,
+                        'mood_score': avg_mood_score,
+                        'growth_impact': impact
+                    }, status=status.HTTP_200_OK)
+                else:
+                    return Response({
+                        'success': True,
+                        'message': f'Processed {tracks_processed} tracks (no recent sessions for plant update)',
+                        'tracks_processed': tracks_processed,
+                        'plant_updated': False
+                    }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    'success': True,
+                    'message': f'Processed {tracks_processed} tracks (no plant found)',
+                    'tracks_processed': tracks_processed,
+                    'plant_updated': False
+                }, status=status.HTTP_200_OK)
+                
+        except ImportError:
+            # Fallback if MoodEngine not available
+            return Response({
                 'success': True,
-                'message': f'Processed {tracks_processed} tracks',
-                'tracks_processed': tracks_processed
-            }, 
-            status=status.HTTP_200_OK
-        )
+                'message': f'Processed {tracks_processed} tracks (plant update unavailable)',
+                'tracks_processed': tracks_processed,
+                'plant_updated': False
+            }, status=status.HTTP_200_OK)
         
     except Exception as e:
         logger.error(f"Error syncing listening data: {str(e)}")

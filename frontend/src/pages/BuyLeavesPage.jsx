@@ -208,8 +208,8 @@ export default function BuyLeavesPage() {
                   <p>• Select a leaf package below</p>
                   <p>• Enter your M-Pesa phone number</p>
                   <p>• You'll receive a PIN prompt on your phone</p>
-                  <p>• Payment goes to <strong>{formatPhoneNumber(businessShortcode)}</strong></p>
-                  <p>• Leaves are added to your wallet automatically</p>
+                  {/* <p>• Payment goes to <strong>{formatPhoneNumber(businessShortcode)}</strong></p> */}
+                  <p>• comfirm your purchase</p>
                 </div>
               </div>
             </div>
