@@ -365,7 +365,7 @@ const JournalPage = () => {
                               {entry.mood || 'neutral'}
                             </Badge>
                             <p className="text-sm text-muted-foreground mt-1">
-                              {new Date(entry.created_at).toLocaleDateString()}
+                              {entry.formatted_date || new Date(entry.created_at).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
