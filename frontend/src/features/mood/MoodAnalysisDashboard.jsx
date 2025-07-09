@@ -176,7 +176,7 @@ export default function MoodAnalysisDashboard() {
             </div>
 
             {/* Combined Mood Timeline */}
-            <Card className="bg-gradient-to-br from-gray-50 to-white border-gray-200 shadow-lg">
+            {/* <Card className="bg-gradient-to-br from-gray-50 to-white border-gray-200 shadow-lg">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-gray-800">
                         <TrendingUp className="h-6 w-6 text-emerald-600" />
@@ -233,7 +233,7 @@ export default function MoodAnalysisDashboard() {
                         </AreaChart>
                     </ResponsiveContainer>
                 </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Journal Mood Distribution */}
             {journalData?.mood_distribution && (
@@ -275,7 +275,7 @@ export default function MoodAnalysisDashboard() {
             )}
 
             {/* Music Mood Distribution */}
-            {musicData?.top_moods && (
+            {/* {musicData?.top_moods && (
                 <Card className="bg-gradient-to-br from-blue-50 to-white border-blue-200 shadow-lg">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-blue-800">
@@ -312,10 +312,10 @@ export default function MoodAnalysisDashboard() {
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
-            )}
+            )} */}
 
             {/* Music Listening Stats */}
-            {musicData?.mood_breakdown && (
+            {/* {musicData?.mood_breakdown && (
                 <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-200 shadow-lg">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-purple-800">
@@ -347,7 +347,7 @@ export default function MoodAnalysisDashboard() {
                         </div>
                     </CardContent>
                 </Card>
-            )}
+            )} */}
         </div>
     );
 } 
