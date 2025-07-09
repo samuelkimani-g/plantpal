@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Badge } from '../components/ui/badge'
 import TransactionStatusChecker from '../components/TransactionStatusChecker'
+import MoodAnalysisDashboard from '../features/mood/MoodAnalysisDashboard'
 import { 
   Crown, 
   Sparkles, 
@@ -198,7 +199,7 @@ const PremiumPage = () => {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-8">
+        <TabsList className="grid w-full grid-cols-6 mb-8">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
             Overview
@@ -210,6 +211,10 @@ const PremiumPage = () => {
           <TabsTrigger value="chatbot" className="flex items-center gap-2">
             <Bot className="h-4 w-4" />
             AI Assistant
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            Analytics
           </TabsTrigger>
           <TabsTrigger value="store" className="flex items-center gap-2">
             <ShoppingBag className="h-4 w-4" />
@@ -290,24 +295,30 @@ const PremiumPage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-blue-600" />
-                  Advanced Features
+                  Mood Analytics
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600 mb-4">Unlock advanced plant care capabilities</p>
+                <p className="text-gray-600 mb-4">Track your emotional wellness with detailed analytics</p>
                 <ul className="text-sm text-gray-600 space-y-1 mb-4">
-                  <li>• Detailed plant analytics</li>
-                  <li>• Growth tracking & insights</li>
-                  <li>• Weather integration</li>
-                  <li>• Priority support</li>
+                  <li>• Advanced mood tracking</li>
+                  <li>• Emotional wellness insights</li>
+                  <li>• Mood patterns & trends</li>
+                  <li>• Personalized recommendations</li>
                 </ul>
                 {user?.is_premium ? (
                   <Button 
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => {
+                      // Set the active tab to analytics
+                      const analyticsTab = document.querySelector('[value="analytics"]');
+                      if (analyticsTab) {
+                        analyticsTab.click();
+                      }
+                    }}
                     className="w-full bg-blue-600 hover:bg-blue-700"
                   >
                     <Zap className="h-4 w-4 mr-2" />
-                    View Analytics
+                    View Mood Analytics
                   </Button>
                 ) : (
                   <div className="text-center">
@@ -547,6 +558,59 @@ const PremiumPage = () => {
                     }}
                     size="lg"
                     className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Crown className="h-5 w-5 mr-2" />
+                    Upgrade to Premium
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-6 w-6 text-blue-600" />
+                Advanced Mood Analytics
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {user?.is_premium ? (
+                <div className="space-y-6">
+                  <div className="text-center py-4">
+                    <Zap className="h-12 w-12 mx-auto text-blue-600 mb-3" />
+                    <h3 className="text-lg font-semibold mb-2">Your Mood Analytics Dashboard</h3>
+                    <p className="text-gray-600">
+                      Track your emotional wellness with detailed analytics and insights.
+                    </p>
+                  </div>
+                  <MoodAnalysisDashboard />
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="relative">
+                    <Zap className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                    <div className="absolute -top-1 -right-1 bg-amber-500 text-white text-xs px-2 py-1 rounded-full">
+                      Premium
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Advanced Mood Analytics</h3>
+                  <p className="text-gray-600 mb-6">
+                    Upgrade to premium to unlock detailed mood tracking, analytics, and emotional wellness insights.
+                  </p>
+                  <Button 
+                    onClick={() => {
+                      // Set the active tab to upgrade
+                      const upgradeTab = document.querySelector('[value="upgrade"]');
+                      if (upgradeTab) {
+                        upgradeTab.click();
+                      }
+                    }}
+                    size="lg"
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
                     <Crown className="h-5 w-5 mr-2" />
                     Upgrade to Premium
