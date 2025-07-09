@@ -35,7 +35,10 @@ import {
   Calendar,
   Music,
   BookOpen,
-  Smile
+  Smile,
+  Users,
+  Eye,
+  EyeOff
 } from "lucide-react"
 
 // Plant species options
@@ -228,6 +231,28 @@ const PlantManagement = () => {
     }
   }
 
+  const handleTogglePublic = async () => {
+    if (!currentPlant?.id) {
+      console.error("No plant ID available")
+      return
+    }
+    
+    try {
+      const newPublicStatus = !currentPlant.is_public
+      await updatePlant(currentPlant.id, { is_public: newPublicStatus })
+      await fetchPlants() // Refresh plant data
+      
+      if (newPublicStatus) {
+        alert("✅ Your plant is now public! Other users can see it in the Community Garden.")
+      } else {
+        alert("🔒 Your plant is now private. Only you can see it.")
+      }
+    } catch (error) {
+      console.error("Error toggling public status:", error)
+      alert("Failed to update public status. Please try again.")
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -286,10 +311,10 @@ const PlantManagement = () => {
               <Leaf className="h-4 w-4" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="customize" className="flex items-center gap-2">
+            {/* <TabsTrigger value="customize" className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
               Customize
-            </TabsTrigger>
+            </TabsTrigger> */}
             <TabsTrigger value="care" className="flex items-center gap-2">
               <Heart className="h-4 w-4" />
               Care
@@ -434,6 +459,36 @@ const PlantManagement = () => {
                             <p className="mt-1 text-sm">{currentPlant.description}</p>
                           </div>
                         )}
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">Public Garden:</span>
+                            <span className={`text-sm ${currentPlant.is_public ? 'text-green-600' : 'text-gray-500'}`}>
+                              {currentPlant.is_public ? 'Visible' : 'Private'}
+                            </span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleTogglePublic}
+                            className={`flex items-center gap-2 ${
+                              currentPlant.is_public 
+                                ? 'text-green-600 border-green-200 hover:bg-green-50' 
+                                : 'text-gray-600 border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            {currentPlant.is_public ? (
+                              <>
+                                <Eye className="h-4 w-4" />
+                                Make Private
+                              </>
+                            ) : (
+                              <>
+                                <Users className="h-4 w-4" />
+                                Make Public
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </CardContent>

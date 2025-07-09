@@ -16,7 +16,6 @@ import {
   Settings,
   ChevronRight,
   Smile,
-  Bell,
   CreditCard,
   MessageCircle,
   TrendingUp,
@@ -75,9 +74,7 @@ const Navigation = () => {
     if (segments.includes("mindfulness")) {
       breadcrumbs.push({ name: "Mindfulness", path: "/mindfulness" })
     }
-    if (segments.includes("reminders")) {
-      breadcrumbs.push({ name: "Reminders", path: "/reminders" })
-    }
+
     if (segments.includes("premium")) {
       breadcrumbs.push({ name: "Premium", path: "/premium" })
     }
@@ -87,7 +84,7 @@ const Navigation = () => {
 
   const navigationItems = [
     { name: "Dashboard", path: "/dashboard", icon: Home },
-    { name: "My Plants", path: "/my-plants", icon: Leaf },
+    { name: "My Plant", path: "/my-plants", icon: Leaf },
     { name: "Journal", path: "/journal", icon: BookOpen },
     { name: "Mindfulness", path: "/mindfulness", icon: Heart },
     { name: "Public Garden", path: "/public-garden", icon: Users },
@@ -232,16 +229,7 @@ const Navigation = () => {
                     <CreditCard className="h-4 w-4 mr-2" />
                     Buy Leaves
                   </button>
-                  <button
-                    onClick={() => {
-                      navigate("/reminders")
-                      setIsUserMenuOpen(false)
-                    }}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600"
-                  >
-                    <Bell className="h-4 w-4 mr-2" />
-                    Reminders
-                  </button>
+
                   
                   {/* Premium Features */}
                   {user?.is_premium ? (
@@ -326,19 +314,7 @@ const Navigation = () => {
                 )
               })}
               
-              {/* Reminders in mobile menu */}
-              <button
-                onClick={() => {
-                  navigate("/reminders")
-                  setIsMobileMenuOpen(false)
-                }}
-                className={`flex items-center w-full px-4 py-2 text-left rounded-md transition-colors ${
-                  location.pathname === "/reminders" ? "bg-green-100 text-green-700" : "text-gray-600 hover:bg-green-50 hover:text-green-600"
-                }`}
-              >
-                <Bell className="h-4 w-4 mr-3" />
-                Reminders
-              </button>
+
               
               {/* Premium Features in mobile menu */}
               {user?.is_premium && (
