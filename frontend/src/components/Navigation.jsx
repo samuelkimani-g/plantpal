@@ -35,7 +35,8 @@ const Navigation = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [leaves, setLeaves] = useState(0)
 
-  // Load leaves count
+  // Load leaves count - Commented out since leaves display is disabled
+  /*
   useEffect(() => {
     if (user) {
       paymentsAPI.getLeaves()
@@ -43,6 +44,7 @@ const Navigation = () => {
         .catch(() => setLeaves(0))
     }
   }, [user])
+  */
 
   const handleBack = () => {
     navigate(-1)
@@ -87,9 +89,9 @@ const Navigation = () => {
     { name: "My Plant", path: "/my-plants", icon: Leaf },
     { name: "Journal", path: "/journal", icon: BookOpen },
     { name: "Mindfulness", path: "/mindfulness", icon: Heart },
-    { name: "Public Garden", path: "/public-garden", icon: Users },
+    // { name: "Public Garden", path: "/public-garden", icon: Users },
     { name: "Music", path: "/music", icon: Music },
-    { name: "Premium", path: "/premium", icon: Crown },
+    // { name: "Premium", path: "/premium", icon: Crown },
   ]
 
   // Premium-only items (shown in dropdown or premium page)
@@ -179,7 +181,7 @@ const Navigation = () => {
               })}
             </div>
 
-            {/* Leaves Counter */}
+            {/* Leaves Counter - Commented out
             <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900 rounded-lg px-3 py-2 shadow-sm border border-emerald-200 dark:border-emerald-700">
               <Leaf className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               <span className="font-semibold text-emerald-700 dark:text-emerald-300 text-sm">
@@ -193,6 +195,7 @@ const Navigation = () => {
                 +
               </button>
             </div>
+            */}
 
             {/* User Menu */}
             <div className="relative">
@@ -219,6 +222,7 @@ const Navigation = () => {
                     <Settings className="h-4 w-4 mr-2" />
                     Profile Settings
                   </button>
+                  {/* Buy Leaves - Commented out
                   <button
                     onClick={() => {
                       navigate("/buy-leaves")
@@ -229,9 +233,10 @@ const Navigation = () => {
                     <CreditCard className="h-4 w-4 mr-2" />
                     Buy Leaves
                   </button>
+                  */}
 
                   
-                  {/* Premium Features */}
+                  {/* Premium Features - Commented out
                   {user?.is_premium ? (
                     <>
                       <hr className="my-1" />
@@ -265,6 +270,7 @@ const Navigation = () => {
                       Upgrade to Premium
                     </button>
                   )}
+                  */}
                   
                   <hr className="my-1" />
                   <button
@@ -316,7 +322,7 @@ const Navigation = () => {
               
 
               
-              {/* Premium Features in mobile menu */}
+              {/* Premium Features in mobile menu - Commented out
               {user?.is_premium && (
                 <>
                   <div className="px-4 py-2 text-xs font-medium text-amber-600 bg-amber-50 rounded-md">Premium Features</div>
@@ -341,6 +347,7 @@ const Navigation = () => {
                   })}
                 </>
               )}
+              */}
             </div>
           </div>
         )}
